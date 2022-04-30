@@ -10,3 +10,6 @@
 # Grpc modules
 grpc/*
 !grpc/protos
+
+# Personal TOKEN
+.personal-data

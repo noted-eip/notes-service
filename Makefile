@@ -1,3 +1,4 @@
+
 # Create an executable for service note
 re:
 	rm go.mod

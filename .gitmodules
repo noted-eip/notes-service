@@ -1,3 +1,6 @@
 [submodule "protos"]
 	path = grpc/protos
 	url = https://github.com/noted-eip/protorepo
+[submodule "grpc/protos"]
+	path = grpc/protos
+	url = https://github.com/noted-eip/protorepo
