@@ -1,2 +1,2 @@
-# notes-service
+# Notes service
 Service responsible for managing notes
