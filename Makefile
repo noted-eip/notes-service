@@ -12,4 +12,5 @@ codegen: update-submodules
 # Fetch the latest version of the protos submodule.
 update-submodules:
 	git submodule init
-	git submodule update --remote
+#	git submodule update --remote
+	git pull --recurse-submodules
