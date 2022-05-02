@@ -13,3 +13,6 @@ grpc/*
 
 # Personal TOKEN
 .personal-data
+
+# Executable
+service
