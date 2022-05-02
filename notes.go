@@ -22,6 +22,12 @@ func (srv *notesService) CreateNote(ctx context.Context, in *notespb.Note)
 	return nil, status.Errorf(codes.Unimplemented, "not implemented")
 }
 
+func (srv *notesService) GetNote(ctx context.Context, in *notespb.GetNoteRequest) 
+(*notespb.Note, error)
+{
+	return nil, status.Errorf(codes.Unimplemented, "not implemented")
+}
+
 func (srv *notesService) UpdateNote(ctx context.Context, in *notespb.UpdateNoteRequest) 
 (*emptypb.Empty, error)
 {

@@ -19,6 +19,15 @@ func TestNotesServiceCreateNote(t *testing.T) {
 	require.Nil(t, res)
 }
 
+func TestNotesServiceGetNote(t *testing.T) {
+	srv := notesService{}
+
+	res, err := srv.GetNote(context.TODO(), &notespb.GetNoteRequest{})
+	require.Error(t, err)
+	require.Equal(t, status.Code(err), codes.Unimplemented)
+	require.Nil(t, res)
+}
+
 func TestNotesServiceUpdateNote(t *testing.T) {
 	srv := notesService{}
 
