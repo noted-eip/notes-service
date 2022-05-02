@@ -26,7 +26,7 @@ func TestNotesServiceGetNote(t *testing.T) {
 	require.Error(t, err)
 	require.Equal(t, status.Code(err), codes.Unimplemented)
 	require.Nil(t, res)
-}
+} 
 
 func TestNotesServiceUpdateNote(t *testing.T) {
 	srv := notesService{}
