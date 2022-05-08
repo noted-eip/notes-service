@@ -1,7 +1,7 @@
 package main
 
 import (
-    "notes-service/grpc/notespb"
+    "./grpc/protos/notes/notes.proto"
     "net"
     
     "fmt"
@@ -14,7 +14,7 @@ func main() {
 
     lis, err := net.Listen("tcp", ":3000")
     
-    ftm.Println("server listen on port 3000")
+    ftm.Println("service listen on port 3000")
 
 	if err != nil {
 		panic(err)

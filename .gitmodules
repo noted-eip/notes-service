@@ -1,4 +1,8 @@
 [submodule "grpc/protos"]
 	path = grpc/protos
+<<<<<<< HEAD
 	branch = main
 	url = https://github.com/noted-eip/protorepo
+=======
+	url = git@github.com:noted-eip/protorepo
+>>>>>>> 9bbb22ddd429843f34674edfb4954380fcd6fa51
