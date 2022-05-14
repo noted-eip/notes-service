@@ -15,4 +15,7 @@ grpc/*
 .personal-data
 
 # Executable
-service
+notes-service
+
+# IDE
+.vscode/
