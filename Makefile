@@ -1,8 +1,9 @@
 # Create an executable for service note
 re:
-	rm go.mod
-	go mod init service
-	go build
+	go build .
+#	rm go.mod
+#	go mod init service
+#	go build
 
 # Run the protoc compiler to generate the Golang server code.                   
 codegen: update-submodules
@@ -13,7 +14,7 @@ update-submodules:
 	git pull --recurse-submodules
 	git submodule update --remote --recursive
 
-# After cloning the repo, run init                                              
+# After cloning the repo, run init                    
 init:
 	git submodule init
 	docker build -t noted-go-protoc -f misc/Dockerfile .
