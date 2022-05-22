@@ -3,7 +3,8 @@ re:
 	go build .
 #	rm go.mod
 #	go mod init service
-#	go build
+#	go mod tidy
+#	go build .
 
 # Run the protoc compiler to generate the Golang server code.                   
 codegen: update-submodules
