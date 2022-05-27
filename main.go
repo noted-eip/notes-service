@@ -20,6 +20,7 @@ import (
 var NotesDatabase *mongo.Database = nil
 var NotesCollection *mongo.Collection = nil
 
+// Need to put these variables in .env
 var password = "Gyy628\\nAWS"
 var mongoUri string = "mongodb+srv://gabriel:" + password + "@cluster0.2ckb3.mongodb.net/myFirstDatabase?retryWrites=true&w=majority"
 
@@ -34,9 +35,9 @@ func InitDatabase() {
 
 	err = client.Connect(ctx)
 	fmt.Println("service is connected to MongoDB")
-	//defer client.Disconect(ctx)
 
 	if err != nil {
+		defer client.Disconnect(ctx)
 		log.Fatal(err)
 	}
 
@@ -45,6 +46,7 @@ func InitDatabase() {
 
 	err = client.Ping(ctx, readpref.Primary())
 	if err != nil {
+		defer client.Disconnect(ctx)
 		log.Fatal(err)
 	}
 }

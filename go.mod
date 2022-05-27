@@ -1,4 +1,4 @@
-module service
+module notes-service
 
 go 1.17
 
