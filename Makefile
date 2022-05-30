@@ -1,4 +1,3 @@
-
 # Create an executable for service note
 re:
 	rm go.mod
@@ -8,6 +7,10 @@ re:
 # Run the protoc compiler to generate the Golang server code.
 codegen: update-submodules
 	protoc --go_out=. --go-grpc_out=. grpc/protos/notes/*.proto
+
+# Run the golangci-lint linter.
+lint:
+	docker run -w /app -v `pwd`:/app:ro golangci/golangci-lint golangci-lint run
 
 # Fetch the latest version of the protos submodule.
 update-submodules:
