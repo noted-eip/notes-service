@@ -3,7 +3,6 @@ package auth_test
 import (
 	"context"
 	"crypto/ed25519"
-	"fmt"
 	"notes-service/auth"
 	"testing"
 
@@ -39,7 +38,7 @@ func genKeyOrFail(t *testing.T) (ed25519.PublicKey, ed25519.PrivateKey) {
 
 func contextWithTokenOrFail(t *testing.T, parent context.Context, info *auth.Token, key ed25519.PrivateKey) context.Context {
 	ss := signTokenOrFail(t, info, key)
-	return metadata.AppendToOutgoingContext(parent, auth.AuthorizationHeaderKey, fmt.Sprint(auth.AuthorizationHeaderPrefix, " ", ss))
+	return metadata.AppendToOutgoingContext(parent, auth.AuthorizationHeaderKey, ss)
 }
 
 func signTokenOrFail(t *testing.T, info *auth.Token, key ed25519.PrivateKey) string {

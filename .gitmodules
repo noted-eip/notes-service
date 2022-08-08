@@ -1,4 +1,5 @@
-[submodule "grpc/protos"]
-	path = grpc/protos
-	url = git@github.com:noted-eip/protorepo
+[submodule "protorepo"]
+	path = protorepo
+	url = https://github.com/noted-eip/protorepo.git
 	branch = main
+	

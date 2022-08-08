@@ -3,106 +3,128 @@ package main
 import (
 	"context"
 	"fmt"
-	"notes-service/grpc/notespb"
+	"notes-service/models"
+	notespb "notes-service/protorepo/noted/notes/v1"
 
-	"go.mongodb.org/mongo-driver/bson/primitive"
+	"github.com/google/uuid"
+	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/types/known/emptypb"
-
-	"go.mongodb.org/mongo-driver/bson"
 )
 
 type notesService struct {
-	notespb.UnimplementedNotesServiceServer
+	notespb.UnimplementedNotesAPIServer
+
+	logger *zap.SugaredLogger
+	repo   models.NotesRepository
 }
 
-var _ notespb.NotesServiceServer = &notesService{}
+var _ notespb.NotesAPIServer = &notesService{}
 
-func (srv *notesService) GetNote(ctx context.Context, in *notespb.GetNoteRequest) (*notespb.Note, error) {
+func (srv *notesService) CreateNote(ctx context.Context, in *notespb.CreateNoteRequest) (*notespb.CreateNoteResponse, error) {
+	fmt.Print("on est la\n")
 
-	objID, err := primitive.ObjectIDFromHex(in.Id)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Error : during get note 1")
-	}
-
-	var note *notespb.Note
-
-	err = NotesCollection.FindOne(context.TODO(), bson.M{"_id": objID}).Decode(&note)
+	//ca segfault la je comprends pas
+	//y a un objet qui est pas fill mais jsp si c ca
+	err := srv.repo.Create(ctx, &models.NoteWithBlocks{AuthorId: in.Note.AuthorId, Title: &in.Note.Title, Blocks: nil /*in.Blocks*/})
+	fmt.Print("on est la 2\n")
 
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, err.Error())
+		fmt.Print("EROR HERE\n")
+		fmt.Print(err)
+		fmt.Print("\n")
+		srv.logger.Errorw("failed to create note", zap.Error(err))
+		return nil, status.Errorf(codes.Internal, "could not create note")
 	}
+	fmt.Print("on est la 3\n")
 
-	return note, status.Errorf(codes.OK, "Success : Note found")
+	return nil, nil
 }
 
-func (srv *notesService) CreateNote(ctx context.Context, in *notespb.Note) (*emptypb.Empty, error) {
-
-	_, err := NotesCollection.InsertOne(
-		ctx,
-		bson.D{
-			{"authorId", in.AuthorId},
-			{"title", in.Title},
-			{"blocks", in.Blocks},
-		})
+func (srv *notesService) GetNote(ctx context.Context, in *notespb.GetNoteRequest) (*notespb.GetNoteResponse, error) {
+	fmt.Print("on est la\n")
+	id, err := uuid.Parse(in.Id)
 	if err != nil {
-		return &emptypb.Empty{}, nil
+		//ca crash la prcq il faut que le CreatNote créer son propre UUID après on verra si on peut le parser
+		fmt.Print("EROR HERE\n")
+		fmt.Print(err)
+		fmt.Print("\n")
+		if srv.logger == nil {
+			fmt.Print("logger == nil\n")
+		}
+		srv.logger.Errorw("failed to convert uuid from string", "error", err.Error())
+		return nil, status.Errorf(codes.Internal, "could not get note")
 	}
+	fmt.Print("on est la 2\n")
 
-	//fmt.Printf("Inserted %v documents into episode collection!\n", len(noteResult.InsertedID))
-	return nil, status.Errorf(codes.OK, "Success : Note well created")
+	note, err := srv.repo.Get(ctx, &models.NoteFilter{ID: id, AuthorId: ""})
+	if err != nil {
+		srv.logger.Errorw("failed to get account", "error", err.Error())
+		return nil, status.Errorf(codes.Internal, "could not get note")
+	}
+	noteToReturn := notespb.Note{Id: note.ID.String(), AuthorId: note.AuthorId, Title: *note.Title, Blocks: nil /*note.Blocks*/}
+	fmt.Print("on est la 3\n")
+	return &notespb.GetNoteResponse{Note: &noteToReturn}, nil
 }
 
-func (srv *notesService) InitNote(ctx context.Context, in *notespb.InitNoteRequest) (*emptypb.Empty, error) {
-
-	_, err := NotesCollection.InsertOne(
-		ctx,
-		bson.D{
-			{"authorId", in.AuthorId},
-			{"title", in.Title},
-		})
+func (srv *notesService) UpdateNote(ctx context.Context, in *notespb.UpdateNoteRequest) (*notespb.UpdateNoteResponse, error) {
+	id, err := uuid.Parse(in.Note.Id)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Error : during saving note")
+		srv.logger.Errorw("failed to convert uuid from string", "error", err.Error())
+		return nil, status.Errorf(codes.Internal, "could not update note")
 	}
 
-	//fmt.Printf("Inserted %v documents into episode collection!\n", len(noteResult.InsertedID))
-	return nil, status.Errorf(codes.OK, "Success : Note proto well created")
+	err = srv.repo.Update(ctx, &models.NoteFilter{ID: id, AuthorId: ""}, &models.NoteWithBlocks{AuthorId: in.Note.AuthorId, Title: &in.Note.Title, Blocks: nil /*in.Note.Blocks*/})
+	if err != nil {
+		srv.logger.Errorw("failed to create note", zap.Error(err))
+		return nil, status.Errorf(codes.Internal, "could not create note")
+	}
+
+	return nil, nil
 }
 
-func (srv *notesService) UpdateNote(ctx context.Context, in *notespb.UpdateNoteRequest) (*emptypb.Empty, error) {
-
-	id, _ := primitive.ObjectIDFromHex(in.Id)
-	_, err := NotesCollection.UpdateOne(
-		ctx,
-		bson.M{"_id": id},
-		bson.D{
-			{"$set", bson.D{
-				{"authorId", in.Note.AuthorId},
-				{"title", in.Note.Title},
-				{"blocks", in.Note.Blocks},
-			}},
-		},
-	)
+func (srv *notesService) DeleteNote(ctx context.Context, in *notespb.DeleteNoteRequest) (*notespb.DeleteNoteResponse, error) {
+	id, err := uuid.Parse(in.Id)
 	if err != nil {
-		return nil, err
+		srv.logger.Errorw("failed to convert uuid from string", "error", err.Error())
+		return nil, status.Errorf(codes.Internal, "could not delete note")
 	}
 
-	return nil, status.Errorf(codes.OK, "Success : Note well updated")
+	err = srv.repo.Delete(ctx, &models.NoteFilter{ID: id})
+	if err != nil {
+		srv.logger.Errorw("failed to delete note", "error", err.Error())
+		return nil, status.Errorf(codes.Internal, "could not delete note")
+	}
+
+	return nil, nil
 }
 
-func (srv *notesService) DeleteNote(ctx context.Context, in *notespb.DeleteNoteRequest) (*emptypb.Empty, error) {
+func (srv *notesService) ListNotes(ctx context.Context, in *notespb.ListNotesRequest) (*notespb.ListNotesResponse, error) {
+	/*
+		filter := bson.M{"authorId": in.AuthorId}
+		cur, err := NotesCollection.Find(context.TODO(), filter)
 
-	objID, err := primitive.ObjectIDFromHex(in.Id)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Error : during get note 1")
-	}
+		if err != nil {
+			return nil, err
+		}
+		fmt.Println(cur)
 
-	_, err = NotesCollection.DeleteOne(ctx, bson.M{"_id": objID})
+		var results *notespb.Notes = nil
+		for cur.Next(context.TODO()) {
+			var elem *notespb.Note
+			err := cur.Decode(&elem)
+			if err != nil {
+				return nil, err
+			}
+			results.Notes = append(results.Notes, elem)
+		}
+		err = cur.Err()
 
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, err.Error())
-	}
+		if err != nil {
+			return nil, err
+		}
 
-	return nil, status.Errorf(codes.OK, "Success : %s note(s) deleted", 1)
+		fmt.Println(results)
+	*/
+	return nil, status.Errorf(codes.OK, "Note found")
 }
