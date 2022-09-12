@@ -1,0 +1,10 @@
+
+note = id qui regroupe des blocks
+Create => id, titre, blocks (call les fonctions insertblock pour créer des blocks relié a l'id de la note)
+Update => id, titre
+Delete => id
+
+block
+Create => noteId, blockId, type, string
+Update => noteId, blockId, type, string
+Delete => noteId, blockId
