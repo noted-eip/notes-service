@@ -23,9 +23,7 @@ make re
 
 | Env Name                           | Flag Name           | Default                     | Description                               |
 |------------------------------------|---------------------|-----------------------------|-------------------------------------------|
-| `ACCOUNTS_SERVICE_PORT`            | `--port`            | `3000`                      | The port the application shall listen on. |
-| `ACCOUNTS_SERVICE_ENV`             | `--env`             | `production`                | Either `production` or `development`.     |
-| `ACCOUNTS_SERVICE_MONGO_URI`       | `--mongo-uri`       | `mongodb://localhost:27017` | Address of the MongoDB server.            |
-| `ACCOUNTS_SERVICE_MONGO_DB_NAME`   | `--mongo-db-name`   | `notes-service`          | Name of the Mongo database.               |
-
-
+| `NOTES_SERVICE_PORT`            | `--port`            | `3000`                      | The port the application shall listen on. |
+| `NOTES_SERVICE_ENV`             | `--env`             | `production`                | Either `production` or `development`.     |
+| `NOTES_SERVICE_MONGO_URI`       | `--mongo-uri`       | `mongodb://localhost:27017` | Address of the MongoDB server.            |
+| `NOTES_SERVICE_MONGO_DB_NAME`   | `--mongo-db-name`   | `notes-service`          | Name of the Mongo database.               |
