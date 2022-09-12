@@ -13,7 +13,7 @@ After cloning the repository run:
 make update-submodules
 ```
 
-You can then build and it's dependancies with :
+You can then build the project by running the following command :
 
 ```
 make re
