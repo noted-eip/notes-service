@@ -27,10 +27,22 @@ func (srv *blocksService) InsertBlock(ctx context.Context, in *notespb.InsertBlo
 		srv.logger.Errorw("failed to convert uuid from string", "error", err.Error())
 		return nil, status.Errorf(codes.Internal, "could not get block")
 	}
+	//notespb.Block_Heading.Heading
+	content := "contentTestZebi"
+	/*for _, patch := range in.Block.Data {
+		switch op := patch.Op.(type) {
+		case *notespb.Block_Paragraph:
+			fmt.Printf("Paragraph")
+		case *notespb.Block_Heading:
+			fmt.Printf("Heading")
+		default:
+			fmt.Println("No matching operations")
+		}
+	}*/
 
 	srv.repo.Create(
 		ctx,
-		&models.BlockWithIndex{ID: id.String(), NoteId: in.Block.Id, Type: uint32(in.Block.Type), Index: in.Index, Content: nil /*&in.Block.Data*/})
+		&models.BlockWithIndex{ID: id.String(), NoteId: in.Block.Id, Type: uint32(in.Block.Type), Index: in.Index, Content: &content})
 	return &emptypb.Empty{}, nil
 }
 

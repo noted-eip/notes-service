@@ -6,10 +6,10 @@ require (
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/google/uuid v1.3.0
 	github.com/stretchr/testify v1.8.0
-	go.mongodb.org/mongo-driver v1.10.0
-	go.uber.org/zap v1.21.0
-	google.golang.org/grpc v1.48.0
-	google.golang.org/protobuf v1.28.0
+	go.mongodb.org/mongo-driver v1.10.2
+	go.uber.org/zap v1.23.0
+	google.golang.org/grpc v1.49.0
+	google.golang.org/protobuf v1.28.1
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
 )
 

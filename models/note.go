@@ -15,12 +15,6 @@ type NoteWithBlocks struct {
 	Blocks   []*Block  `json:"blocks" bson:"blocks,omitempty"`
 }
 
-type Note struct {
-	ID       uuid.UUID `json:"id" bson:"_id,omitempty"`
-	AuthorId string    `json:"authorId" bson:"authorId,omitempty"`
-	Title    *string   `json:"title" bson:"title,omitempty"`
-}
-
 type NoteFilter struct {
 	ID       uuid.UUID `json:"id" bson:"_id,omitempty"`
 	AuthorId string    `json:"authorId" bson:"authorId,omitempty"`
@@ -36,5 +30,5 @@ type NotesRepository interface {
 
 	Update(ctx context.Context, filter *NoteFilter, noteRequest *NoteWithBlocks) error //2 args
 
-	List(ctx context.Context, filter *NoteFilter) (*[]Note, error)
+	List(ctx context.Context, filter *NoteFilter) (*[]NoteWithBlocks, error)
 }

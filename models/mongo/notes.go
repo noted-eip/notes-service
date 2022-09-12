@@ -104,7 +104,7 @@ func (srv *notesRepository) Update(ctx context.Context, filter *models.NoteFilte
 	return nil
 }
 
-func (srv *notesRepository) List(ctx context.Context, filter *models.NoteFilter) (*[]models.Note, error) {
+func (srv *notesRepository) List(ctx context.Context, filter *models.NoteFilter) (*[]models.NoteWithBlocks, error) {
 	return nil, nil
 }
 

@@ -22,21 +22,15 @@ type notesService struct {
 var _ notespb.NotesAPIServer = &notesService{}
 
 func (srv *notesService) CreateNote(ctx context.Context, in *notespb.CreateNoteRequest) (*notespb.CreateNoteResponse, error) {
-	fmt.Print("on est la\n")
 
-	//ca segfault la je comprends pas
-	//y a un objet qui est pas fill mais jsp si c ca
+	//sol 1 parser et fill model.Block
+	//coppier -> automapper
 	err := srv.repo.Create(ctx, &models.NoteWithBlocks{AuthorId: in.Note.AuthorId, Title: &in.Note.Title, Blocks: nil /*in.Blocks*/})
-	fmt.Print("on est la 2\n")
 
 	if err != nil {
-		fmt.Print("EROR HERE\n")
-		fmt.Print(err)
-		fmt.Print("\n")
 		srv.logger.Errorw("failed to create note", zap.Error(err))
 		return nil, status.Errorf(codes.Internal, "could not create note")
 	}
-	fmt.Print("on est la 3\n")
 
 	return nil, nil
 }
