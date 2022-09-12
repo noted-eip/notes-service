@@ -1,6 +1,6 @@
 # Notes service
 ___
-Service responsible for managing notes and recommandation.
+Service responsible for managing notes and recommandations.
 
 
 ## Build
