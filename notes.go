@@ -3,6 +3,9 @@ package main
 import (
 	"context"
 	"fmt"
+
+	automapper "github.com/stroiman/go-automapper"
+
 	"notes-service/models"
 	notespb "notes-service/protorepo/noted/notes/v1"
 
@@ -22,10 +25,25 @@ type notesService struct {
 var _ notespb.NotesAPIServer = &notesService{}
 
 func (srv *notesService) CreateNote(ctx context.Context, in *notespb.CreateNoteRequest) (*notespb.CreateNoteResponse, error) {
+	//fmt.Print("on passe 1\n")
+	//blocks := []*models.BlockTest{}
 
-	//sol 1 parser et fill model.Block
-	//coppier -> automapper
-	err := srv.repo.Create(ctx, &models.NoteWithBlocks{AuthorId: in.Note.AuthorId, Title: &in.Note.Title, Blocks: nil /*in.Blocks*/})
+	//fmt.Print("on passe 3\n")
+	//automapper.Map(in.Note.Blocks, &blocks)
+
+	fmt.Print("on passe 1\n")
+	fmt.Print("authorid grpc : ", &in.Note.AuthorId, "\n")
+	fmt.Print("len blocks grpc : ", len(in.Note.Blocks), "\n")
+
+	blocks := make([]models.BlockTest, len(in.Note.Blocks))
+
+	fmt.Print("on passe 2\n")
+	for i := range in.Note.Blocks {
+		automapper.Map(in.Note.Blocks[i], &blocks[i])
+	}
+
+	fmt.Print("on passe 3\n")
+	err := srv.repo.Create(ctx, &models.NoteWithBlocks{AuthorId: in.Note.AuthorId, Title: &in.Note.Title, Blocks: nil})
 
 	if err != nil {
 		srv.logger.Errorw("failed to create note", zap.Error(err))
@@ -36,20 +54,15 @@ func (srv *notesService) CreateNote(ctx context.Context, in *notespb.CreateNoteR
 }
 
 func (srv *notesService) GetNote(ctx context.Context, in *notespb.GetNoteRequest) (*notespb.GetNoteResponse, error) {
-	fmt.Print("on est la\n")
+
+	//Appeler GetBlock avec le filtre noteId
+	//les classer selon leur index
+
 	id, err := uuid.Parse(in.Id)
 	if err != nil {
-		//ca crash la prcq il faut que le CreatNote créer son propre UUID après on verra si on peut le parser
-		fmt.Print("EROR HERE\n")
-		fmt.Print(err)
-		fmt.Print("\n")
-		if srv.logger == nil {
-			fmt.Print("logger == nil\n")
-		}
 		srv.logger.Errorw("failed to convert uuid from string", "error", err.Error())
 		return nil, status.Errorf(codes.Internal, "could not get note")
 	}
-	fmt.Print("on est la 2\n")
 
 	note, err := srv.repo.Get(ctx, &models.NoteFilter{ID: id, AuthorId: ""})
 	if err != nil {
@@ -57,11 +70,14 @@ func (srv *notesService) GetNote(ctx context.Context, in *notespb.GetNoteRequest
 		return nil, status.Errorf(codes.Internal, "could not get note")
 	}
 	noteToReturn := notespb.Note{Id: note.ID.String(), AuthorId: note.AuthorId, Title: *note.Title, Blocks: nil /*note.Blocks*/}
-	fmt.Print("on est la 3\n")
 	return &notespb.GetNoteResponse{Note: &noteToReturn}, nil
 }
 
 func (srv *notesService) UpdateNote(ctx context.Context, in *notespb.UpdateNoteRequest) (*notespb.UpdateNoteResponse, error) {
+
+	//appeler deleteBlock avec le filtre note_id
+	//appeller createBlock pour tout les autres
+
 	id, err := uuid.Parse(in.Note.Id)
 	if err != nil {
 		srv.logger.Errorw("failed to convert uuid from string", "error", err.Error())
@@ -78,6 +94,10 @@ func (srv *notesService) UpdateNote(ctx context.Context, in *notespb.UpdateNoteR
 }
 
 func (srv *notesService) DeleteNote(ctx context.Context, in *notespb.DeleteNoteRequest) (*notespb.DeleteNoteResponse, error) {
+
+	//deleteBlock avec le filtre noteId
+	//delete la note
+
 	id, err := uuid.Parse(in.Id)
 	if err != nil {
 		srv.logger.Errorw("failed to convert uuid from string", "error", err.Error())
@@ -94,31 +114,8 @@ func (srv *notesService) DeleteNote(ctx context.Context, in *notespb.DeleteNoteR
 }
 
 func (srv *notesService) ListNotes(ctx context.Context, in *notespb.ListNotesRequest) (*notespb.ListNotesResponse, error) {
-	/*
-		filter := bson.M{"authorId": in.AuthorId}
-		cur, err := NotesCollection.Find(context.TODO(), filter)
 
-		if err != nil {
-			return nil, err
-		}
-		fmt.Println(cur)
+	//appeler GetNote avec le filtre authorName
 
-		var results *notespb.Notes = nil
-		for cur.Next(context.TODO()) {
-			var elem *notespb.Note
-			err := cur.Decode(&elem)
-			if err != nil {
-				return nil, err
-			}
-			results.Notes = append(results.Notes, elem)
-		}
-		err = cur.Err()
-
-		if err != nil {
-			return nil, err
-		}
-
-		fmt.Println(results)
-	*/
 	return nil, status.Errorf(codes.OK, "Note found")
 }

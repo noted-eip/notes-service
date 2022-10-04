@@ -6,6 +6,12 @@ import (
 	"context"
 )
 
+type BlockTest struct {
+	ID   string `json:"id" bson:"_id,omitempty"`
+	Type uint32 `json:"type" bson:"type,omitempty"`
+	Data string `json:"content" bson:"content,omitempty"`
+}
+
 type Block struct {
 	ID      string  `json:"id" bson:"_id,omitempty"`
 	NoteId  string  `json:"noteId" bson:"noteId,omitempty"`
@@ -30,7 +36,7 @@ type BlockFilter struct {
 type BlocksRepository interface {
 	Create(ctx context.Context, blockRequest *BlockWithIndex) error
 
-	Delete(ctx context.Context, filter *BlockFilter) (*NoteWithBlocks, error)
+	Delete(ctx context.Context, filter *BlockFilter) error
 
-	Update(ctx context.Context, filter *BlockFilter, blockRequest *BlockWithIndex) (*NoteWithBlocks, error)
+	Update(ctx context.Context, filter *BlockFilter, blockRequest *BlockWithIndex) (*BlockWithIndex, error)
 }

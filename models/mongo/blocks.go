@@ -19,6 +19,14 @@ type block struct {
 	Content *string `json:"content" bson:"content,omitempty"`
 }
 
+type blockWithIndex struct {
+	ID      string  `json:"id" bson:"_id,omitempty"`
+	NoteId  string  `json:"noteId" bson:"noteId,omitempty"`
+	Type    uint32  `json:"type" bson:"type,omitempty"`
+	Index   uint32  `json:"inxed" bson:"inxed,omitempty"`
+	Content *string `json:"content" bson:"content,omitempty"`
+}
+
 type blocksRepository struct {
 	logger          *zap.Logger
 	db              *mongo.Database
@@ -35,84 +43,49 @@ func NewBlocksRepository(db *mongo.Database, logger *zap.Logger, notesRepository
 
 func (srv *blocksRepository) Create(ctx context.Context, blockRequest *models.BlockWithIndex) error {
 	id, err := uuid.NewRandom()
-
 	if err != nil {
 		srv.logger.Error("failed to generate new random uuid", zap.Error(err))
 		return status.Errorf(codes.Internal, "could not create account")
 	}
 
-	//get note
-	filter := models.NoteFilter{AuthorId: blockRequest.NoteId}
-	currentNote, err := srv.notesRepository.Get(ctx, &filter)
+	block := blockWithIndex{ID: id.String(), NoteId: blockRequest.NoteId, Type: blockRequest.Type, Index: blockRequest.Index, Content: blockRequest.Content}
+
+	_, err = srv.db.Collection("notes").InsertOne(ctx, block)
 	if err != nil {
-		srv.logger.Error("mongo get note failed", zap.Error(err), zap.String("note Id", blockRequest.NoteId))
-		return status.Errorf(codes.Internal, "could not create block")
-	}
-
-	//ajouter ce block a la note
-	insertedBlock := models.Block{ID: id.String(), NoteId: blockRequest.NoteId, Type: blockRequest.Type, Content: blockRequest.Content}
-	if (len(currentNote.Blocks) - 1) >= int(blockRequest.Index) {
-		if blockRequest.Index == 0 {
-			currentNote.Blocks = append([]*models.Block{&insertedBlock}, currentNote.Blocks...)
-		} else {
-			fstPartNote := currentNote.Blocks[0 : blockRequest.Index-1]
-			secPartNote := currentNote.Blocks[blockRequest.Index:len(currentNote.Blocks)]
-			fstPartNote = append(fstPartNote, &insertedBlock)
-			currentNote.Blocks = append(fstPartNote, secPartNote...)
-		}
-	} else {
-		// the index doesn't exist so we add it at the end
-		currentNote.Blocks = append(currentNote.Blocks, &insertedBlock)
-	}
-
-	noteToReturn := note{ID: id.String(), AuthorId: currentNote.AuthorId, Title: currentNote.Title, Blocks: currentNote.Blocks}
-
-	_, err = srv.db.Collection("notes").InsertOne(ctx, noteToReturn)
-	if err != nil {
-		srv.logger.Error("mongo insert note failed", zap.Error(err), zap.String("block name", blockRequest.NoteId))
-		return status.Errorf(codes.Internal, "could not create block")
+		srv.logger.Error("mongo insert block failed", zap.Error(err), zap.String("note id : ", blockRequest.NoteId))
+		return status.Errorf(codes.Internal, "could not insert block")
 	}
 	return nil
 }
 
-func (srv *blocksRepository) Update(ctx context.Context, filter *models.BlockFilter, blockRequest *models.BlockWithIndex) (*models.NoteWithBlocks, error) {
-	return nil, nil
+func (srv *blocksRepository) Update(ctx context.Context, filter *models.BlockFilter, blockRequest *models.BlockWithIndex) (*models.BlockWithIndex, error) {
+
+	update, err := srv.db.Collection("notes").UpdateOne(ctx, buildBlockQuery(filter), bson.D{{Key: "$set", Value: &blockRequest}})
+	if err != nil {
+		srv.logger.Error("failed to convert object id from hex", zap.Error(err))
+		return nil, status.Errorf(codes.InvalidArgument, err.Error())
+	}
+	if update.MatchedCount == 0 {
+		srv.logger.Error("mongo update note query matched none", zap.String("block_id : ", filter.BlockId))
+		return nil, status.Errorf(codes.Internal, "could not update block")
+	}
+
+	return blockRequest, nil
 }
 
-func (srv *blocksRepository) Delete(ctx context.Context, filter *models.BlockFilter) (*models.NoteWithBlocks, error) {
+func (srv *blocksRepository) Delete(ctx context.Context, filter *models.BlockFilter) error {
 
-	/*objID, err := primitive.ObjectIDFromHex(filter.BlockId)
+	delete, err := srv.db.Collection("notes").DeleteOne(ctx, buildBlockQuery(filter))
+
 	if err != nil {
-		return status.Errorf(codes.Internal, "Error : during get note 1")
-	}*/
-
-	var note note
-	err := srv.db.Collection("notes").FindOne(ctx, buildBlockQuery(filter)).Decode(&note)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "could not find note")
+		srv.logger.Error("delete note db query failed", zap.Error(err))
+		return status.Errorf(codes.Internal, "could not delete note")
 	}
-
-	var exist = true
-	var currentIndex = 0
-	for currentIndex = 0; currentIndex < len(note.Blocks); currentIndex++ {
-		if note.Blocks[currentIndex].ID == filter.BlockId {
-			exist = true
-			break
-		}
+	if delete.DeletedCount == 0 {
+		srv.logger.Info("mongo delete block matched none", zap.String("block_id", filter.BlockId))
+		return status.Errorf(codes.Internal, "could not delete block")
 	}
-
-	if !exist {
-		return nil, status.Errorf(codes.Internal, "No such block with requested id")
-	}
-
-	//suprimer l'ancien endroit ou il etait
-	fstPartNote := note.Blocks[0:currentIndex]
-	secPartNote := note.Blocks[currentIndex+1 : len(note.Blocks)]
-	note.Blocks = append(fstPartNote, secPartNote...)
-
-	//update note by removing the block
-	uuid, err := uuid.Parse(note.ID)
-	return &models.NoteWithBlocks{ID: uuid, AuthorId: note.AuthorId, Title: note.Title, Blocks: note.Blocks}, nil
+	return nil
 }
 
 func buildBlockQuery(filter *models.BlockFilter) bson.M {
