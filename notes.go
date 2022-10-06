@@ -2,10 +2,8 @@ package main
 
 import (
 	"context"
-	"fmt"
 
-	automapper "github.com/stroiman/go-automapper"
-
+	"notes-service/auth"
 	"notes-service/models"
 	notespb "notes-service/protorepo/noted/notes/v1"
 
@@ -18,39 +16,46 @@ import (
 type notesService struct {
 	notespb.UnimplementedNotesAPIServer
 
-	logger *zap.SugaredLogger
-	repo   models.NotesRepository
+	auth      auth.Service
+	logger    *zap.SugaredLogger
+	repoNote  models.NotesRepository
+	repoBlock models.BlocksRepository
 }
 
 var _ notespb.NotesAPIServer = &notesService{}
 
 func (srv *notesService) CreateNote(ctx context.Context, in *notespb.CreateNoteRequest) (*notespb.CreateNoteResponse, error) {
-	//fmt.Print("on passe 1\n")
-	//blocks := []*models.BlockTest{}
-
-	//fmt.Print("on passe 3\n")
-	//automapper.Map(in.Note.Blocks, &blocks)
-
-	fmt.Print("on passe 1\n")
-	fmt.Print("authorid grpc : ", &in.Note.AuthorId, "\n")
-	fmt.Print("len blocks grpc : ", len(in.Note.Blocks), "\n")
-
-	blocks := make([]models.BlockTest, len(in.Note.Blocks))
-
-	fmt.Print("on passe 2\n")
-	for i := range in.Note.Blocks {
-		automapper.Map(in.Note.Blocks[i], &blocks[i])
+	if len(in.Note.AuthorId) < 1 || len(in.Note.Title) < 1 {
+		srv.logger.Errorw("failed to create note, invalid parameters")
+		return nil, status.Errorf(codes.Internal, "authorId or title are empty")
 	}
 
-	fmt.Print("on passe 3\n")
-	err := srv.repo.Create(ctx, &models.NoteWithBlocks{AuthorId: in.Note.AuthorId, Title: &in.Note.Title, Blocks: nil})
+	note, err := srv.repoNote.Create(ctx, &models.NoteWithBlocks{AuthorId: in.Note.AuthorId, Title: in.Note.Title, Blocks: nil})
 
 	if err != nil {
 		srv.logger.Errorw("failed to create note", zap.Error(err))
 		return nil, status.Errorf(codes.Internal, "could not create note")
 	}
 
-	return nil, nil
+	blocks := make([]models.Block, len(in.Note.Blocks))
+
+	for index, block := range in.Note.Blocks {
+		err := FillBlockContent(&blocks[index], block)
+		if err != nil {
+			srv.logger.Errorw("failed to create note", zap.Error(err))
+			return nil, status.Errorf(codes.Internal, "invalid content provided for block index : ", index)
+		}
+		srv.repoBlock.Create(ctx, &models.BlockWithIndex{NoteId: note.ID.String(), Type: uint32(in.Note.Blocks[index].Type), Index: uint32(index + 1), Content: blocks[index].Content})
+	}
+
+	return &notespb.CreateNoteResponse{
+		Note: &notespb.Note{
+			Id:       note.ID.String(),
+			AuthorId: note.AuthorId,
+			Title:    note.Title,
+			Blocks:   in.Note.Blocks,
+		},
+	}, nil
 }
 
 func (srv *notesService) GetNote(ctx context.Context, in *notespb.GetNoteRequest) (*notespb.GetNoteResponse, error) {
@@ -64,47 +69,65 @@ func (srv *notesService) GetNote(ctx context.Context, in *notespb.GetNoteRequest
 		return nil, status.Errorf(codes.Internal, "could not get note")
 	}
 
-	note, err := srv.repo.Get(ctx, &models.NoteFilter{ID: id, AuthorId: ""})
+	note, err := srv.repoNote.Get(ctx, &models.NoteFilter{ID: id, AuthorId: ""})
 	if err != nil {
-		srv.logger.Errorw("failed to get account", "error", err.Error())
+		srv.logger.Errorw("failed to get note", "error", err.Error())
 		return nil, status.Errorf(codes.Internal, "could not get note")
 	}
-	noteToReturn := notespb.Note{Id: note.ID.String(), AuthorId: note.AuthorId, Title: *note.Title, Blocks: nil /*note.Blocks*/}
+	noteToReturn := notespb.Note{Id: note.ID.String(), AuthorId: note.AuthorId, Title: note.Title, Blocks: nil /*note.Blocks*/}
 	return &notespb.GetNoteResponse{Note: &noteToReturn}, nil
 }
 
 func (srv *notesService) UpdateNote(ctx context.Context, in *notespb.UpdateNoteRequest) (*notespb.UpdateNoteResponse, error) {
-
-	//appeler deleteBlock avec le filtre note_id
-	//appeller createBlock pour tout les autres
-
 	id, err := uuid.Parse(in.Note.Id)
 	if err != nil {
 		srv.logger.Errorw("failed to convert uuid from string", "error", err.Error())
 		return nil, status.Errorf(codes.Internal, "could not update note")
 	}
 
-	err = srv.repo.Update(ctx, &models.NoteFilter{ID: id, AuthorId: ""}, &models.NoteWithBlocks{AuthorId: in.Note.AuthorId, Title: &in.Note.Title, Blocks: nil /*in.Note.Blocks*/})
+	//appeler deleteBlock avec le filtre note_id
+	err = srv.repoBlock.Delete(ctx, &models.BlockFilter{NoteId: in.Id})
 	if err != nil {
-		srv.logger.Errorw("failed to create note", zap.Error(err))
-		return nil, status.Errorf(codes.Internal, "could not create note")
+		srv.logger.Errorw("blocks weren't deleted : ", err.Error())
+		return nil, status.Errorf(codes.Internal, "could not delete blocks")
+	}
+
+	//update juste les infos de la note et pas les blocks sinon
+	err = srv.repoNote.Update(ctx, &models.NoteFilter{ID: id /*, AuthorId: ""*/}, &models.NoteWithBlocks{AuthorId: in.Note.AuthorId, Title: in.Note.Title})
+	if err != nil {
+		srv.logger.Errorw("failed to update note", zap.Error(err))
+		return nil, status.Errorf(codes.Internal, "could not update note")
+	}
+
+	//appeller createBlock en boucle pour tout les autres blocks
+	blocks := make([]models.Block, len(in.Note.Blocks))
+	for index, block := range in.Note.Blocks {
+		err := FillBlockContent(&blocks[index], block)
+		if err != nil {
+			srv.logger.Errorw("failed to update blocks", zap.Error(err))
+			return nil, status.Errorf(codes.Internal, "invalid content provided for block index : ", index)
+		}
+		srv.repoBlock.Create(ctx, &models.BlockWithIndex{NoteId: in.Id, Type: uint32(in.Note.Blocks[index].Type), Index: uint32(index + 1), Content: blocks[index].Content})
 	}
 
 	return nil, nil
 }
 
 func (srv *notesService) DeleteNote(ctx context.Context, in *notespb.DeleteNoteRequest) (*notespb.DeleteNoteResponse, error) {
-
-	//deleteBlock avec le filtre noteId
-	//delete la note
-
 	id, err := uuid.Parse(in.Id)
 	if err != nil {
 		srv.logger.Errorw("failed to convert uuid from string", "error", err.Error())
 		return nil, status.Errorf(codes.Internal, "could not delete note")
 	}
 
-	err = srv.repo.Delete(ctx, &models.NoteFilter{ID: id})
+	//appeler deleteBlock avec le filtre note_id
+	err = srv.repoBlock.Delete(ctx, &models.BlockFilter{NoteId: in.Id})
+	if err != nil {
+		srv.logger.Errorw("blocks weren't deleted : ", err.Error())
+		return nil, status.Errorf(codes.Internal, "could not delete blocks")
+	}
+
+	err = srv.repoNote.Delete(ctx, &models.NoteFilter{ID: id})
 	if err != nil {
 		srv.logger.Errorw("failed to delete note", "error", err.Error())
 		return nil, status.Errorf(codes.Internal, "could not delete note")
@@ -114,8 +137,23 @@ func (srv *notesService) DeleteNote(ctx context.Context, in *notespb.DeleteNoteR
 }
 
 func (srv *notesService) ListNotes(ctx context.Context, in *notespb.ListNotesRequest) (*notespb.ListNotesResponse, error) {
+	if len(in.AuthorId) < 1 {
+		srv.logger.Errorw("failed to lists notes, invalid parameters")
+		return nil, status.Errorf(codes.Internal, "authorId is empty")
+	}
 
-	//appeler GetNote avec le filtre authorName
+	notes, err := srv.repoNote.List(ctx, &models.NoteFilter{AuthorId: in.AuthorId})
+	if err != nil {
+		srv.logger.Errorw("failed to get note", "error", err.Error())
+		return nil, status.Errorf(codes.Internal, "could not get note")
+	}
 
-	return nil, status.Errorf(codes.OK, "Note found")
+	notesResponse := make([]*notespb.Note, len(*notes))
+	for index, note := range *notes {
+		notesResponse[index] = &notespb.Note{Id: note.ID.String(), AuthorId: note.AuthorId, Title: note.Title}
+	}
+
+	return &notespb.ListNotesResponse{
+		Notes: notesResponse,
+	}, nil
 }

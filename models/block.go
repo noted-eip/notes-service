@@ -6,11 +6,23 @@ import (
 	"context"
 )
 
-type BlockTest struct {
-	ID   string `json:"id" bson:"_id,omitempty"`
-	Type uint32 `json:"type" bson:"type,omitempty"`
-	Data string `json:"content" bson:"content,omitempty"`
+type Code struct {
+	snippet *string
+	lang    *string
 }
+
+type Image struct {
+	url     *string
+	caption *string
+}
+
+/*type BlockCreation struct {
+	Id      string  `json:"id" bson:"_id,omitempty"`
+	Type    uint32  `json:"type" bson:"type,omitempty"`
+	Content *string `json:"content" bson:"content,omitempty"`
+	Image   Image
+	Code    Code
+}*/
 
 type Block struct {
 	ID      string  `json:"id" bson:"_id,omitempty"`

@@ -50,7 +50,7 @@ func (srv *blocksRepository) Create(ctx context.Context, blockRequest *models.Bl
 
 	block := blockWithIndex{ID: id.String(), NoteId: blockRequest.NoteId, Type: blockRequest.Type, Index: blockRequest.Index, Content: blockRequest.Content}
 
-	_, err = srv.db.Collection("notes").InsertOne(ctx, block)
+	_, err = srv.db.Collection("blocks").InsertOne(ctx, block)
 	if err != nil {
 		srv.logger.Error("mongo insert block failed", zap.Error(err), zap.String("note id : ", blockRequest.NoteId))
 		return status.Errorf(codes.Internal, "could not insert block")
@@ -59,8 +59,8 @@ func (srv *blocksRepository) Create(ctx context.Context, blockRequest *models.Bl
 }
 
 func (srv *blocksRepository) Update(ctx context.Context, filter *models.BlockFilter, blockRequest *models.BlockWithIndex) (*models.BlockWithIndex, error) {
+	update, err := srv.db.Collection("blocks").UpdateOne(ctx, buildBlockQuery(filter), bson.D{{Key: "$set", Value: &blockRequest}})
 
-	update, err := srv.db.Collection("notes").UpdateOne(ctx, buildBlockQuery(filter), bson.D{{Key: "$set", Value: &blockRequest}})
 	if err != nil {
 		srv.logger.Error("failed to convert object id from hex", zap.Error(err))
 		return nil, status.Errorf(codes.InvalidArgument, err.Error())
@@ -74,8 +74,7 @@ func (srv *blocksRepository) Update(ctx context.Context, filter *models.BlockFil
 }
 
 func (srv *blocksRepository) Delete(ctx context.Context, filter *models.BlockFilter) error {
-
-	delete, err := srv.db.Collection("notes").DeleteOne(ctx, buildBlockQuery(filter))
+	delete, err := srv.db.Collection("blocks").DeleteOne(ctx, buildBlockQuery(filter))
 
 	if err != nil {
 		srv.logger.Error("delete note db query failed", zap.Error(err))
@@ -94,7 +93,7 @@ func buildBlockQuery(filter *models.BlockFilter) bson.M {
 		query["_id"] = filter.BlockId
 	}
 	if filter.NoteId != "" {
-		query["_id"] = filter.NoteId
+		query["noteId"] = filter.NoteId
 	}
 	return query
 }

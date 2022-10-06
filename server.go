@@ -1,7 +1,8 @@
 package main
 
 import (
-	//"notes-service/auth"
+	"encoding/base64"
+	"notes-service/auth"
 
 	"context"
 	"errors"
@@ -25,7 +26,7 @@ type server struct {
 	logger  *zap.Logger
 	slogger *zap.SugaredLogger
 
-	//authService auth.Service
+	authService auth.Service
 
 	mongoDB *mongoServices.Database
 
@@ -39,6 +40,7 @@ type server struct {
 
 func (s *server) Init(opt ...grpc.ServerOption) {
 	s.initLogger()
+	s.initAuthService()
 	s.initRepositories()
 	s.initNotesService()
 	s.initgrpcServer(opt...)
@@ -101,11 +103,18 @@ func (s *server) initLogger() {
 	s.slogger = s.logger.Sugar()
 }
 
+func (s *server) initAuthService() {
+	rawKey, err := base64.StdEncoding.DecodeString(*jwtPrivateKey)
+	must(err, "could not decode jwt private key")
+	s.authService = auth.NewService(rawKey)
+}
+
 func (s *server) initNotesService() {
 	s.notesService = &notesService{
-		//auth:   s.authService,
-		logger: s.slogger,
-		repo:   s.notesRepository,
+		auth:      s.authService,
+		logger:    s.slogger,
+		repoNote:  s.notesRepository,
+		repoBlock: s.blocksRepository,
 	}
 }
 
@@ -144,32 +153,3 @@ func must(err error, msg string) {
 		panic(fmt.Errorf("%s: %v", msg, err))
 	}
 }
-
-/*
-func (s *server) initDatabase() {
-	client, err := mongo.NewClient(option.Client().ApplyURI(*mongoUri))
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	err = client.Connect(ctx)
-	fmt.Println("service is connected to MongoDB")
-
-	if err != nil {
-		defer client.Disconnect(ctx)
-		log.Fatal(err)
-	}
-
-	NotesDatabase = client.Database("Notes-database")
-	NotesCollection = NotesDatabase.Collection("Notes-collection")
-
-	err = client.Ping(ctx, readpref.Primary())
-	if err != nil {
-		defer client.Disconnect(ctx)
-		log.Fatal(err)
-	}
-}
-*/
