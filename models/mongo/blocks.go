@@ -2,6 +2,7 @@ package mongo
 
 import (
 	"context"
+	"errors"
 	"notes-service/models"
 
 	"github.com/google/uuid"
@@ -13,18 +14,18 @@ import (
 )
 
 type block struct {
-	ID      string  `json:"id" bson:"_id,omitempty"`
-	NoteId  string  `json:"noteId" bson:"noteId,omitempty"`
-	Type    uint32  `json:"type" bson:"type,omitempty"`
-	Content *string `json:"content" bson:"content,omitempty"`
+	ID      string `json:"id" bson:"_id,omitempty"`
+	NoteId  string `json:"noteId" bson:"noteId,omitempty"`
+	Type    uint32 `json:"type" bson:"type,omitempty"`
+	Content string `json:"content" bson:"content,omitempty"`
 }
 
 type blockWithIndex struct {
-	ID      string  `json:"id" bson:"_id,omitempty"`
-	NoteId  string  `json:"noteId" bson:"noteId,omitempty"`
-	Type    uint32  `json:"type" bson:"type,omitempty"`
-	Index   uint32  `json:"inxed" bson:"inxed,omitempty"`
-	Content *string `json:"content" bson:"content,omitempty"`
+	ID      string `json:"id" bson:"_id,omitempty"`
+	NoteId  string `json:"noteId" bson:"noteId,omitempty"`
+	Type    uint32 `json:"type" bson:"type,omitempty"`
+	Index   uint32 `json:"index" bson:"index,omitempty"`
+	Content string `json:"content" bson:"content,omitempty"`
 }
 
 type blocksRepository struct {
@@ -39,6 +40,53 @@ func NewBlocksRepository(db *mongo.Database, logger *zap.Logger, notesRepository
 		db:              db,
 		notesRepository: notesRepository,
 	}
+}
+
+func (srv *blocksRepository) GetByFilter(ctx context.Context, filter *models.BlockFilter) (*models.BlockWithIndex, error) {
+	var block blockWithIndex
+
+	err := srv.db.Collection("notes").FindOne(ctx, buildBlockQuery(filter)).Decode(&block)
+
+	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, status.Errorf(codes.NotFound, "block not found")
+		}
+		srv.logger.Error("unable to query block", zap.Error(err))
+		return nil, status.Errorf(codes.InvalidArgument, err.Error())
+	}
+
+	return &models.BlockWithIndex{ID: block.ID, NoteId: filter.NoteId, Type: block.Type, Index: block.Index, Content: block.Content}, nil
+}
+
+func (srv *blocksRepository) GetAllById(ctx context.Context, filter *models.BlockFilter) ([]*models.BlockWithIndex, error) {
+
+	blockCursor, err := srv.db.Collection("blocks").Find(ctx, buildBlockQuery(filter))
+	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, status.Errorf(codes.NotFound, "blocks not found")
+		}
+		srv.logger.Error("unable to query blocks", zap.Error(err))
+		return nil, status.Errorf(codes.Aborted, err.Error())
+	}
+
+	//convert blocks from mongo to []*BlockWithIndex
+	var blocks []bson.M
+	if err := blockCursor.All(context.TODO(), &blocks); err != nil {
+		srv.logger.Error("unable to parse blocks", zap.Error(err))
+		return nil, status.Errorf(codes.InvalidArgument, err.Error())
+	}
+
+	blocksResponse := make([]*models.BlockWithIndex, blockCursor.RemainingBatchLength())
+	for index, block := range blocks {
+		id, err := uuid.Parse(block["_id"].(string))
+		if err != nil {
+			srv.logger.Error("unable to retrieve id of the block", zap.Error(err))
+			return nil, status.Errorf(codes.Aborted, err.Error())
+		}
+		blocksResponse[index] = &models.BlockWithIndex{ID: id.String(), NoteId: filter.NoteId, Type: uint32(block["type"].(int64)), Index: uint32(block["index"].(int64)), Content: block["content"].(string)}
+	}
+
+	return blocksResponse, nil
 }
 
 func (srv *blocksRepository) Create(ctx context.Context, blockRequest *models.BlockWithIndex) error {

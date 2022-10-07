@@ -85,26 +85,51 @@ func (srv *blocksService) DeleteBlock(ctx context.Context, in *notespb.DeleteBlo
 func FillBlockContent(block *models.Block, blockRequest *notespb.Block) error {
 	switch op := blockRequest.Data.(type) {
 	case *notespb.Block_Heading:
-		block.Content = &op.Heading
+		block.Content = op.Heading
 	case *notespb.Block_Paragraph:
-		block.Content = &op.Paragraph
+		block.Content = op.Paragraph
 	case *notespb.Block_NumberPoint:
-		block.Content = &op.NumberPoint
+		block.Content = op.NumberPoint
 	case *notespb.Block_BulletPoint:
-		block.Content = &op.BulletPoint
+		block.Content = op.BulletPoint
 	case *notespb.Block_Math:
-		block.Content = &op.Math
+		block.Content = op.Math
 	/*
 		case *notespb.Block_Image_:
 			block.Image.caption = &op.Image.Caption
-			block.Content = &op.Image.Url
+			block.Image.url = &op.Image.Url
 		case *notespb.Block_Code_:
-			block.Content = &op.Code.Lang
-			block.Content = &op.Code.Snippet
+			block.Code.lang = &op.Code.Lang
+			block.Code.Snippet = &op.Code.Snippet
 	*/
 	default:
 		fmt.Println("No Data in this block")
 		return status.Errorf(codes.Internal, "no data in this block")
+	}
+	return nil
+}
+
+func FillContentFromModelToApi(blockRequest *models.BlockWithIndex, contentType uint32, blockApi *notespb.Block) error {
+	switch contentType {
+	case 1:
+		blockApi.Data = &notespb.Block_Heading{Heading: blockRequest.Content}
+	case 2:
+		blockApi.Data = &notespb.Block_Paragraph{Paragraph: blockRequest.Content}
+	case 3:
+		blockApi.Data = &notespb.Block_NumberPoint{NumberPoint: blockRequest.Content}
+	case 4:
+		blockApi.Data = &notespb.Block_BulletPoint{BulletPoint: blockRequest.Content}
+	case 5:
+		blockApi.Data = &notespb.Block_Math{Math: blockRequest.Content}
+	/*
+		case 6:
+			(*blockApi).Data = &notespb.Block_Image_{Image: {caption: blockRequest.Image.caption, url: blockRequest.Image.url}}
+		case 7:
+			(*blockApi).Data = &notespb.Block_Code_{Code: {sinppet: blockRequest.Code.Snippet, lang: blockRequest.Code.Lang}}
+	*/
+	default:
+		fmt.Println("No such content in this block")
+		return status.Errorf(codes.Internal, "no such content in this block")
 	}
 	return nil
 }

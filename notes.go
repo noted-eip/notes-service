@@ -59,10 +59,6 @@ func (srv *notesService) CreateNote(ctx context.Context, in *notespb.CreateNoteR
 }
 
 func (srv *notesService) GetNote(ctx context.Context, in *notespb.GetNoteRequest) (*notespb.GetNoteResponse, error) {
-
-	//Appeler GetBlock avec le filtre noteId
-	//les classer selon leur index
-
 	id, err := uuid.Parse(in.Id)
 	if err != nil {
 		srv.logger.Errorw("failed to convert uuid from string", "error", err.Error())
@@ -74,7 +70,26 @@ func (srv *notesService) GetNote(ctx context.Context, in *notespb.GetNoteRequest
 		srv.logger.Errorw("failed to get note", "error", err.Error())
 		return nil, status.Errorf(codes.Internal, "could not get note")
 	}
-	noteToReturn := notespb.Note{Id: note.ID.String(), AuthorId: note.AuthorId, Title: note.Title, Blocks: nil /*note.Blocks*/}
+
+	blocksTmp, err := srv.repoBlock.GetAllById(ctx, &models.BlockFilter{NoteId: note.ID.String()})
+	if err != nil {
+		srv.logger.Errorw("failed to get blocks", zap.Error(err))
+		return nil, status.Errorf(codes.Internal, "invalid content provided for blocks form noteId : ", note.ID)
+	}
+
+	//convert []models.block to []notespb.Block
+	blocks := make([]*notespb.Block, len(blocksTmp))
+	for index, block := range blocksTmp {
+		blocks[index] = &notespb.Block{}
+		err := FillContentFromModelToApi(block, block.Type, blocks[index])
+		if err != nil {
+			srv.logger.Errorw("failed to the content of a block", zap.Error(err))
+			return nil, status.Errorf(codes.Internal, "fail to get content from block Id : ", block.ID)
+		}
+		blocks[index] = &notespb.Block{Id: block.ID, Type: notespb.Block_Type(block.Type), Data: blocks[index].Data}
+	}
+	noteToReturn := notespb.Note{Id: note.ID.String(), AuthorId: note.AuthorId, Title: note.Title, Blocks: blocks}
+
 	return &notespb.GetNoteResponse{Note: &noteToReturn}, nil
 }
 
@@ -93,7 +108,7 @@ func (srv *notesService) UpdateNote(ctx context.Context, in *notespb.UpdateNoteR
 	}
 
 	//update juste les infos de la note et pas les blocks sinon
-	err = srv.repoNote.Update(ctx, &models.NoteFilter{ID: id /*, AuthorId: ""*/}, &models.NoteWithBlocks{AuthorId: in.Note.AuthorId, Title: in.Note.Title})
+	err = srv.repoNote.Update(ctx, &models.NoteFilter{ID: id}, &models.NoteWithBlocks{AuthorId: in.Note.AuthorId, Title: in.Note.Title})
 	if err != nil {
 		srv.logger.Errorw("failed to update note", zap.Error(err))
 		return nil, status.Errorf(codes.Internal, "could not update note")

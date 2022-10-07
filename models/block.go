@@ -25,18 +25,18 @@ type Image struct {
 }*/
 
 type Block struct {
-	ID      string  `json:"id" bson:"_id,omitempty"`
-	NoteId  string  `json:"noteId" bson:"noteId,omitempty"`
-	Type    uint32  `json:"type" bson:"type,omitempty"`
-	Content *string `json:"content" bson:"content,omitempty"`
+	ID      string `json:"id" bson:"_id,omitempty"`
+	NoteId  string `json:"noteId" bson:"noteId,omitempty"`
+	Type    uint32 `json:"type" bson:"type,omitempty"`
+	Content string `json:"content" bson:"content,omitempty"`
 }
 
 type BlockWithIndex struct {
-	ID      string  `json:"id" bson:"_id,omitempty"`
-	NoteId  string  `json:"noteId" bson:"noteId,omitempty"`
-	Type    uint32  `json:"type" bson:"type,omitempty"`
-	Index   uint32  `json:"inxed" bson:"inxed,omitempty"`
-	Content *string `json:"content" bson:"content,omitempty"`
+	ID      string `json:"id" bson:"_id,omitempty"`
+	NoteId  string `json:"noteId" bson:"noteId,omitempty"`
+	Type    uint32 `json:"type" bson:"type,omitempty"`
+	Index   uint32 `json:"index" bson:"index,omitempty"`
+	Content string `json:"content" bson:"content,omitempty"`
 }
 
 type BlockFilter struct {
@@ -46,6 +46,10 @@ type BlockFilter struct {
 
 // NotesRepository is safe for use in multiple goroutines.
 type BlocksRepository interface {
+	GetByFilter(ctx context.Context, filter *BlockFilter) (*BlockWithIndex, error)
+
+	GetAllById(ctx context.Context, filter *BlockFilter) ([]*BlockWithIndex, error)
+
 	Create(ctx context.Context, blockRequest *BlockWithIndex) error
 
 	Delete(ctx context.Context, filter *BlockFilter) error
