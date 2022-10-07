@@ -125,23 +125,6 @@ func (s *server) initgrpcServer(opt ...grpc.ServerOption) {
 
 func (s *server) initRepositories() {
 	var err error
-
-	/*
-		client, err := mongo.NewClient(option.Client().ApplyURI(*mongoUri))
-		if err != nil {
-			log.Fatal(err)
-		}
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-		err = client.Connect(ctx)
-		if err != nil {
-			defer client.Disconnect(ctx)
-			log.Fatal(err)
-		}
-		//s.mongoDB.DB = client.Database("Notes-database")
-		if err != nil {
-			log.Fatal(err)
-		}*/
 	s.mongoDB, err = mongoServices.NewDatabase(context.Background(), *mongoUri, *mongoDbName, s.logger)
 	must(err, "could not instantiate mongo database")
 	s.notesRepository = mongoServices.NewNotesRepository(s.mongoDB.DB, s.logger)
