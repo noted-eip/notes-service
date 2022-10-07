@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"notes-service/models"
 	notespb "notes-service/protorepo/noted/notes/v1"
-	"strconv"
 
 	"github.com/google/uuid"
 	"go.uber.org/zap"
@@ -24,26 +23,7 @@ type blocksService struct {
 var _ notespb.NotesAPIServer = &notesService{}
 
 func (srv *blocksService) InsertBlock(ctx context.Context, in *notespb.InsertBlockRequest) (*emptypb.Empty, error) {
-	_, err := uuid.Parse(strconv.Itoa(int(in.NoteId)))
-	if err != nil {
-		srv.logger.Errorw("invalid uuid", "error", err.Error())
-		return nil, status.Errorf(codes.Internal, "could not insert block")
-	}
-
-	if in.Block.Data == nil || in.Index < 1 || in.Block.Type < 1 {
-		srv.logger.Errorw("invalid arguments", err.Error())
-		return nil, status.Errorf(codes.Internal, "could not insert block")
-	}
-
-	var block = models.Block{}
-	err = FillBlockContent(&block, in.Block)
-	if err != nil {
-		srv.logger.Errorw("failed to create block", zap.Error(err))
-		return nil, status.Errorf(codes.Internal, "invalid content provided for block index : ", in.Index)
-	}
-
-	srv.repo.Create(ctx, &models.BlockWithIndex{NoteId: strconv.Itoa(int(in.NoteId)), Type: uint32(in.Block.Type), Index: in.Index, Content: block.Content})
-	return &emptypb.Empty{}, nil
+	return nil, nil
 }
 
 func (srv *blocksService) UpdateBlock(ctx context.Context, in *notespb.UpdateBlockRequest) (*emptypb.Empty, error) {
@@ -67,18 +47,6 @@ func (srv *blocksService) UpdateBlock(ctx context.Context, in *notespb.UpdateBlo
 }
 
 func (srv *blocksService) DeleteBlock(ctx context.Context, in *notespb.DeleteBlockRequest) (*emptypb.Empty, error) {
-	_, err := uuid.Parse(in.Id)
-	if err != nil {
-		srv.logger.Errorw("invalid uuid", err.Error())
-		return nil, status.Errorf(codes.Internal, "could not delete block")
-	}
-
-	err = srv.repo.Delete(ctx, &models.BlockFilter{BlockId: in.Id, NoteId: ""})
-	if err != nil {
-		srv.logger.Errorw("block was not deleted : ", err.Error())
-		return nil, status.Errorf(codes.Internal, "could not delete block")
-	}
-
 	return &emptypb.Empty{}, nil
 }
 
@@ -105,31 +73,6 @@ func FillBlockContent(block *models.Block, blockRequest *notespb.Block) error {
 	default:
 		fmt.Println("No Data in this block")
 		return status.Errorf(codes.Internal, "no data in this block")
-	}
-	return nil
-}
-
-func FillContentFromModelToApi(blockRequest *models.BlockWithIndex, contentType uint32, blockApi *notespb.Block) error {
-	switch contentType {
-	case 1:
-		blockApi.Data = &notespb.Block_Heading{Heading: blockRequest.Content}
-	case 2:
-		blockApi.Data = &notespb.Block_Paragraph{Paragraph: blockRequest.Content}
-	case 3:
-		blockApi.Data = &notespb.Block_NumberPoint{NumberPoint: blockRequest.Content}
-	case 4:
-		blockApi.Data = &notespb.Block_BulletPoint{BulletPoint: blockRequest.Content}
-	case 5:
-		blockApi.Data = &notespb.Block_Math{Math: blockRequest.Content}
-	/*
-		case 6:
-			(*blockApi).Data = &notespb.Block_Image_{Image: {caption: blockRequest.Image.caption, url: blockRequest.Image.url}}
-		case 7:
-			(*blockApi).Data = &notespb.Block_Code_{Code: {sinppet: blockRequest.Code.Snippet, lang: blockRequest.Code.Lang}}
-	*/
-	default:
-		fmt.Println("No such content in this block")
-		return status.Errorf(codes.Internal, "no such content in this block")
 	}
 	return nil
 }
