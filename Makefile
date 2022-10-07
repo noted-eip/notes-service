@@ -1,3 +1,7 @@
+## Variables
+
+EXE	=	notes-service
+
 ## Project rules
 # default rule
 all:	build
@@ -7,11 +11,14 @@ build:
 #init project
 init:
 	rm go.mod
-	go mod init notes-service
+	go mod init ${EXE}
 	go mod tidy
 # clean go.mod, init project, build it and create an executable 
 re:	init all
 
+# clean
+clean:
+	rm ${EXE}
 
 ## Submodules rules
 # Run the protoc compiler to generate the Golang server code
