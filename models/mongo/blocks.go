@@ -6,6 +6,8 @@ import (
 
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.uber.org/zap"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type block struct {
@@ -38,21 +40,21 @@ func NewBlocksRepository(db *mongo.Database, logger *zap.Logger, notesRepository
 }
 
 func (srv *blocksRepository) GetByFilter(ctx context.Context, filter *models.BlockFilter) (*models.BlockWithIndex, error) {
-	return nil, nil
+	return nil, status.Errorf(codes.Unimplemented, "not implemented")
 }
 
 func (srv *blocksRepository) GetAllById(ctx context.Context, filter *models.BlockFilter) ([]*models.BlockWithIndex, error) {
-	return nil, nil
+	return nil, status.Errorf(codes.Unimplemented, "not implemented")
 }
 
 func (srv *blocksRepository) Create(ctx context.Context, blockRequest *models.BlockWithIndex) error {
-	return nil
+	return status.Errorf(codes.Unimplemented, "not implemented")
 }
 
 func (srv *blocksRepository) Update(ctx context.Context, filter *models.BlockFilter, blockRequest *models.BlockWithIndex) (*models.BlockWithIndex, error) {
-	return nil, nil
+	return nil, status.Errorf(codes.Unimplemented, "not implemented")
 }
 
 func (srv *blocksRepository) Delete(ctx context.Context, filter *models.BlockFilter) error {
-	return nil
+	return status.Errorf(codes.Unimplemented, "not implemented")
 }

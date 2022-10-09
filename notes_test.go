@@ -45,3 +45,12 @@ func TestNotesServiceDeleteNote(t *testing.T) {
 	require.Equal(t, status.Code(err), codes.Unimplemented)
 	require.Nil(t, res)
 }
+
+func TestNotesServiceListNotes(t *testing.T) {
+	srv := notesService{}
+
+	res, err := srv.ListNotes(context.TODO(), &notespb.ListNotesRequest{})
+	require.Error(t, err)
+	require.Equal(t, status.Code(err), codes.Unimplemented)
+	require.Nil(t, res)
+}

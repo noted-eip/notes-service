@@ -6,6 +6,8 @@ import (
 
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.uber.org/zap"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type note struct {
@@ -28,21 +30,21 @@ func NewNotesRepository(db *mongo.Database, logger *zap.Logger) models.NotesRepo
 }
 
 func (srv *notesRepository) Create(ctx context.Context, noteRequest *models.NoteWithBlocks) (*models.NoteWithBlocks, error) {
-	return nil, nil
+	return nil, status.Errorf(codes.Unimplemented, "not implemented")
 }
 
 func (srv *notesRepository) Get(ctx context.Context, filter *models.NoteFilter) (*models.NoteWithBlocks, error) {
-	return nil, nil
+	return nil, status.Errorf(codes.Unimplemented, "not implemented")
 }
 
 func (srv *notesRepository) Delete(ctx context.Context, filter *models.NoteFilter) error {
-	return nil
+	return status.Errorf(codes.Unimplemented, "not implemented")
 }
 
 func (srv *notesRepository) Update(ctx context.Context, filter *models.NoteFilter, noteRequest *models.NoteWithBlocks) error {
-	return nil
+	return status.Errorf(codes.Unimplemented, "not implemented")
 }
 
 func (srv *notesRepository) List(ctx context.Context, filter *models.NoteFilter) (*[]models.NoteWithBlocks, error) {
-	return nil, nil
+	return nil, status.Errorf(codes.Unimplemented, "not implemented")
 }
