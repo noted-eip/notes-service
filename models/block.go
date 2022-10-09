@@ -16,14 +16,6 @@ type Image struct {
 	caption *string
 }
 
-/*type BlockCreation struct {
-	Id      string  `json:"id" bson:"_id,omitempty"`
-	Type    uint32  `json:"type" bson:"type,omitempty"`
-	Content *string `json:"content" bson:"content,omitempty"`
-	Image   Image
-	Code    Code
-}*/
-
 type Block struct {
 	ID      string `json:"id" bson:"_id,omitempty"`
 	NoteId  string `json:"noteId" bson:"noteId,omitempty"`
