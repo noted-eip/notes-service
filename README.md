@@ -22,6 +22,8 @@ make re
 
 ## Configuration
 
+| Env Name                           | Flag Name           | Default                     | Description                               |
+|------------------------------------|---------------------|-----------------------------|-------------------------------------------|
 | `NOTES_SERVICE_PORT`            | `--port`            | `3000`                      | The port the application shall listen on. |
 | `NOTES_SERVICE_ENV`             | `--env`             | `production`                | Either `production` or `development`.     |
 | `NOTES_SERVICE_MONGO_URI`       | `--mongo-uri`       | `mongodb://localhost:27017` | Address of the MongoDB server.            |
