@@ -3,7 +3,6 @@ ___
 Service responsible for managing notes and recommandations.
 
 
-
 ## Build
 
 To run the service you only need to have [golang](https://go.dev) and [docker](https://docs.docker.com/get-docker/) installed.
