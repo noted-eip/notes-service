@@ -42,11 +42,7 @@ func (srv *blocksService) InsertBlock(ctx context.Context, in *notespb.InsertBlo
 		return nil, status.Errorf(codes.Internal, "invalid content provided for block index : ", in.Index)
 	}
 
-	//call recommandation API pour get les tags
-
-	//tags, err := /*call recommandationAPI*/
-
-	srv.repo.Create(ctx, &models.BlockWithTags{NoteId: strconv.Itoa(int(in.NoteId)), Type: uint32(in.Block.Type), Index: in.Index, Content: block.Content, Tags: nil})
+	srv.repo.Create(ctx, &models.BlockWithIndex{NoteId: strconv.Itoa(int(in.NoteId)), Type: uint32(in.Block.Type), Index: in.Index, Content: block.Content})
 
 	return &emptypb.Empty{}, nil
 }

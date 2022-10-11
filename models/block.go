@@ -51,7 +51,7 @@ type BlocksRepository interface {
 
 	GetAllById(ctx context.Context, filter *BlockFilter) ([]*BlockWithIndex, error)
 
-	Create(ctx context.Context, blockRequest *BlockWithTags) error
+	Create(ctx context.Context, blockRequest *BlockWithIndex) error
 
 	Delete(ctx context.Context, filter *BlockFilter) error
 

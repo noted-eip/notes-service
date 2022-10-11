@@ -10,7 +10,6 @@ import (
 	"net"
 	"notes-service/models"
 	notespb "notes-service/protorepo/noted/notes/v1"
-	recommendationspb "notes-service/protorepo/noted/recommendations/v1"
 	"strings"
 	"time"
 
@@ -19,7 +18,6 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/status"
 )
@@ -35,8 +33,7 @@ type server struct {
 	notesRepository  models.NotesRepository
 	blocksRepository models.BlocksRepository
 
-	notesService         notespb.NotesAPIServer
-	recommendationClient recommendationspb.RecommendationsAPIClient
+	notesService notespb.NotesAPIServer
 
 	grpcServer *grpc.Server
 }
@@ -45,7 +42,6 @@ func (s *server) Init(opt ...grpc.ServerOption) {
 	s.initLogger()
 	s.initAuthService()
 	s.initRepositories()
-	s.initgrpcClient()
 	s.initNotesService()
 	s.initgrpcServer(opt...)
 }
@@ -115,20 +111,11 @@ func (s *server) initAuthService() {
 
 func (s *server) initNotesService() {
 	s.notesService = &notesService{
-		auth:                 s.authService,
-		logger:               s.slogger,
-		repoNote:             s.notesRepository,
-		repoBlock:            s.blocksRepository,
-		recommendationClient: s.recommendationClient,
+		auth:      s.authService,
+		logger:    s.slogger,
+		repoNote:  s.notesRepository,
+		repoBlock: s.blocksRepository,
 	}
-}
-
-func (s *server) initgrpcClient() {
-	conn, err := grpc.Dial(*recommandationUrl, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		fmt.Println("did not connect: %v", err)
-	}
-	s.recommendationClient = recommendationspb.NewRecommendationsAPIClient(conn)
 }
 
 func (s *server) initgrpcServer(opt ...grpc.ServerOption) {
