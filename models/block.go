@@ -16,14 +16,6 @@ type Image struct {
 	caption *string
 }
 
-/*type BlockCreation struct {
-	Id      string  `json:"id" bson:"_id,omitempty"`
-	Type    uint32  `json:"type" bson:"type,omitempty"`
-	Content *string `json:"content" bson:"content,omitempty"`
-	Image   Image
-	Code    Code
-}*/
-
 type Block struct {
 	ID      string `json:"id" bson:"_id,omitempty"`
 	NoteId  string `json:"noteId" bson:"noteId,omitempty"`
@@ -39,6 +31,15 @@ type BlockWithIndex struct {
 	Content string `json:"content" bson:"content,omitempty"`
 }
 
+type BlockWithTags struct {
+	ID      string    `json:"id" bson:"_id,omitempty"`
+	NoteId  string    `json:"noteId" bson:"noteId,omitempty"`
+	Type    uint32    `json:"type" bson:"type,omitempty"`
+	Index   uint32    `json:"index" bson:"index,omitempty"`
+	Content string    `json:"content" bson:"content,omitempty"`
+	Tags    []*string `json:"tags" bson:"tags,omitempty"`
+}
+
 type BlockFilter struct {
 	BlockId string `json:"blockId" bson:"blockId,omitempty"`
 	NoteId  string `json:"noteId" bson:"noteId,omitempty"`
@@ -50,7 +51,7 @@ type BlocksRepository interface {
 
 	GetAllById(ctx context.Context, filter *BlockFilter) ([]*BlockWithIndex, error)
 
-	Create(ctx context.Context, blockRequest *BlockWithIndex) error
+	Create(ctx context.Context, blockRequest *BlockWithTags) error
 
 	Delete(ctx context.Context, filter *BlockFilter) error
 
