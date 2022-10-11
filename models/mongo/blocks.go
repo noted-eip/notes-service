@@ -2,9 +2,11 @@ package mongo
 
 import (
 	"context"
+	"errors"
 	"notes-service/models"
 
 	"github.com/google/uuid"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
@@ -48,13 +50,25 @@ func NewBlocksRepository(db *mongo.Database, logger *zap.Logger, notesRepository
 		notesRepository: notesRepository,
 	}
 }
-
 func (srv *blocksRepository) GetByFilter(ctx context.Context, filter *models.BlockFilter) (*models.BlockWithIndex, error) {
 	return nil, nil
 }
 
 func (srv *blocksRepository) GetTagsByFilter(ctx context.Context, filter *models.BlockFilter) (*models.BlockWithTags, error) {
-	return nil, nil
+	var block blockWithTags
+
+	//jsp si le tableau de tag va aller sans problème dans le champs tags
+	err := srv.db.Collection("notes").FindOne(ctx, buildBlockQuery(filter)).Decode(&block)
+
+	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, status.Errorf(codes.NotFound, "block not found")
+		}
+		srv.logger.Error("unable to query block", zap.Error(err))
+		return nil, status.Errorf(codes.InvalidArgument, err.Error())
+	}
+
+	return &models.BlockWithTags{ID: block.ID, NoteId: filter.NoteId, Type: block.Type, Index: block.Index, Content: block.Content, Tags: block.Tags}, nil
 }
 
 func (srv *blocksRepository) GetAllById(ctx context.Context, filter *models.BlockFilter) ([]*models.BlockWithIndex, error) {
@@ -84,4 +98,15 @@ func (srv *blocksRepository) Update(ctx context.Context, filter *models.BlockFil
 
 func (srv *blocksRepository) Delete(ctx context.Context, filter *models.BlockFilter) error {
 	return nil
+}
+
+func buildBlockQuery(filter *models.BlockFilter) bson.M {
+	query := bson.M{}
+	if filter.BlockId != "" {
+		query["_id"] = filter.BlockId
+	}
+	if filter.NoteId != "" {
+		query["noteId"] = filter.NoteId
+	}
+	return query
 }
