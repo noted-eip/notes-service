@@ -27,12 +27,12 @@ type blockWithIndex struct {
 }
 
 type blockWithTags struct {
-	ID      string    `json:"id" bson:"_id,omitempty"`
-	NoteId  string    `json:"noteId" bson:"noteId,omitempty"`
-	Type    uint32    `json:"type" bson:"type,omitempty"`
-	Index   uint32    `json:"index" bson:"index,omitempty"`
-	Content string    `json:"content" bson:"content,omitempty"`
-	Tags    []*string `json:"tags" bson:"tags,omitempty"`
+	ID      string   `json:"id" bson:"_id,omitempty"`
+	NoteId  string   `json:"noteId" bson:"noteId,omitempty"`
+	Type    uint32   `json:"type" bson:"type,omitempty"`
+	Index   uint32   `json:"index" bson:"index,omitempty"`
+	Content string   `json:"content" bson:"content,omitempty"`
+	Tags    []string `json:"tags" bson:"tags,omitempty"`
 }
 
 type blocksRepository struct {
@@ -53,15 +53,19 @@ func (srv *blocksRepository) GetByFilter(ctx context.Context, filter *models.Blo
 	return nil, nil
 }
 
+func (srv *blocksRepository) GetTagsByFilter(ctx context.Context, filter *models.BlockFilter) (*models.BlockWithTags, error) {
+	return nil, nil
+}
+
 func (srv *blocksRepository) GetAllById(ctx context.Context, filter *models.BlockFilter) ([]*models.BlockWithIndex, error) {
 	return nil, nil
 }
 
-func (srv *blocksRepository) Create(ctx context.Context, blockRequest *models.BlockWithTags) error {
+func (srv *blocksRepository) Create(ctx context.Context, blockRequest *models.BlockWithTags) (string, error) {
 	id, err := uuid.NewRandom()
 	if err != nil {
 		srv.logger.Error("failed to generate new random uuid", zap.Error(err))
-		return status.Errorf(codes.Internal, "could not create account")
+		return "", status.Errorf(codes.Internal, "could not create account")
 	}
 
 	block := blockWithTags{ID: id.String(), NoteId: blockRequest.NoteId, Type: blockRequest.Type, Index: blockRequest.Index, Content: blockRequest.Content, Tags: blockRequest.Tags}
@@ -69,9 +73,9 @@ func (srv *blocksRepository) Create(ctx context.Context, blockRequest *models.Bl
 	_, err = srv.db.Collection("blocks").InsertOne(ctx, block)
 	if err != nil {
 		srv.logger.Error("mongo insert block failed", zap.Error(err), zap.String("note id : ", blockRequest.NoteId))
-		return status.Errorf(codes.Internal, "could not insert block")
+		return "", status.Errorf(codes.Internal, "could not insert block")
 	}
-	return nil
+	return id.String(), nil
 }
 
 func (srv *blocksRepository) Update(ctx context.Context, filter *models.BlockFilter, blockRequest *models.BlockWithIndex) (*models.BlockWithIndex, error) {

@@ -19,7 +19,6 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/status"
 )
@@ -124,10 +123,8 @@ func (s *server) initNotesService() {
 }
 
 func (s *server) initgrpcClient() {
-	conn, err := grpc.Dial(*recommandationUrl, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		fmt.Println("did not connect: %v", err)
-	}
+	conn, err := grpc.Dial(*recommandationUrl, grpc.WithInsecure()) //grpc.WithTransportCredentials(insecure.NewCredentials()
+	must(err, "connection failed to the recommendation api : ")
 	s.recommendationClient = recommendationspb.NewRecommendationsAPIClient(conn)
 }
 
