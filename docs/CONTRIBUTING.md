@@ -2,6 +2,8 @@
 
 This set of guidelines is common to all repositories in the Noted organization.
 
+> **Warning**: Some screenshots of the organisation flow may show outdated information. Refer to what is written in this document first.
+
 ## Project Management
 
 In order to frictionlessly roll out new features and maintain satisfactory productivity levels despite the distance, it's crucial that we organize ourselves and plan our work collectively.
@@ -30,7 +32,6 @@ Make sure your issue meets the following criteria:
 2. The people who are going to work on this story during the sprint are assigned to the issue.
 3. The issue has the `noted/story` label. This should be automatic.
 4. The issue belongs to the `Roadmap` project. This is explained in the section on projects.
-5. The issue is linked to a milestone. This is explained in the section on milestones.
 
 If you want to create a story for a later sprint, follow the same steps but use the `Backlog` issue template.
 
@@ -42,18 +43,9 @@ Here is what your issue should look like during development.
 
 ![Story with linked pull request](assets/story-linked-pull-request.png)
 
-Make sure:
-
-1. Tasks are checked-off as you complete them.
-2. The issue is linked to its associated pull request.
-
-As you're progressing, make sure to check-off completed tasks whithin the `Definition of Done` section whithin your issue.
+Make sure the issue is linked to its associated pull request.
 
 > 💡 If the scope of your story is big, feel free to create multiple pull requests for a single story. In this case, don't link the PR to the story issue otherwise it will be merged as soon as your first PR is merged.
-
-### Milestones
-
-Milestones define a due date for a given story. Each time you create a story issue, associate it with a milestone to set a due date. Milestones exist under the form `<Late|Early> <month>`. They are generated automatically, you just have to pick one.
 
 ### Projects
 
@@ -63,7 +55,7 @@ Github projects™️ allow you to visualize issues and pull requests from many 
 
 If you have successfuly linked your `noted/story` issue to the project, you shouldn't have to perform any manual action on the project. You should be able to see all stories and their status.
 
-You can filter stories by repository, assignee, todo, milestone and more.
+You can filter stories by repository, assignee, todo, and more.
 
 ### Weekly Meetings
 
