@@ -38,13 +38,13 @@ type BlockFilter struct {
 
 // NotesRepository is safe for use in multiple goroutines.
 type BlocksRepository interface {
-	GetByFilter(ctx context.Context, filter *BlockFilter) (*BlockWithIndex, error)
+	GetBlock(ctx context.Context, blockId *string) (*BlockWithIndex, error)
 
-	GetAllById(ctx context.Context, filter *BlockFilter) ([]*BlockWithIndex, error)
+	GetBlocks(ctx context.Context, noteId *string) ([]*BlockWithIndex, error)
 
 	Create(ctx context.Context, blockRequest *BlockWithIndex) error
 
-	Delete(ctx context.Context, filter *BlockFilter) error
+	Update(ctx context.Context, blockId *string, blockRequest *BlockWithIndex) (*BlockWithIndex, error)
 
-	Update(ctx context.Context, filter *BlockFilter, blockRequest *BlockWithIndex) (*BlockWithIndex, error)
+	Delete(ctx context.Context, blockId *string) error
 }
