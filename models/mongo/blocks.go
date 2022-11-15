@@ -11,21 +11,6 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-type block struct {
-	ID      string `json:"id" bson:"_id,omitempty"`
-	NoteId  string `json:"noteId" bson:"noteId,omitempty"`
-	Type    uint32 `json:"type" bson:"type,omitempty"`
-	Content string `json:"content" bson:"content,omitempty"`
-}
-
-type blockWithIndex struct {
-	ID      string `json:"id" bson:"_id,omitempty"`
-	NoteId  string `json:"noteId" bson:"noteId,omitempty"`
-	Type    uint32 `json:"type" bson:"type,omitempty"`
-	Index   uint32 `json:"index" bson:"index,omitempty"`
-	Content string `json:"content" bson:"content,omitempty"`
-}
-
 type blocksRepository struct {
 	logger          *zap.Logger
 	db              *mongo.Database
@@ -40,35 +25,35 @@ func NewBlocksRepository(db *mongo.Database, logger *zap.Logger, notesRepository
 	}
 }
 
-func (srv *blocksRepository) GetByFilter(ctx context.Context, filter *models.BlockFilter) (*models.BlockWithIndex, error) {
-	return nil, nil
+func (srv *blocksRepository) GetBlock(ctx context.Context, blockId *string) (*models.BlockWithIndex, error) {
+	return nil, status.Errorf(codes.Unimplemented, "not implemented")
 }
 
-func (srv *blocksRepository) GetAllById(ctx context.Context, filter *models.BlockFilter) ([]*models.BlockWithIndex, error) {
-	return nil, nil
+func (srv *blocksRepository) GetBlocks(ctx context.Context, noteId *string) ([]*models.BlockWithIndex, error) {
+	return nil, status.Errorf(codes.Unimplemented, "not implemented")
 }
 
-func (srv *blocksRepository) Create(ctx context.Context, blockRequest *models.BlockWithIndex) error {
+func (srv *blocksRepository) Create(ctx context.Context, blockRequest *models.BlockWithIndex) (*string, error) {
 	id, err := uuid.NewRandom()
 	if err != nil {
 		srv.logger.Error("failed to generate new random uuid", zap.Error(err))
-		return status.Errorf(codes.Internal, "could not create account")
+		return nil, status.Errorf(codes.Internal, "could not create account")
 	}
-
-	block := blockWithIndex{ID: id.String(), NoteId: blockRequest.NoteId, Type: blockRequest.Type, Index: blockRequest.Index, Content: blockRequest.Content}
+	blockId := id.String()
+	block := models.BlockWithIndex{ID: id.String(), NoteId: blockRequest.NoteId, Type: blockRequest.Type, Index: blockRequest.Index, Content: blockRequest.Content}
 
 	_, err = srv.db.Collection("blocks").InsertOne(ctx, block)
 	if err != nil {
 		srv.logger.Error("mongo insert block failed", zap.Error(err), zap.String("note id : ", blockRequest.NoteId))
-		return status.Errorf(codes.Internal, "could not insert block")
+		return nil, status.Errorf(codes.Internal, "could not insert block")
 	}
-	return nil
+	return &blockId, nil
 }
 
-func (srv *blocksRepository) Update(ctx context.Context, filter *models.BlockFilter, blockRequest *models.BlockWithIndex) (*models.BlockWithIndex, error) {
-	return nil, nil
+func (srv *blocksRepository) Update(ctx context.Context, blockId *string, blockRequest *models.BlockWithIndex) (*models.BlockWithIndex, error) {
+	return nil, status.Errorf(codes.Unimplemented, "not implemented")
 }
 
-func (srv *blocksRepository) Delete(ctx context.Context, filter *models.BlockFilter) error {
-	return nil
+func (srv *blocksRepository) Delete(ctx context.Context, blockId *string) error {
+	return status.Errorf(codes.Unimplemented, "not implemented")
 }
