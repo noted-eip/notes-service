@@ -80,6 +80,11 @@ func newBlockDatabaseSchema() *memdb.DBSchema {
 			"block": {
 				Name: "block",
 				Indexes: map[string]*memdb.IndexSchema{
+					"id": {
+						Name:    "id",
+						Unique:  true,
+						Indexer: &memdb.StringFieldIndex{Field: "ID"},
+					},
 					"note_id": {
 						Name:    "note_id",
 						Unique:  true,
