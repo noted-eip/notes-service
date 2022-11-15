@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"notes-service/grpc/notespb"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
