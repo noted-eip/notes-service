@@ -16,7 +16,7 @@ type notesService struct {
 	notespb.UnimplementedNotesAPIServer
 
 	auth      auth.Service
-	logger    *zap.SugaredLogger
+	logger    *zap.Logger
 	repoNote  models.NotesRepository
 	repoBlock models.BlocksRepository
 }
@@ -24,15 +24,23 @@ type notesService struct {
 var _ notespb.NotesAPIServer = &notesService{}
 
 func (srv *notesService) CreateNote(ctx context.Context, in *notespb.CreateNoteRequest) (*notespb.CreateNoteResponse, error) {
+	if in == nil {
+		srv.logger.Error("failed to create note, Request is empty")
+		return nil, status.Errorf(codes.InvalidArgument, "CreateNoteRequest is empty")
+	}
+	if in.Note == nil {
+		srv.logger.Error("failed to create note, Note Request is empty")
+		return nil, status.Errorf(codes.InvalidArgument, "Note is empty")
+	}
 	if len(in.Note.AuthorId) < 1 || len(in.Note.Title) < 1 {
-		srv.logger.Errorw("failed to create note, invalid parameters")
+		srv.logger.Error("failed to create note, invalid parameters")
 		return nil, status.Errorf(codes.InvalidArgument, "authorId or title are empty")
 	}
 
 	note, err := srv.repoNote.Create(ctx, &models.Note{AuthorId: in.Note.AuthorId, Title: in.Note.Title, Blocks: nil})
 
 	if err != nil {
-		srv.logger.Errorw("failed to create note", zap.Error(err))
+		srv.logger.Error("failed to create note", zap.Error(err))
 		return nil, status.Errorf(codes.Internal, "could not create note")
 	}
 
@@ -41,8 +49,8 @@ func (srv *notesService) CreateNote(ctx context.Context, in *notespb.CreateNoteR
 	for index, block := range in.Note.Blocks {
 		err := FillBlockContent(&blocks[index], block)
 		if err != nil {
-			srv.logger.Errorw("failed to create note", zap.Error(err))
-			return nil, status.Errorf(codes.Internal, "invalid content provided for block index : ", index)
+			srv.logger.Error("failed to create note", zap.Error(err))
+			return nil, status.Errorf(codes.Internal, "invalid content provided for block index : %d", index)
 		}
 		srv.repoBlock.Create(ctx, &models.BlockWithIndex{NoteId: note.ID.String(), Type: uint32(in.Note.Blocks[index].Type), Index: uint32(index + 1), Content: blocks[index].Content})
 	}

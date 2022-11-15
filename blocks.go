@@ -17,7 +17,7 @@ import (
 type blocksService struct {
 	notespb.UnimplementedNotesAPIServer
 
-	logger *zap.SugaredLogger
+	logger *zap.Logger
 	repo   models.BlocksRepository
 }
 
@@ -26,20 +26,20 @@ var _ notespb.NotesAPIServer = &notesService{}
 func (srv *blocksService) InsertBlock(ctx context.Context, in *notespb.InsertBlockRequest) (*notespb.InsertBlockResponse, error) {
 	_, err := uuid.Parse(strconv.Itoa(int(in.NoteId)))
 	if err != nil {
-		srv.logger.Errorw("invalid uuid", "error", err.Error())
+		srv.logger.Error("invalid uuid :", zap.Error(err))
 		return nil, status.Errorf(codes.InvalidArgument, "could not insert block")
 	}
 
 	if in.Block.Data == nil || in.Index < 1 || in.Block.Type < 1 {
-		srv.logger.Errorw("invalid arguments", err.Error())
+		srv.logger.Error("invalid arguments")
 		return nil, status.Errorf(codes.InvalidArgument, "could not insert block")
 	}
 
 	var block = models.Block{}
 	err = FillBlockContent(&block, in.Block)
 	if err != nil {
-		srv.logger.Errorw("failed to create block", zap.Error(err))
-		return nil, status.Errorf(codes.Internal, "invalid content provided for block index : ", in.Index)
+		srv.logger.Error("failed to create block", zap.Error(err))
+		return nil, status.Errorf(codes.Internal, "invalid content provided for block index : %d", in.Index)
 	}
 
 	BlockId, err := srv.repo.Create(ctx, &models.BlockWithIndex{NoteId: strconv.Itoa(int(in.NoteId)), Type: uint32(in.Block.Type), Index: in.Index, Content: block.Content})
