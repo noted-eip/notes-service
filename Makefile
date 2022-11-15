@@ -29,7 +29,7 @@ codegen: update-submodules
 	docker run --rm -v `pwd`/protorepo:/app/protorepo -v `pwd`/misc:/app/misc -w /app noted-go-protoc /bin/sh -c misc/gen_proto.sh
 
 update-submodules:
-	git submodule update --remote
+	git submodule update --init --remote
 
 init-submodules:
 	git submodule init .gitmodules
@@ -41,9 +41,10 @@ lint:
 ########### DataBase rules ##########
 
 run-db:
-	docker run --name accounts-mongo --detach --publish 27017:27017 mongo
+	docker run --name notes-mongo --detach --publish 27017:27017 mongo
 
 stop-db:
-	docker kill accounts-mongo
+	docker kill notes-mongo
+	docker rm notes-mongo
 
 ########### !DataBase rules #########
