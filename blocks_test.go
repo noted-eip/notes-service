@@ -4,8 +4,10 @@ import (
 	"context"
 	"notes-service/memory"
 	notespb "notes-service/protorepo/noted/notes/v1"
+	"strconv"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/hashicorp/go-memdb"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -42,13 +44,15 @@ func (s *BlocksAPISuite) TestBlocksServiceInsertBlockShouldReturnNil() {
 }
 
 func (s *BlocksAPISuite) TestBlocksServiceInsertBlockShouldReturnBlock() {
+	noteId, err := uuid.NewRandom()
+	noteIdInt, err := strconv.Atoi(noteId.String())
 	res, err := s.srv.InsertBlock(context.TODO(), &notespb.InsertBlockRequest{
 		Block: &notespb.Block{
 			Type: notespb.Block_TYPE_BULLET_POINT,
 			Data: &notespb.Block_BulletPoint{},
 		},
 		Index:  1,
-		NoteId: 1,
+		NoteId: uint32(noteIdInt),
 	})
 	s.Nil(err)
 	s.NotNil(res)
