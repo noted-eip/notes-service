@@ -65,21 +65,21 @@ func (s *NotesAPISuite) TestNotesServiceGetNote() {
 	s.Nil(res)
 }
 
-func (s *NotesAPISuite) TestNotesServiceUpdateNote(t *testing.T) {
+func (s *NotesAPISuite) TestNotesServiceUpdateNote() {
 	res, err := s.srv.UpdateNote(context.TODO(), &notespb.UpdateNoteRequest{})
 	s.Require().Error(err)
 	s.Equal(status.Code(err), codes.Unimplemented)
 	s.Nil(res)
 }
 
-func (s *NotesAPISuite) TestNotesServiceDeleteNote(t *testing.T) {
+func (s *NotesAPISuite) TestNotesServiceDeleteNote() {
 	res, err := s.srv.DeleteNote(context.TODO(), &notespb.DeleteNoteRequest{})
 	s.Require().Error(err)
 	s.Equal(status.Code(err), codes.Unimplemented)
 	s.Nil(res)
 }
 
-func (s *NotesAPISuite) TestNotesServiceListNotes(t *testing.T) {
+func (s *NotesAPISuite) TestNotesServiceListNotes() {
 	res, err := s.srv.ListNotes(context.TODO(), &notespb.ListNotesRequest{})
 	s.Require().Error(err)
 	s.Equal(status.Code(err), codes.Unimplemented)

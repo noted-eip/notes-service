@@ -34,19 +34,15 @@ func (s *BlocksAPISuite) SetupSuite() {
 	}
 }
 
-func TestBlocksServiceInsertBlockShouldReturnNil(t *testing.T) {
-	srv := blocksService{}
-
-	res, err := srv.InsertBlock(context.TODO(), &notespb.InsertBlockRequest{})
-	require.Error(t, err)
-	require.Equal(t, status.Code(err), codes.InvalidArgument)
-	require.Nil(t, res)
+func (s *BlocksAPISuite) TestBlocksServiceInsertBlockShouldReturnNil() {
+	res, err := s.srv.InsertBlock(context.TODO(), &notespb.InsertBlockRequest{})
+	s.Require().Error(err)
+	s.Equal(status.Code(err), codes.InvalidArgument)
+	s.Nil(res)
 }
 
-func TestBlocksServiceInsertBlockShouldReturnBlock(t *testing.T) {
-	srv := blocksService{}
-
-	res, err := srv.InsertBlock(context.TODO(), &notespb.InsertBlockRequest{
+func (s *BlocksAPISuite) TestBlocksServiceInsertBlockShouldReturnBlock() {
+	res, err := s.srv.InsertBlock(context.TODO(), &notespb.InsertBlockRequest{
 		Block: &notespb.Block{
 			Type: notespb.Block_TYPE_BULLET_POINT,
 			Data: &notespb.Block_BulletPoint{},
@@ -54,26 +50,22 @@ func TestBlocksServiceInsertBlockShouldReturnBlock(t *testing.T) {
 		Index:  1,
 		NoteId: 1,
 	})
-	require.Nil(t, err)
-	require.NotNil(t, res)
+	s.Nil(err)
+	s.NotNil(res)
 }
 
-func TestBlocksServiceUpdateBlock(t *testing.T) {
-	srv := blocksService{}
-
-	res, err := srv.UpdateBlock(context.TODO(), &notespb.UpdateBlockRequest{})
-	require.Error(t, err)
-	require.Equal(t, status.Code(err), codes.Unimplemented)
-	require.Nil(t, res)
+func (s *BlocksAPISuite) TestBlocksServiceUpdateBlock() {
+	res, err := s.srv.UpdateBlock(context.TODO(), &notespb.UpdateBlockRequest{})
+	s.Require().Error(err)
+	s.Equal(status.Code(err), codes.Unimplemented)
+	s.Nil(res)
 }
 
-func TestBlocksServiceDeleteBlock(t *testing.T) {
-	srv := blocksService{}
-
-	res, err := srv.DeleteBlock(context.TODO(), &notespb.DeleteBlockRequest{})
-	require.Error(t, err)
-	require.Equal(t, status.Code(err), codes.Unimplemented)
-	require.Nil(t, res)
+func (s *BlocksAPISuite) TestBlocksServiceDeleteBlock() {
+	res, err := s.srv.DeleteBlock(context.TODO(), &notespb.DeleteBlockRequest{})
+	s.Require().Error(err)
+	s.Equal(status.Code(err), codes.Unimplemented)
+	s.Nil(res)
 }
 
 func newBlocksDatabaseOrFail(t *testing.T, logger *zap.Logger) *memory.Database {
