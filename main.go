@@ -1,72 +1,34 @@
 package main
 
 import (
-	"context"
-	"fmt"
-	"net"
-	"time"
+	"os"
 
-	"notes-service/grpc/notespb"
+	"notes-service/auth"
 
 	"google.golang.org/grpc"
 
-	"go.mongodb.org/mongo-driver/mongo"
-	option "go.mongodb.org/mongo-driver/mongo/options"
-	"go.mongodb.org/mongo-driver/mongo/readpref"
-
-	log "github.com/sirupsen/logrus"
+	"gopkg.in/alecthomas/kingpin.v2"
 )
 
-var NotesDatabase *mongo.Database = nil
-var NotesCollection *mongo.Collection = nil
+var (
+	app = kingpin.New("notes-service", "Notes service for the Noted backend").DefaultEnvars()
 
-// Need to put these variables in .env
-var password = "Gyy628\\nAWS"
-var mongoUri string = "mongodb+srv://gabriel:" + password + "@cluster0.2ckb3.mongodb.net/myFirstDatabase?retryWrites=true&w=majority"
+	environment   = app.Flag("env", "either development or production").Default(envIsProd).Enum(envIsProd, envIsDev)
+	port          = app.Flag("port", "grpc server port").Default("3000").Int()
+	mongoUri      = app.Flag("mongo-uri", "mongo uri with password to connect client").Default("mongodb://localhost:27017").String()
+	mongoDbName   = app.Flag("mongo-db-name", "name of the mongo database").Default("notes-service").String()
+	jwtPrivateKey = app.Flag("jwt-private-key", "base64 encoded ed25519 private key").Default("SGfCQAb05CtmhEesWxcrfXSQR6JjmEMeyjR7Mo21S60ZDW9VVTUuCvEMlGjlqiw4I/z8T11KqAXexvGIPiuffA==").String()
+)
 
-func InitDatabase() {
-	client, err := mongo.NewClient(option.Client().ApplyURI(mongoUri))
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	err = client.Connect(ctx)
-	fmt.Println("service is connected to MongoDB")
-
-	if err != nil {
-		defer client.Disconnect(ctx)
-		log.Fatal(err)
-	}
-
-	NotesDatabase = client.Database("Notes-database")
-	NotesCollection = NotesDatabase.Collection("Notes-collection")
-
-	err = client.Ping(ctx, readpref.Primary())
-	if err != nil {
-		defer client.Disconnect(ctx)
-		log.Fatal(err)
-	}
-}
+var (
+	envIsProd = "production"
+	envIsDev  = "development"
+)
 
 func main() {
-
-	InitDatabase()
-
-	srv := grpc.NewServer()
-	notesSrv := notesService{}
-	notespb.RegisterNotesServiceServer(srv, &notesSrv)
-
-	lis, err := net.Listen("tcp", ":3000")
-
-	fmt.Println("service listen on port 3000")
-
-	if err != nil {
-		panic(err)
-	}
-	if err := srv.Serve(lis); err != nil {
-		panic(err)
-	}
+	kingpin.MustParse(app.Parse(os.Args[1:]))
+	s := &server{}
+	s.Init(grpc.ChainUnaryInterceptor(s.LoggerUnaryInterceptor, auth.ForwardAuthMetadatathUnaryInterceptor))
+	s.Run()
+	defer s.Close()
 }

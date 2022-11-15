@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"notes-service/grpc/notespb"
+	notespb "notes-service/protorepo/noted/notes/v1"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -13,7 +13,7 @@ import (
 func TestNotesServiceCreateNote(t *testing.T) {
 	srv := notesService{}
 
-	res, err := srv.CreateNote(context.TODO(), &notespb.Note{})
+	res, err := srv.CreateNote(context.TODO(), &notespb.CreateNoteRequest{})
 	require.Error(t, err)
 	require.Equal(t, status.Code(err), codes.Unimplemented)
 	require.Nil(t, res)
@@ -41,6 +41,15 @@ func TestNotesServiceDeleteNote(t *testing.T) {
 	srv := notesService{}
 
 	res, err := srv.DeleteNote(context.TODO(), &notespb.DeleteNoteRequest{})
+	require.Error(t, err)
+	require.Equal(t, status.Code(err), codes.Unimplemented)
+	require.Nil(t, res)
+}
+
+func TestNotesServiceListNotes(t *testing.T) {
+	srv := notesService{}
+
+	res, err := srv.ListNotes(context.TODO(), &notespb.ListNotesRequest{})
 	require.Error(t, err)
 	require.Equal(t, status.Code(err), codes.Unimplemented)
 	require.Nil(t, res)
