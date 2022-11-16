@@ -25,11 +25,11 @@ type notesService struct {
 var _ notespb.NotesAPIServer = &notesService{}
 
 func (srv *notesService) CreateNote(ctx context.Context, in *notespb.CreateNoteRequest) (*notespb.CreateNoteResponse, error) {
-	return nil, nil
+	return nil, status.Errorf(codes.Unimplemented, "not implemented")
 }
 
 func (srv *notesService) GetNote(ctx context.Context, in *notespb.GetNoteRequest) (*notespb.GetNoteResponse, error) {
-	return nil, nil
+	return nil, status.Errorf(codes.Unimplemented, "not implemented")
 }
 
 func (srv *notesService) UpdateNote(ctx context.Context, in *notespb.UpdateNoteRequest) (*notespb.UpdateNoteResponse, error) {
@@ -40,14 +40,15 @@ func (srv *notesService) UpdateNote(ctx context.Context, in *notespb.UpdateNoteR
 	}
 
 	//appeler deleteBlock avec le filtre note_id
-	err = srv.repoBlock.Delete(ctx, &models.BlockFilter{NoteId: in.Id})
+	err = srv.repoBlock.DeleteBlocks(ctx, &in.Id)
 	if err != nil {
 		srv.logger.Errorw("blocks weren't deleted : ", err.Error())
 		return nil, status.Errorf(codes.Internal, "could not delete blocks")
 	}
 
 	//update juste les infos de la note et pas les blocks sinon
-	err = srv.repoNote.Update(ctx, &models.NoteFilter{ID: id}, &models.NoteWithBlocks{AuthorId: in.Note.AuthorId, Title: in.Note.Title})
+	noteId := id.String()
+	err = srv.repoNote.Update(ctx, &noteId, &models.Note{AuthorId: in.Note.AuthorId, Title: in.Note.Title})
 	if err != nil {
 		srv.logger.Errorw("failed to update note", zap.Error(err))
 		return nil, status.Errorf(codes.Internal, "could not update note")
@@ -68,9 +69,9 @@ func (srv *notesService) UpdateNote(ctx context.Context, in *notespb.UpdateNoteR
 }
 
 func (srv *notesService) DeleteNote(ctx context.Context, in *notespb.DeleteNoteRequest) (*notespb.DeleteNoteResponse, error) {
-	return nil, nil
+	return nil, status.Errorf(codes.Unimplemented, "not implemented")
 }
 
 func (srv *notesService) ListNotes(ctx context.Context, in *notespb.ListNotesRequest) (*notespb.ListNotesResponse, error) {
-	return nil, nil
+	return nil, status.Errorf(codes.Unimplemented, "not implemented")
 }

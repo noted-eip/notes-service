@@ -1,3 +1,3 @@
 PORT=3000
 MONGO_PASSWORD=Gyy628\\nAWS
-MONGOO_URI=mongodb+srv://gabriel:Gyy628\\nAWS@cluster0.2ckb3.mongodb.net/myFirstDatabase?retryWrites=true&w=majority
+MONGOO_URI=mongodb://localhost:27017

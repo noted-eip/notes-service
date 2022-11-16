@@ -23,7 +23,7 @@ type blocksService struct {
 var _ notespb.NotesAPIServer = &notesService{}
 
 func (srv *blocksService) InsertBlock(ctx context.Context, in *notespb.InsertBlockRequest) (*emptypb.Empty, error) {
-	return nil, nil
+	return nil, status.Errorf(codes.Unimplemented, "not implemented")
 }
 
 func (srv *blocksService) UpdateBlock(ctx context.Context, in *notespb.UpdateBlockRequest) (*emptypb.Empty, error) {
@@ -40,14 +40,12 @@ func (srv *blocksService) UpdateBlock(ctx context.Context, in *notespb.UpdateBlo
 		return nil, status.Errorf(codes.Internal, "invalid content provided for block id : ", in.Id)
 	}
 
-	srv.repo.Update(ctx,
-		&models.BlockFilter{BlockId: in.Id},
-		&models.BlockWithIndex{ID: in.Id, Type: uint32(in.Block.Type), Index: in.Index, Content: block.Content})
+	srv.repo.Update(ctx, &in.Id, &models.BlockWithIndex{ID: in.Id, Type: uint32(in.Block.Type), Index: in.Index, Content: block.Content})
 	return &emptypb.Empty{}, nil
 }
 
 func (srv *blocksService) DeleteBlock(ctx context.Context, in *notespb.DeleteBlockRequest) (*emptypb.Empty, error) {
-	return &emptypb.Empty{}, nil
+	return nil, status.Errorf(codes.Unimplemented, "not implemented")
 }
 
 func FillBlockContent(block *models.Block, blockRequest *notespb.Block) error {

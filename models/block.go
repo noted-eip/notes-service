@@ -16,14 +16,6 @@ type Image struct {
 	caption *string
 }
 
-/*type BlockCreation struct {
-	Id      string  `json:"id" bson:"_id,omitempty"`
-	Type    uint32  `json:"type" bson:"type,omitempty"`
-	Content *string `json:"content" bson:"content,omitempty"`
-	Image   Image
-	Code    Code
-}*/
-
 type Block struct {
 	ID      string `json:"id" bson:"_id,omitempty"`
 	NoteId  string `json:"noteId" bson:"noteId,omitempty"`
@@ -46,13 +38,15 @@ type BlockFilter struct {
 
 // NotesRepository is safe for use in multiple goroutines.
 type BlocksRepository interface {
-	GetByFilter(ctx context.Context, filter *BlockFilter) (*BlockWithIndex, error)
+	GetBlock(ctx context.Context, blockId *string) (*BlockWithIndex, error)
 
-	GetAllById(ctx context.Context, filter *BlockFilter) ([]*BlockWithIndex, error)
+	GetBlocks(ctx context.Context, noteId *string) ([]*BlockWithIndex, error)
 
 	Create(ctx context.Context, blockRequest *BlockWithIndex) error
 
-	Delete(ctx context.Context, filter *BlockFilter) error
+	Update(ctx context.Context, blockId *string, blockRequest *BlockWithIndex) (*BlockWithIndex, error)
 
-	Update(ctx context.Context, filter *BlockFilter, blockRequest *BlockWithIndex) (*BlockWithIndex, error)
+	DeleteBlock(ctx context.Context, blockId *string) error
+
+	DeleteBlocks(ctx context.Context, noteId *string) error
 }
