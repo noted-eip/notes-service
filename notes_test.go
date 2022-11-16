@@ -89,17 +89,28 @@ func (s *NotesAPISuite) TestNotesServiceUpdateNoteShouldReturnNoError() {
 	s.Nil(res)
 }
 */
-func (s *NotesAPISuite) TestNotesServiceDeleteNote() {
+func (s *NotesAPISuite) TestNotesServiceDeleteNoteShouldReturnError() {
 	res, err := s.srv.DeleteNote(context.TODO(), &notespb.DeleteNoteRequest{})
 	s.Require().Error(err)
-	s.Equal(status.Code(err), codes.Unimplemented)
+	s.Equal(status.Code(err), codes.InvalidArgument)
 	s.Nil(res)
 }
 
+/*
+func (s *NotesAPISuite) TestNotesServiceDeleteNoteShouldReturnNoError() {
+	id, err := uuid.NewRandom()
+
+	res, err := s.srv.DeleteNote(context.TODO(), &notespb.DeleteNoteRequest{
+		Id: id.String(),
+	})
+	s.Nil(err)
+	s.Nil(res)
+}
+*/
 func (s *NotesAPISuite) TestNotesServiceListNotes() {
 	res, err := s.srv.ListNotes(context.TODO(), &notespb.ListNotesRequest{})
 	s.Require().Error(err)
-	s.Equal(status.Code(err), codes.Unimplemented)
+	s.Equal(status.Code(err), codes.InvalidArgument)
 	s.Nil(res)
 }
 
@@ -140,8 +151,6 @@ func newNotesDatabaseSchema() *memdb.DBSchema {
 		},
 	}
 }
-
-/////
 
 func newLoggerOrFail(t *testing.T) *zap.Logger {
 	logger, err := zap.NewDevelopment(zap.AddStacktrace(zapcore.FatalLevel), zap.WithCaller(false))

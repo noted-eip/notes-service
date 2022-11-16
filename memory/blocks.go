@@ -63,8 +63,8 @@ func (srv *blocksRepository) DeleteBlock(ctx context.Context, blockId *string) e
 	err := txn.Delete("block", buildBlockQuery(blockId))
 
 	if err != nil {
-		srv.logger.Error("delete note db query failed", zap.Error(err))
-		return status.Error(codes.Internal, "could not delete note")
+		srv.logger.Error("delete block db query failed", zap.Error(err))
+		return status.Error(codes.Internal, "could not delete block")
 	}
 	return nil
 }
@@ -73,11 +73,11 @@ func (srv *blocksRepository) DeleteBlocks(ctx context.Context, noteId *string) e
 	txn := srv.db.DB.Txn(true)
 	defer txn.Abort()
 
-	err := txn.Delete("block", buildBlocksQuery(noteId))
+	err := txn.Delete("block", models.Block{NoteId: *noteId})
 
 	if err != nil {
-		srv.logger.Error("delete note db query failed", zap.Error(err))
-		return status.Error(codes.Internal, "could not delete note")
+		srv.logger.Error("delete blocks db query failed", zap.Error(err))
+		return status.Error(codes.Internal, "could not delete blocks")
 	}
 	return nil
 }

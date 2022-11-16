@@ -82,13 +82,24 @@ func (s *BlocksAPISuite) TestBlocksServiceUpdateBlockShouldReturnNoError() {
 	s.Nil(res)
 }
 
-func (s *BlocksAPISuite) TestBlocksServiceDeleteBlock() {
+func (s *BlocksAPISuite) TestBlocksServiceDeleteBlockShouldReturnError() {
 	res, err := s.srv.DeleteBlock(context.TODO(), &notespb.DeleteBlockRequest{})
 	s.Require().Error(err)
-	s.Equal(status.Code(err), codes.Unimplemented)
+	s.Equal(status.Code(err), codes.InvalidArgument)
 	s.Nil(res)
 }
 
+/*
+func (s *BlocksAPISuite) TestBlocksServiceDeleteBlockShouldReturnNoError() {
+	id, err := uuid.NewRandom()
+
+	res, err := s.srv.DeleteBlock(context.TODO(), &notespb.DeleteBlockRequest{
+		Id: id.String(),
+	})
+	s.Nil(err)
+	s.Nil(res)
+}
+*/
 func newBlocksDatabaseOrFail(t *testing.T, logger *zap.Logger) *memory.Database {
 	db, err := memory.NewDatabase(context.Background(), newBlockDatabaseSchema(), logger)
 	require.NoError(t, err, "could not instantiate in-memory database")
