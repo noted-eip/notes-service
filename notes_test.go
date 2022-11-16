@@ -110,7 +110,7 @@ func (s *NotesAPISuite) TestNotesServiceDeleteNoteShouldReturnNoError() {
 func (s *NotesAPISuite) TestNotesServiceListNotes() {
 	res, err := s.srv.ListNotes(context.TODO(), &notespb.ListNotesRequest{})
 	s.Require().Error(err)
-	s.Equal(status.Code(err), codes.InvalidArgument)
+	s.Equal(status.Code(err), codes.Unimplemented)
 	s.Nil(res)
 }
 
