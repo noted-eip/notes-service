@@ -4,6 +4,7 @@ import (
 	"context"
 	"notes-service/models"
 
+	"github.com/google/uuid"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.uber.org/zap"
@@ -24,11 +25,26 @@ func NewNotesRepository(db *mongo.Database, logger *zap.Logger) models.NotesRepo
 }
 
 func (srv *notesRepository) Create(ctx context.Context, noteRequest *models.Note) (*models.Note, error) {
-	return nil, status.Errorf(codes.Unimplemented, "not implemented")
+	id, err := uuid.NewRandom()
+
+	if err != nil {
+		srv.logger.Error("failed to generate new random uuid", zap.Error(err))
+		return nil, status.Error(codes.Internal, "could not create account")
+	}
+	noteRequest.ID = id
+
+	note := models.Note{ID: noteRequest.ID, AuthorId: noteRequest.AuthorId, Title: noteRequest.Title, Blocks: noteRequest.Blocks}
+
+	_, err = srv.db.Collection("notes").InsertOne(ctx, note)
+	if err != nil {
+		srv.logger.Error("mongo insert note failed", zap.Error(err), zap.String("note name", note.AuthorId))
+		return nil, status.Error(codes.Internal, "could not create note")
+	}
+	return noteRequest, nil
 }
 
 func (srv *notesRepository) Get(ctx context.Context, noteId *string) (*models.Note, error) {
-	return nil, status.Errorf(codes.Unimplemented, "not implemented")
+	return nil, status.Error(codes.Unimplemented, "not implemented")
 }
 
 func (srv *notesRepository) Delete(ctx context.Context, noteId *string) error {
@@ -46,11 +62,20 @@ func (srv *notesRepository) Delete(ctx context.Context, noteId *string) error {
 }
 
 func (srv *notesRepository) Update(ctx context.Context, noteId *string, noteRequest *models.Note) error {
-	return status.Errorf(codes.Unimplemented, "not implemented")
+	update, err := srv.db.Collection("notes").UpdateOne(ctx, buildNoteQuery(noteId), bson.D{{Key: "$set", Value: &noteRequest}})
+	if err != nil {
+		srv.logger.Error("failed to convert object id from hex", zap.Error(err))
+		return status.Error(codes.InvalidArgument, err.Error())
+	}
+	if update.MatchedCount == 0 {
+		srv.logger.Error("mongo update note query matched none", zap.String("user_id", *noteId))
+		return status.Error(codes.Internal, "could not update note")
+	}
+	return nil
 }
 
 func (srv *notesRepository) List(ctx context.Context, authorId *string) (*[]models.Note, error) {
-	return nil, status.Errorf(codes.Unimplemented, "not implemented")
+	return nil, status.Error(codes.Unimplemented, "not implemented")
 }
 
 func buildNoteQuery(noteId *string) bson.M {

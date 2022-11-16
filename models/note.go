@@ -8,6 +8,8 @@ import (
 	"github.com/google/uuid"
 )
 
+//NoteWithBlocks
+
 type Note struct {
 	ID       uuid.UUID `json:"id" bson:"_id,omitempty"`
 	AuthorId string    `json:"authorId" bson:"authorId,omitempty"`
