@@ -72,7 +72,19 @@ func (srv *blocksService) UpdateBlock(ctx context.Context, in *notespb.UpdateBlo
 }
 
 func (srv *blocksService) DeleteBlock(ctx context.Context, in *notespb.DeleteBlockRequest) (*emptypb.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "not implemented")
+	_, err := uuid.Parse(in.Id)
+	if err != nil {
+		srv.logger.Error("invalid uuid", zap.Error(err))
+		return nil, status.Errorf(codes.InvalidArgument, "could not delete block")
+	}
+
+	err = srv.repo.DeleteBlock(ctx, &in.Id)
+	if err != nil {
+		srv.logger.Error("block was not deleted : ", zap.Error(err))
+		return nil, status.Errorf(codes.Internal, "could not delete block")
+	}
+
+	return &emptypb.Empty{}, nil
 }
 
 func FillBlockContent(block *models.Block, blockRequest *notespb.Block) error {

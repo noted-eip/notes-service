@@ -72,11 +72,11 @@ func (srv *notesService) GetNote(ctx context.Context, in *notespb.GetNoteRequest
 
 func (srv *notesService) UpdateNote(ctx context.Context, in *notespb.UpdateNoteRequest) (*notespb.UpdateNoteResponse, error) {
 	if in == nil {
-		srv.logger.Error("failed to create note, Request is empty")
-		return nil, status.Error(codes.InvalidArgument, "CreateNoteRequest is empty")
+		srv.logger.Error("failed to update note, Request is empty")
+		return nil, status.Error(codes.InvalidArgument, "UpdateNoteRequest is empty")
 	}
 	if in.Note == nil {
-		srv.logger.Error("failed to create note, Note Request is empty")
+		srv.logger.Error("failed to update note, Note Request is empty")
 		return nil, status.Error(codes.InvalidArgument, "Note is empty")
 	}
 
@@ -116,7 +116,30 @@ func (srv *notesService) UpdateNote(ctx context.Context, in *notespb.UpdateNoteR
 }
 
 func (srv *notesService) DeleteNote(ctx context.Context, in *notespb.DeleteNoteRequest) (*notespb.DeleteNoteResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "not implemented")
+	if in == nil {
+		srv.logger.Error("failed to delete note, Request is empty")
+		return nil, status.Error(codes.InvalidArgument, "DeleteNoteRequest is empty")
+	}
+	_, err := uuid.Parse(in.Id)
+	if err != nil {
+		srv.logger.Error("failed to convert uuid from string", zap.Error(err))
+		return nil, status.Error(codes.InvalidArgument, "could not delete note")
+	}
+
+	//appeler deleteBlock avec le filtre note_id
+	err = srv.repoBlock.DeleteBlocks(ctx, &in.Id)
+	if err != nil {
+		srv.logger.Error("blocks weren't deleted : ", zap.Error(err))
+		return nil, status.Error(codes.Internal, "could not delete blocks")
+	}
+
+	err = srv.repoNote.Delete(ctx, &in.Id)
+	if err != nil {
+		srv.logger.Error("failed to delete note", zap.Error(err))
+		return nil, status.Error(codes.Internal, "could not delete note")
+	}
+
+	return nil, nil
 }
 
 func (srv *notesService) ListNotes(ctx context.Context, in *notespb.ListNotesRequest) (*notespb.ListNotesResponse, error) {

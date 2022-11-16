@@ -57,7 +57,7 @@ func (srv *blocksRepository) Update(ctx context.Context, blockId *string, blockR
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 	if update.MatchedCount == 0 {
-		srv.logger.Error("mongo update note query matched none", zap.String("block_id : ", *blockId))
+		srv.logger.Error("mongo update block query matched none", zap.String("block_id : ", *blockId))
 		return nil, status.Error(codes.Internal, "could not update block")
 	}
 
@@ -69,8 +69,8 @@ func (srv *blocksRepository) DeleteBlock(ctx context.Context, blockId *string) e
 	delete, err := srv.db.Collection("blocks").DeleteOne(ctx, buildBlockQuery(blockId))
 
 	if err != nil {
-		srv.logger.Error("delete note db query failed", zap.Error(err))
-		return status.Error(codes.Internal, "could not delete note")
+		srv.logger.Error("delete block db query failed", zap.Error(err))
+		return status.Error(codes.Internal, "could not delete block")
 	}
 	if delete.DeletedCount == 0 {
 		srv.logger.Info("mongo delete block matched none", zap.String("block_id", *blockId))
@@ -81,11 +81,11 @@ func (srv *blocksRepository) DeleteBlock(ctx context.Context, blockId *string) e
 
 //delete multiple blocks with NoteId
 func (srv *blocksRepository) DeleteBlocks(ctx context.Context, noteId *string) error {
-	delete, err := srv.db.Collection("blocks").DeleteOne(ctx, buildBlocksQuery(noteId))
+	delete, err := srv.db.Collection("blocks").DeleteMany(ctx, buildBlocksQuery(noteId))
 
 	if err != nil {
-		srv.logger.Error("delete note db query failed", zap.Error(err))
-		return status.Error(codes.Internal, "could not delete note")
+		srv.logger.Error("delete blocks db query failed", zap.Error(err))
+		return status.Error(codes.Internal, "could not delete blocks")
 	}
 	if delete.DeletedCount == 0 {
 		srv.logger.Info("mongo delete block matched none", zap.String("note_id", *noteId))

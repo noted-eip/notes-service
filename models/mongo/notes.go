@@ -48,7 +48,17 @@ func (srv *notesRepository) Get(ctx context.Context, noteId *string) (*models.No
 }
 
 func (srv *notesRepository) Delete(ctx context.Context, noteId *string) error {
-	return status.Error(codes.Unimplemented, "not implemented")
+	delete, err := srv.db.Collection("notes").DeleteOne(ctx, buildNoteQuery(noteId))
+
+	if err != nil {
+		srv.logger.Error("delete note db query failed", zap.Error(err))
+		return status.Errorf(codes.Internal, "could not delete note")
+	}
+	if delete.DeletedCount == 0 {
+		srv.logger.Info("mongo delete note matched none", zap.String("note_id", *noteId))
+		return status.Errorf(codes.Internal, "could not delete note")
+	}
+	return nil
 }
 
 func (srv *notesRepository) Update(ctx context.Context, noteId *string, noteRequest *models.Note) error {
