@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/ed25519"
 	"encoding/base64"
 	"notes-service/auth"
 
@@ -106,13 +107,15 @@ func (s *server) initLogger() {
 func (s *server) initAuthService() {
 	rawKey, err := base64.StdEncoding.DecodeString(*jwtPrivateKey)
 	must(err, "could not decode jwt private key")
-	s.authService = auth.NewService(rawKey)
+	var key ed25519.PrivateKey = rawKey
+	pubKey := key.Public().(ed25519.PublicKey)
+	s.authService = auth.NewService(pubKey)
 }
 
 func (s *server) initNotesService() {
 	s.notesService = &notesService{
 		auth:      s.authService,
-		logger:    s.slogger,
+		logger:    s.logger,
 		repoNote:  s.notesRepository,
 		repoBlock: s.blocksRepository,
 	}
@@ -128,7 +131,7 @@ func (s *server) initRepositories() {
 	s.mongoDB, err = mongoServices.NewDatabase(context.Background(), *mongoUri, *mongoDbName, s.logger)
 	must(err, "could not instantiate mongo database")
 	s.notesRepository = mongoServices.NewNotesRepository(s.mongoDB.DB, s.logger)
-	s.blocksRepository = mongoServices.NewBlocksRepository(s.mongoDB.DB, s.logger, s.notesRepository)
+	s.blocksRepository = mongoServices.NewBlocksRepository(s.mongoDB.DB, s.logger)
 }
 
 func must(err error, msg string) {
