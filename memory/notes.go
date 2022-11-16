@@ -53,7 +53,17 @@ func (srv *notesRepository) Delete(ctx context.Context, noteId *string) error {
 }
 
 func (srv *notesRepository) Update(ctx context.Context, noteId *string, noteRequest *models.Note) error {
-	return status.Errorf(codes.Unimplemented, "not implemented")
+	/*txn := srv.db.DB.Txn(true)
+	defer txn.Abort()
+
+	//update, err := srv.db.Collection("notes").UpdateOne(ctx, buildNoteQuery(noteId), bson.D{{Key: "$set", Value: &noteRequest}})
+	err := txn.Update("note", buildNoteQuery(noteId), bson.D{{Key: "$set", Value: &noteRequest}})
+
+	if err != nil {
+		srv.logger.Error("failed to convert object id from hex", zap.Error(err))
+		return status.Error(codes.InvalidArgument, err.Error())
+	}*/
+	return nil
 }
 
 func (srv *notesRepository) List(ctx context.Context, authorId *string) (*[]models.Note, error) {

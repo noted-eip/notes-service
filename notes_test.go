@@ -28,13 +28,14 @@ func TestNotesService(t *testing.T) {
 
 func (s *NotesAPISuite) SetupSuite() {
 	logger := newLoggerOrFail(s.T())
-	db := newNotesDatabaseOrFail(s.T(), logger)
+	dbNote := newNotesDatabaseOrFail(s.T(), logger)
+	dbBlock := newBlocksDatabaseOrFail(s.T(), logger)
 
 	s.srv = &notesService{
 		auth:      auth.NewService(genKeyOrFail(s.T())),
 		logger:    logger,
-		repoNote:  memory.NewNotesRepository(db, logger),
-		repoBlock: memory.NewBlocksRepository(db, logger),
+		repoNote:  memory.NewNotesRepository(dbNote, logger),
+		repoBlock: memory.NewBlocksRepository(dbBlock, logger),
 	}
 }
 
@@ -65,13 +66,29 @@ func (s *NotesAPISuite) TestNotesServiceGetNote() {
 	s.Nil(res)
 }
 
-func (s *NotesAPISuite) TestNotesServiceUpdateNote() {
+func (s *NotesAPISuite) TestNotesServiceUpdateNoteShouldReturnError() {
 	res, err := s.srv.UpdateNote(context.TODO(), &notespb.UpdateNoteRequest{})
 	s.Require().Error(err)
-	s.Equal(status.Code(err), codes.Unimplemented)
+	s.Equal(status.Code(err), codes.InvalidArgument)
 	s.Nil(res)
 }
 
+/*
+func (s *NotesAPISuite) TestNotesServiceUpdateNoteShouldReturnNoError() {
+	noteId, err := uuid.NewRandom()
+
+	res, err := s.srv.UpdateNote(context.TODO(), &notespb.UpdateNoteRequest{
+		Id: noteId.String(),
+		Note: &notespb.Note{
+			AuthorId: "CI-TEST",
+			Title:    "ci-test",
+			Blocks:   nil,
+		},
+	})
+	s.Nil(err)
+	s.Nil(res)
+}
+*/
 func (s *NotesAPISuite) TestNotesServiceDeleteNote() {
 	res, err := s.srv.DeleteNote(context.TODO(), &notespb.DeleteNoteRequest{})
 	s.Require().Error(err)

@@ -6,6 +6,7 @@ import (
 	"notes-service/models"
 
 	"github.com/google/uuid"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -43,7 +44,7 @@ func (srv *blocksRepository) Create(ctx context.Context, blockRequest *models.Bl
 	blockId := id.String()
 	block := models.BlockWithIndex{ID: id.String(), NoteId: blockRequest.NoteId, Type: blockRequest.Type, Index: blockRequest.Index, Content: blockRequest.Content}
 
-	err = txn.Insert("note", block)
+	err = txn.Insert("block", block)
 	if err != nil {
 		srv.logger.Error("mongo insert block failed", zap.Error(err), zap.String("note id : ", blockRequest.NoteId))
 		return nil, status.Errorf(codes.Internal, "could not insert block")
@@ -55,6 +56,44 @@ func (srv *blocksRepository) Update(ctx context.Context, blockId *string, blockR
 	return nil, status.Errorf(codes.Unimplemented, "not implemented")
 }
 
-func (srv *blocksRepository) Delete(ctx context.Context, blockId *string) error {
-	return status.Errorf(codes.Unimplemented, "not implemented")
+func (srv *blocksRepository) DeleteBlock(ctx context.Context, blockId *string) error {
+	txn := srv.db.DB.Txn(true)
+	defer txn.Abort()
+
+	err := txn.Delete("block", buildBlockQuery(blockId))
+
+	if err != nil {
+		srv.logger.Error("delete note db query failed", zap.Error(err))
+		return status.Error(codes.Internal, "could not delete note")
+	}
+	return nil
+}
+
+func (srv *blocksRepository) DeleteBlocks(ctx context.Context, noteId *string) error {
+	txn := srv.db.DB.Txn(true)
+	defer txn.Abort()
+
+	err := txn.Delete("block", buildBlocksQuery(noteId))
+
+	if err != nil {
+		srv.logger.Error("delete note db query failed", zap.Error(err))
+		return status.Error(codes.Internal, "could not delete note")
+	}
+	return nil
+}
+
+func buildBlockQuery(blockId *string) bson.M {
+	query := bson.M{}
+	if *blockId != "" {
+		query["_id"] = blockId
+	}
+	return query
+}
+
+func buildBlocksQuery(noteId *string) bson.M {
+	query := bson.M{}
+	if *noteId != "" {
+		query["noteId"] = noteId
+	}
+	return query
 }

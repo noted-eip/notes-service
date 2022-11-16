@@ -6,6 +6,7 @@ import (
 	notespb "notes-service/protorepo/noted/notes/v1"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/hashicorp/go-memdb"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -59,10 +60,25 @@ func (s *BlocksAPISuite) TestBlocksServiceInsertBlockShouldReturnBlock() {
 	s.NotNil(res)
 }*/
 
-func (s *BlocksAPISuite) TestBlocksServiceUpdateBlock() {
+func (s *BlocksAPISuite) TestBlocksServiceUpdateBlockShouldReturnError() {
 	res, err := s.srv.UpdateBlock(context.TODO(), &notespb.UpdateBlockRequest{})
 	s.Require().Error(err)
-	s.Equal(status.Code(err), codes.Unimplemented)
+	s.Equal(status.Code(err), codes.Internal)
+	s.Nil(res)
+}
+
+func (s *BlocksAPISuite) TestBlocksServiceUpdateBlockShouldReturnNoError() {
+	blockId, err := uuid.NewRandom()
+
+	res, err := s.srv.UpdateBlock(context.TODO(), &notespb.UpdateBlockRequest{
+		Id: blockId.String(),
+		Block: &notespb.Block{
+			Type: notespb.Block_TYPE_BULLET_POINT,
+			Data: &notespb.Block_BulletPoint{},
+		},
+		Index: 1,
+	})
+	s.Nil(err)
 	s.Nil(res)
 }
 

@@ -7,6 +7,7 @@ import (
 	"notes-service/models"
 	notespb "notes-service/protorepo/noted/notes/v1"
 
+	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -26,22 +27,22 @@ var _ notespb.NotesAPIServer = &notesService{}
 func (srv *notesService) CreateNote(ctx context.Context, in *notespb.CreateNoteRequest) (*notespb.CreateNoteResponse, error) {
 	if in == nil {
 		srv.logger.Error("failed to create note, Request is empty")
-		return nil, status.Errorf(codes.InvalidArgument, "CreateNoteRequest is empty")
+		return nil, status.Error(codes.InvalidArgument, "CreateNoteRequest is empty")
 	}
 	if in.Note == nil {
 		srv.logger.Error("failed to create note, Note Request is empty")
-		return nil, status.Errorf(codes.InvalidArgument, "Note is empty")
+		return nil, status.Error(codes.InvalidArgument, "Note is empty")
 	}
 	if len(in.Note.AuthorId) < 1 || len(in.Note.Title) < 1 {
 		srv.logger.Error("failed to create note, invalid parameters")
-		return nil, status.Errorf(codes.InvalidArgument, "authorId or title are empty")
+		return nil, status.Error(codes.InvalidArgument, "authorId or title are empty")
 	}
 
 	note, err := srv.repoNote.Create(ctx, &models.Note{AuthorId: in.Note.AuthorId, Title: in.Note.Title, Blocks: nil})
 
 	if err != nil {
 		srv.logger.Error("failed to create note", zap.Error(err))
-		return nil, status.Errorf(codes.Internal, "could not create note")
+		return nil, status.Error(codes.Internal, "could not create note")
 	}
 
 	blocks := make([]models.Block, len(in.Note.Blocks))
@@ -66,17 +67,58 @@ func (srv *notesService) CreateNote(ctx context.Context, in *notespb.CreateNoteR
 }
 
 func (srv *notesService) GetNote(ctx context.Context, in *notespb.GetNoteRequest) (*notespb.GetNoteResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "not implemented")
+	return nil, status.Error(codes.Unimplemented, "not implemented")
 }
 
 func (srv *notesService) UpdateNote(ctx context.Context, in *notespb.UpdateNoteRequest) (*notespb.UpdateNoteResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "not implemented")
+	if in == nil {
+		srv.logger.Error("failed to create note, Request is empty")
+		return nil, status.Error(codes.InvalidArgument, "CreateNoteRequest is empty")
+	}
+	if in.Note == nil {
+		srv.logger.Error("failed to create note, Note Request is empty")
+		return nil, status.Error(codes.InvalidArgument, "Note is empty")
+	}
+
+	id, err := uuid.Parse(in.Id)
+	if err != nil {
+		srv.logger.Error("failed to convert uuid from string", zap.Error(err))
+		return nil, status.Error(codes.Internal, "could not update note")
+	}
+
+	//appeler deleteBlock avec le filtre note_id
+	err = srv.repoBlock.DeleteBlocks(ctx, &in.Id)
+	if err != nil {
+		srv.logger.Error("blocks weren't deleted : ", zap.Error(err))
+		return nil, status.Error(codes.Internal, "could not delete blocks")
+	}
+
+	//update juste les infos de la note et pas les blocks sinon
+	noteId := id.String()
+	err = srv.repoNote.Update(ctx, &noteId, &models.Note{AuthorId: in.Note.AuthorId, Title: in.Note.Title})
+	if err != nil {
+		srv.logger.Error("failed to update note", zap.Error(err))
+		return nil, status.Error(codes.Internal, "could not update note")
+	}
+
+	//appeller createBlock en boucle pour tout les autres blocks
+	blocks := make([]models.Block, len(in.Note.Blocks))
+	for index, block := range in.Note.Blocks {
+		err := FillBlockContent(&blocks[index], block)
+		if err != nil {
+			srv.logger.Error("failed to update blocks", zap.Error(err))
+			return nil, status.Errorf(codes.Internal, "invalid content provided for block index : %d", index)
+		}
+		srv.repoBlock.Create(ctx, &models.BlockWithIndex{NoteId: in.Id, Type: uint32(in.Note.Blocks[index].Type), Index: uint32(index + 1), Content: blocks[index].Content})
+	}
+
+	return nil, nil
 }
 
 func (srv *notesService) DeleteNote(ctx context.Context, in *notespb.DeleteNoteRequest) (*notespb.DeleteNoteResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "not implemented")
+	return nil, status.Error(codes.Unimplemented, "not implemented")
 }
 
 func (srv *notesService) ListNotes(ctx context.Context, in *notespb.ListNotesRequest) (*notespb.ListNotesResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "not implemented")
+	return nil, status.Error(codes.Unimplemented, "not implemented")
 }

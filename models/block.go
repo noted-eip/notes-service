@@ -41,5 +41,7 @@ type BlocksRepository interface {
 
 	Update(ctx context.Context, blockId *string, blockRequest *BlockWithIndex) (*BlockWithIndex, error)
 
-	Delete(ctx context.Context, blockId *string) error
+	DeleteBlock(ctx context.Context, blockId *string) error
+
+	DeleteBlocks(ctx context.Context, noteId *string) error
 }

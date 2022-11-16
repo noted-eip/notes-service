@@ -54,7 +54,21 @@ func (srv *blocksService) InsertBlock(ctx context.Context, in *notespb.InsertBlo
 }
 
 func (srv *blocksService) UpdateBlock(ctx context.Context, in *notespb.UpdateBlockRequest) (*emptypb.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "not implemented")
+	_, err := uuid.Parse(in.Id)
+	if err != nil {
+		srv.logger.Error("invalid uuid", zap.Error(err))
+		return nil, status.Errorf(codes.Internal, "could not update block")
+	}
+
+	var block = models.Block{}
+	err = FillBlockContent(&block, in.Block)
+	if err != nil {
+		srv.logger.Error("failed to update block", zap.Error(err))
+		return nil, status.Errorf(codes.Internal, "invalid content provided for block id : %s", in.Id)
+	}
+
+	srv.repo.Update(ctx, &in.Id, &models.BlockWithIndex{ID: in.Id, Type: uint32(in.Block.Type), Index: in.Index, Content: block.Content})
+	return nil, nil
 }
 
 func (srv *blocksService) DeleteBlock(ctx context.Context, in *notespb.DeleteBlockRequest) (*emptypb.Empty, error) {
@@ -83,7 +97,7 @@ func FillBlockContent(block *models.Block, blockRequest *notespb.Block) error {
 	*/
 	default:
 		fmt.Println("No Data in this block")
-		return status.Errorf(codes.Internal, "no data in this block")
+		return status.Error(codes.Internal, "no data in this block")
 	}
 	return nil
 }
