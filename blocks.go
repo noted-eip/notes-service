@@ -22,11 +22,11 @@ type blocksService struct {
 var _ notespb.NotesAPIServer = &notesService{}
 
 func (srv *blocksService) InsertBlock(ctx context.Context, in *notespb.InsertBlockRequest) (*emptypb.Empty, error) {
-	return &emptypb.Empty{}, nil
+	return nil, status.Errorf(codes.Unimplemented, "not implemented")
 }
 
 func (srv *blocksService) UpdateBlock(ctx context.Context, in *notespb.UpdateBlockRequest) (*emptypb.Empty, error) {
-	return &emptypb.Empty{}, nil
+	return nil, status.Errorf(codes.Unimplemented, "not implemented")
 }
 
 func (srv *blocksService) DeleteBlock(ctx context.Context, in *notespb.DeleteBlockRequest) (*emptypb.Empty, error) {
@@ -36,7 +36,7 @@ func (srv *blocksService) DeleteBlock(ctx context.Context, in *notespb.DeleteBlo
 		return nil, status.Errorf(codes.Internal, "could not delete block")
 	}
 
-	err = srv.repo.Delete(ctx, &models.BlockFilter{BlockId: in.Id, NoteId: ""})
+	err = srv.repo.Delete(ctx, &in.Id)
 	if err != nil {
 		srv.logger.Errorw("block was not deleted : ", err.Error())
 		return nil, status.Errorf(codes.Internal, "could not delete block")
