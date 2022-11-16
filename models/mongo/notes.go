@@ -2,6 +2,7 @@ package mongo
 
 import (
 	"context"
+	"errors"
 	"notes-service/models"
 
 	"github.com/google/uuid"
@@ -44,11 +45,27 @@ func (srv *notesRepository) Create(ctx context.Context, noteRequest *models.Note
 }
 
 func (srv *notesRepository) Get(ctx context.Context, noteId *string) (*models.Note, error) {
-	return nil, status.Error(codes.Unimplemented, "not implemented")
+	var note models.Note
+
+	err := srv.db.Collection("notes").FindOne(ctx, buildIdQuery(noteId)).Decode(&note)
+	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, status.Errorf(codes.NotFound, "note not found")
+		}
+		srv.logger.Error("unable to query note", zap.Error(err))
+		return nil, status.Errorf(codes.InvalidArgument, err.Error())
+	}
+
+	_, err = uuid.Parse(note.ID.String())
+	if err != nil {
+		srv.logger.Error("failed to convert uuid from string", zap.Error(err))
+		return nil, status.Errorf(codes.Internal, "could not get note")
+	}
+	return &note, nil
 }
 
 func (srv *notesRepository) Delete(ctx context.Context, noteId *string) error {
-	delete, err := srv.db.Collection("notes").DeleteOne(ctx, buildNoteQuery(noteId))
+	delete, err := srv.db.Collection("notes").DeleteOne(ctx, buildIdQuery(noteId))
 
 	if err != nil {
 		srv.logger.Error("delete note db query failed", zap.Error(err))
@@ -62,7 +79,7 @@ func (srv *notesRepository) Delete(ctx context.Context, noteId *string) error {
 }
 
 func (srv *notesRepository) Update(ctx context.Context, noteId *string, noteRequest *models.Note) error {
-	update, err := srv.db.Collection("notes").UpdateOne(ctx, buildNoteQuery(noteId), bson.D{{Key: "$set", Value: &noteRequest}})
+	update, err := srv.db.Collection("notes").UpdateOne(ctx, buildIdQuery(noteId), bson.D{{Key: "$set", Value: &noteRequest}})
 	if err != nil {
 		srv.logger.Error("failed to convert object id from hex", zap.Error(err))
 		return status.Error(codes.InvalidArgument, err.Error())
@@ -78,7 +95,7 @@ func (srv *notesRepository) List(ctx context.Context, authorId *string) (*[]mode
 	return nil, status.Error(codes.Unimplemented, "not implemented")
 }
 
-func buildNoteQuery(noteId *string) bson.M {
+func buildIdQuery(noteId *string) bson.M {
 	query := bson.M{}
 	if *noteId != "" {
 		query["_id"] = noteId

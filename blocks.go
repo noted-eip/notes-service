@@ -113,3 +113,28 @@ func FillBlockContent(block *models.Block, blockRequest *notespb.Block) error {
 	}
 	return nil
 }
+
+func FillContentFromModelToApi(blockRequest *models.BlockWithIndex, contentType uint32, blockApi *notespb.Block) error {
+	switch contentType {
+	case 1:
+		blockApi.Data = &notespb.Block_Heading{Heading: blockRequest.Content}
+	case 2:
+		blockApi.Data = &notespb.Block_Paragraph{Paragraph: blockRequest.Content}
+	case 3:
+		blockApi.Data = &notespb.Block_NumberPoint{NumberPoint: blockRequest.Content}
+	case 4:
+		blockApi.Data = &notespb.Block_BulletPoint{BulletPoint: blockRequest.Content}
+	case 5:
+		blockApi.Data = &notespb.Block_Math{Math: blockRequest.Content}
+	/*
+		case 6:
+			(*blockApi).Data = &notespb.Block_Image_{Image: {caption: blockRequest.Image.caption, url: blockRequest.Image.url}}
+		case 7:
+			(*blockApi).Data = &notespb.Block_Code_{Code: {sinppet: blockRequest.Code.Snippet, lang: blockRequest.Code.Lang}}
+	*/
+	default:
+		fmt.Println("No such content in this block")
+		return status.Errorf(codes.Internal, "no such content in this block")
+	}
+	return nil
+}

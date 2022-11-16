@@ -67,7 +67,39 @@ func (srv *notesService) CreateNote(ctx context.Context, in *notespb.CreateNoteR
 }
 
 func (srv *notesService) GetNote(ctx context.Context, in *notespb.GetNoteRequest) (*notespb.GetNoteResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "not implemented")
+	_, err := uuid.Parse(in.Id)
+	if err != nil {
+		srv.logger.Error("failed to convert uuid from string", zap.Error(err))
+		return nil, status.Error(codes.InvalidArgument, "could not get note")
+	}
+
+	note, err := srv.repoNote.Get(ctx, &in.Id)
+	if err != nil {
+		srv.logger.Error("failed to get note", zap.Error(err))
+		return nil, status.Error(codes.InvalidArgument, "could not get note")
+	}
+
+	noteId := note.ID.String()
+	blocksTmp, err := srv.repoBlock.GetBlocks(ctx, &noteId)
+	if err != nil {
+		srv.logger.Error("failed to get blocks", zap.Error(err))
+		return nil, status.Errorf(codes.NotFound, "invalid content provided for blocks form noteId : %d", note.ID)
+	}
+
+	//convert []models.block to []notespb.Block
+	blocks := make([]*notespb.Block, len(blocksTmp))
+	for index, block := range blocksTmp {
+		blocks[index] = &notespb.Block{}
+		err := FillContentFromModelToApi(block, block.Type, blocks[index])
+		if err != nil {
+			srv.logger.Error("failed to the content of a block", zap.Error(err))
+			return nil, status.Errorf(codes.Internal, "fail to get content from block Id : %s", block.ID)
+		}
+		blocks[index] = &notespb.Block{Id: block.ID, Type: notespb.Block_Type(block.Type), Data: blocks[index].Data}
+	}
+	noteToReturn := notespb.Note{Id: note.ID.String(), AuthorId: note.AuthorId, Title: note.Title, Blocks: blocks}
+
+	return &notespb.GetNoteResponse{Note: &noteToReturn}, nil
 }
 
 func (srv *notesService) UpdateNote(ctx context.Context, in *notespb.UpdateNoteRequest) (*notespb.UpdateNoteResponse, error) {

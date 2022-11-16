@@ -2,6 +2,7 @@ package mongo
 
 import (
 	"context"
+	"errors"
 	"notes-service/models"
 
 	"github.com/google/uuid"
@@ -29,7 +30,33 @@ func (srv *blocksRepository) GetBlock(ctx context.Context, blockId *string) (*mo
 }
 
 func (srv *blocksRepository) GetBlocks(ctx context.Context, noteId *string) ([]*models.BlockWithIndex, error) {
-	return nil, status.Error(codes.Unimplemented, "not implemented")
+	blockCursor, err := srv.db.Collection("blocks").Find(ctx, BuildNoteIdQuery(noteId))
+	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, status.Errorf(codes.NotFound, "blocks not found")
+		}
+		srv.logger.Error("unable to query blocks", zap.Error(err))
+		return nil, status.Errorf(codes.Aborted, err.Error())
+	}
+
+	//convert blocks from mongo to []*BlockWithIndex
+	var blocks []bson.M
+	if err := blockCursor.All(context.TODO(), &blocks); err != nil {
+		srv.logger.Error("unable to parse blocks", zap.Error(err))
+		return nil, status.Errorf(codes.InvalidArgument, err.Error())
+	}
+
+	blocksResponse := make([]*models.BlockWithIndex, blockCursor.RemainingBatchLength())
+	for index, block := range blocks {
+		id, err := uuid.Parse(block["_id"].(string))
+		if err != nil {
+			srv.logger.Error("unable to retrieve id of the block", zap.Error(err))
+			return nil, status.Errorf(codes.Aborted, err.Error())
+		}
+		blocksResponse[index] = &models.BlockWithIndex{ID: id.String(), NoteId: *noteId, Type: uint32(block["type"].(int64)), Index: uint32(block["index"].(int64)), Content: block["content"].(string)}
+	}
+
+	return blocksResponse, nil
 }
 
 func (srv *blocksRepository) Create(ctx context.Context, blockRequest *models.BlockWithIndex) (*string, error) {
@@ -50,7 +77,7 @@ func (srv *blocksRepository) Create(ctx context.Context, blockRequest *models.Bl
 }
 
 func (srv *blocksRepository) Update(ctx context.Context, blockId *string, blockRequest *models.BlockWithIndex) (*models.BlockWithIndex, error) {
-	update, err := srv.db.Collection("blocks").UpdateOne(ctx, buildBlockQuery(blockId), bson.D{{Key: "$set", Value: &blockRequest}})
+	update, err := srv.db.Collection("blocks").UpdateOne(ctx, buildIdQuery(blockId), bson.D{{Key: "$set", Value: &blockRequest}})
 
 	if err != nil {
 		srv.logger.Error("failed to convert object id from hex", zap.Error(err))
@@ -66,7 +93,7 @@ func (srv *blocksRepository) Update(ctx context.Context, blockId *string, blockR
 
 //delete one block with BlockId
 func (srv *blocksRepository) DeleteBlock(ctx context.Context, blockId *string) error {
-	delete, err := srv.db.Collection("blocks").DeleteOne(ctx, buildBlockQuery(blockId))
+	delete, err := srv.db.Collection("blocks").DeleteOne(ctx, buildIdQuery(blockId))
 
 	if err != nil {
 		srv.logger.Error("delete block db query failed", zap.Error(err))
@@ -81,7 +108,7 @@ func (srv *blocksRepository) DeleteBlock(ctx context.Context, blockId *string) e
 
 //delete multiple blocks with NoteId
 func (srv *blocksRepository) DeleteBlocks(ctx context.Context, noteId *string) error {
-	delete, err := srv.db.Collection("blocks").DeleteMany(ctx, buildBlocksQuery(noteId))
+	delete, err := srv.db.Collection("blocks").DeleteMany(ctx, BuildNoteIdQuery(noteId))
 
 	if err != nil {
 		srv.logger.Error("delete blocks db query failed", zap.Error(err))
@@ -94,15 +121,7 @@ func (srv *blocksRepository) DeleteBlocks(ctx context.Context, noteId *string) e
 	return nil
 }
 
-func buildBlockQuery(blockId *string) bson.M {
-	query := bson.M{}
-	if *blockId != "" {
-		query["_id"] = blockId
-	}
-	return query
-}
-
-func buildBlocksQuery(noteId *string) bson.M {
+func BuildNoteIdQuery(noteId *string) bson.M {
 	query := bson.M{}
 	if *noteId != "" {
 		query["noteId"] = noteId

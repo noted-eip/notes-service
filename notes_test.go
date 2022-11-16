@@ -59,13 +59,24 @@ func (s *NotesAPISuite) TestNotesServiceCreateNoteShouldReturnNote() {
 	s.NotNil(res)
 }
 
-func (s *NotesAPISuite) TestNotesServiceGetNote() {
+func (s *NotesAPISuite) TestNotesServiceGetNoteShouldReturnError() {
 	res, err := s.srv.GetNote(context.TODO(), &notespb.GetNoteRequest{})
 	s.Require().Error(err)
-	s.Equal(status.Code(err), codes.Unimplemented)
+	s.Equal(status.Code(err), codes.InvalidArgument)
 	s.Nil(res)
 }
 
+/*
+func (s *NotesAPISuite) TestNotesServiceGetNoteShouldReturnNoError() {
+	noteId, err := uuid.NewRandom()
+
+	res, err := s.srv.GetNote(context.TODO(), &notespb.GetNoteRequest{
+		Id: noteId.String(),
+	})
+	s.NotNil(res)
+	s.Nil(err)
+}
+*/
 func (s *NotesAPISuite) TestNotesServiceUpdateNoteShouldReturnError() {
 	res, err := s.srv.UpdateNote(context.TODO(), &notespb.UpdateNoteRequest{})
 	s.Require().Error(err)
