@@ -92,13 +92,47 @@ func (srv *notesRepository) Update(ctx context.Context, noteId *string, noteRequ
 }
 
 func (srv *notesRepository) List(ctx context.Context, authorId *string) (*[]models.Note, error) {
-	return nil, status.Error(codes.Unimplemented, "not implemented")
+	notesCursor, err := srv.db.Collection("notes").Find(ctx, buildAuthodIdQuery(authorId))
+	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, status.Errorf(codes.NotFound, "note not found")
+		}
+		srv.logger.Error("unable to query note", zap.Error(err))
+		return nil, status.Errorf(codes.Aborted, err.Error())
+	}
+
+	notesResponse := make([]models.Note, notesCursor.RemainingBatchLength())
+
+	//convert notes from mongo to []models.NoteWithBlocks
+	var notes []bson.M
+	if err := notesCursor.All(context.TODO(), &notes); err != nil {
+		srv.logger.Error("unable to parse notes", zap.Error(err))
+		return nil, status.Errorf(codes.InvalidArgument, err.Error())
+	}
+	for index, note := range notes {
+		id, err := uuid.Parse(note["_id"].(string))
+		if err != nil {
+			srv.logger.Error("unable to retrieve id of the note", zap.Error(err))
+			return nil, status.Errorf(codes.Aborted, err.Error())
+		}
+		notesResponse[index] = models.Note{ID: id, AuthorId: note["authorId"].(string), Title: note["title"].(string)}
+	}
+
+	return &notesResponse, nil
 }
 
 func buildIdQuery(noteId *string) bson.M {
 	query := bson.M{}
 	if *noteId != "" {
 		query["_id"] = noteId
+	}
+	return query
+}
+
+func buildAuthodIdQuery(authorId *string) bson.M {
+	query := bson.M{}
+	if *authorId != "" {
+		query["authorId"] = authorId
 	}
 	return query
 }

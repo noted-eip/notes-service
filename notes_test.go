@@ -118,12 +118,23 @@ func (s *NotesAPISuite) TestNotesServiceDeleteNoteShouldReturnNoError() {
 	s.Nil(res)
 }
 */
-func (s *NotesAPISuite) TestNotesServiceListNotes() {
+func (s *NotesAPISuite) TestNotesServiceListNotesShouldReturnError() {
 	res, err := s.srv.ListNotes(context.TODO(), &notespb.ListNotesRequest{})
 	s.Require().Error(err)
-	s.Equal(status.Code(err), codes.Unimplemented)
+	s.Equal(status.Code(err), codes.InvalidArgument)
 	s.Nil(res)
 }
+
+/*
+func (s *NotesAPISuite) TestNotesServiceListNotesShouldReturnNoError() {
+	res, err := s.srv.ListNotes(context.TODO(), &notespb.ListNotesRequest{
+		AuthorId: "author-id",
+	})
+	s.Require().Error(err)
+	s.Equal(status.Code(err), codes.InvalidArgument)
+	s.Nil(res)
+}
+*/
 
 func newNotesDatabaseOrFail(t *testing.T, logger *zap.Logger) *memory.Database {
 	db, err := memory.NewDatabase(context.Background(), newNotesDatabaseSchema(), logger)
