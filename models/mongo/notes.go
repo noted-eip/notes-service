@@ -26,13 +26,28 @@ func NewNotesRepository(db *mongo.Database, logger *zap.Logger) models.NotesRepo
 }
 
 func (srv *notesRepository) Create(ctx context.Context, noteRequest *models.Note) (*models.Note, error) {
-	return nil, status.Errorf(codes.Unimplemented, "not implemented")
+	id, err := uuid.NewRandom()
+
+	if err != nil {
+		srv.logger.Error("failed to generate new random uuid", zap.Error(err))
+		return nil, status.Error(codes.Internal, "could not create account")
+	}
+	noteRequest.ID = id
+
+	note := models.Note{ID: noteRequest.ID, AuthorId: noteRequest.AuthorId, Title: noteRequest.Title, Blocks: noteRequest.Blocks}
+
+	_, err = srv.db.Collection("notes").InsertOne(ctx, note)
+	if err != nil {
+		srv.logger.Error("mongo insert note failed", zap.Error(err), zap.String("note name", note.AuthorId))
+		return nil, status.Error(codes.Internal, "could not create note")
+	}
+	return noteRequest, nil
 }
 
 func (srv *notesRepository) Get(ctx context.Context, noteId *string) (*models.Note, error) {
 	var note models.Note
 
-	err := srv.db.Collection("notes").FindOne(ctx, buildNoteQuery(noteId)).Decode(&note)
+	err := srv.db.Collection("notes").FindOne(ctx, buildIdQuery(noteId)).Decode(&note)
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
 			return nil, status.Errorf(codes.NotFound, "note not found")
@@ -50,21 +65,40 @@ func (srv *notesRepository) Get(ctx context.Context, noteId *string) (*models.No
 }
 
 func (srv *notesRepository) Delete(ctx context.Context, noteId *string) error {
-	return status.Errorf(codes.Unimplemented, "not implemented")
+	delete, err := srv.db.Collection("notes").DeleteOne(ctx, buildIdQuery(noteId))
+
+	if err != nil {
+		srv.logger.Error("delete note db query failed", zap.Error(err))
+		return status.Errorf(codes.Internal, "could not delete note")
+	}
+	if delete.DeletedCount == 0 {
+		srv.logger.Info("mongo delete note matched none", zap.String("note_id", *noteId))
+		return status.Errorf(codes.Internal, "could not delete note")
+	}
+	return nil
 }
 
 func (srv *notesRepository) Update(ctx context.Context, noteId *string, noteRequest *models.Note) error {
-	return status.Errorf(codes.Unimplemented, "not implemented")
+	update, err := srv.db.Collection("notes").UpdateOne(ctx, buildIdQuery(noteId), bson.D{{Key: "$set", Value: &noteRequest}})
+	if err != nil {
+		srv.logger.Error("failed to convert object id from hex", zap.Error(err))
+		return status.Error(codes.InvalidArgument, err.Error())
+	}
+	if update.MatchedCount == 0 {
+		srv.logger.Error("mongo update note query matched none", zap.String("user_id", *noteId))
+		return status.Error(codes.Internal, "could not update note")
+	}
+	return nil
 }
 
 func (srv *notesRepository) List(ctx context.Context, authorId *string) (*[]models.Note, error) {
-	return nil, status.Errorf(codes.Unimplemented, "not implemented")
+	return nil, status.Error(codes.Unimplemented, "not implemented")
 }
 
-func buildNoteQuery(noteId *string) bson.M {
+func buildIdQuery(noteId *string) bson.M {
 	query := bson.M{}
 	if *noteId != "" {
-		query["authorId"] = noteId
+		query["_id"] = noteId
 	}
 	return query
 }

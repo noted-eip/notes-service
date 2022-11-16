@@ -115,7 +115,7 @@ func (s *server) initAuthService() {
 func (s *server) initNotesService() {
 	s.notesService = &notesService{
 		auth:      s.authService,
-		logger:    s.slogger,
+		logger:    s.logger,
 		repoNote:  s.notesRepository,
 		repoBlock: s.blocksRepository,
 	}
@@ -131,7 +131,7 @@ func (s *server) initRepositories() {
 	s.mongoDB, err = mongoServices.NewDatabase(context.Background(), *mongoUri, *mongoDbName, s.logger)
 	must(err, "could not instantiate mongo database")
 	s.notesRepository = mongoServices.NewNotesRepository(s.mongoDB.DB, s.logger)
-	s.blocksRepository = mongoServices.NewBlocksRepository(s.mongoDB.DB, s.logger, s.notesRepository)
+	s.blocksRepository = mongoServices.NewBlocksRepository(s.mongoDB.DB, s.logger)
 }
 
 func must(err error, msg string) {
