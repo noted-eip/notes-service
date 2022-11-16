@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"notes-service/models"
 	notespb "notes-service/protorepo/noted/notes/v1"
+	"strconv"
 
 	"github.com/google/uuid"
 	"go.uber.org/zap"
@@ -16,27 +17,53 @@ import (
 type blocksService struct {
 	notespb.UnimplementedNotesAPIServer
 
-	logger *zap.SugaredLogger
+	logger *zap.Logger
 	repo   models.BlocksRepository
 }
 
 var _ notespb.NotesAPIServer = &notesService{}
 
-func (srv *blocksService) InsertBlock(ctx context.Context, in *notespb.InsertBlockRequest) (*emptypb.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "not implemented")
+func (srv *blocksService) InsertBlock(ctx context.Context, in *notespb.InsertBlockRequest) (*notespb.InsertBlockResponse, error) {
+	_, err := uuid.Parse(strconv.Itoa(int(in.NoteId)))
+	if err != nil {
+		srv.logger.Error("invalid uuid :", zap.Error(err))
+		return nil, status.Errorf(codes.InvalidArgument, "could not insert block")
+	}
+
+	if in.Block.Data == nil || in.Index < 1 || in.Block.Type < 1 {
+		srv.logger.Error("invalid arguments")
+		return nil, status.Errorf(codes.InvalidArgument, "could not insert block")
+	}
+
+	var block = models.Block{}
+	err = FillBlockContent(&block, in.Block)
+	if err != nil {
+		srv.logger.Error("failed to create block", zap.Error(err))
+		return nil, status.Errorf(codes.Internal, "invalid content provided for block index : %d", in.Index)
+	}
+
+	BlockId, err := srv.repo.Create(ctx, &models.BlockWithIndex{NoteId: strconv.Itoa(int(in.NoteId)), Type: uint32(in.Block.Type), Index: in.Index, Content: block.Content})
+
+	return &notespb.InsertBlockResponse{
+		Block: &notespb.Block{
+			Id:   *BlockId,
+			Type: in.Block.Type,
+			Data: in.Block.Data,
+		},
+	}, nil
 }
 
 func (srv *blocksService) UpdateBlock(ctx context.Context, in *notespb.UpdateBlockRequest) (*emptypb.Empty, error) {
 	_, err := uuid.Parse(in.Id)
 	if err != nil {
-		srv.logger.Errorw("invalid uuid", err.Error())
+		srv.logger.Error("invalid uuid", zap.Error(err))
 		return nil, status.Errorf(codes.Internal, "could not update block")
 	}
 
 	var block = models.Block{}
 	err = FillBlockContent(&block, in.Block)
 	if err != nil {
-		srv.logger.Errorw("failed to update block", zap.Error(err))
+		srv.logger.Error("failed to update block", zap.Error(err))
 		return nil, status.Errorf(codes.Internal, "invalid content provided for block id : ", in.Id)
 	}
 

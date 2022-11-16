@@ -13,16 +13,14 @@ import (
 )
 
 type blocksRepository struct {
-	logger          *zap.Logger
-	db              *mongo.Database
-	notesRepository models.NotesRepository
+	logger *zap.Logger
+	db     *mongo.Database
 }
 
-func NewBlocksRepository(db *mongo.Database, logger *zap.Logger, notesRepository models.NotesRepository) models.BlocksRepository {
+func NewBlocksRepository(db *mongo.Database, logger *zap.Logger) models.BlocksRepository {
 	return &blocksRepository{
-		logger:          logger,
-		db:              db,
-		notesRepository: notesRepository,
+		logger: logger,
+		db:     db,
 	}
 }
 
@@ -34,21 +32,21 @@ func (srv *blocksRepository) GetBlocks(ctx context.Context, noteId *string) ([]*
 	return nil, status.Errorf(codes.Unimplemented, "not implemented")
 }
 
-func (srv *blocksRepository) Create(ctx context.Context, blockRequest *models.BlockWithIndex) error {
+func (srv *blocksRepository) Create(ctx context.Context, blockRequest *models.BlockWithIndex) (*string, error) {
 	id, err := uuid.NewRandom()
 	if err != nil {
 		srv.logger.Error("failed to generate new random uuid", zap.Error(err))
-		return status.Errorf(codes.Internal, "could not create account")
+		return nil, status.Errorf(codes.Internal, "could not create account")
 	}
-
+	blockId := id.String()
 	block := models.BlockWithIndex{ID: id.String(), NoteId: blockRequest.NoteId, Type: blockRequest.Type, Index: blockRequest.Index, Content: blockRequest.Content}
 
 	_, err = srv.db.Collection("blocks").InsertOne(ctx, block)
 	if err != nil {
 		srv.logger.Error("mongo insert block failed", zap.Error(err), zap.String("note id : ", blockRequest.NoteId))
-		return status.Errorf(codes.Internal, "could not insert block")
+		return nil, status.Errorf(codes.Internal, "could not insert block")
 	}
-	return nil
+	return &blockId, nil
 }
 
 func (srv *blocksRepository) Update(ctx context.Context, blockId *string, blockRequest *models.BlockWithIndex) (*models.BlockWithIndex, error) {
