@@ -92,7 +92,7 @@ func (srv *notesRepository) Update(ctx context.Context, noteId *string, noteRequ
 }
 
 func (srv *notesRepository) List(ctx context.Context, authorId *string) (*[]models.Note, error) {
-	notesCursor, err := srv.db.Collection("notes").Find(ctx, buildNoteQuery(filter))
+	notesCursor, err := srv.db.Collection("notes").Find(ctx, buildAuthodIdQuery(authorId))
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
 			return nil, status.Errorf(codes.NotFound, "note not found")
@@ -101,7 +101,7 @@ func (srv *notesRepository) List(ctx context.Context, authorId *string) (*[]mode
 		return nil, status.Errorf(codes.Aborted, err.Error())
 	}
 
-	notesResponse := make([]models.NoteWithBlocks, notesCursor.RemainingBatchLength())
+	notesResponse := make([]models.Note, notesCursor.RemainingBatchLength())
 
 	//convert notes from mongo to []models.NoteWithBlocks
 	var notes []bson.M
@@ -115,7 +115,7 @@ func (srv *notesRepository) List(ctx context.Context, authorId *string) (*[]mode
 			srv.logger.Error("unable to retrieve id of the note", zap.Error(err))
 			return nil, status.Errorf(codes.Aborted, err.Error())
 		}
-		notesResponse[index] = models.NoteWithBlocks{ID: id, AuthorId: note["authorId"].(string), Title: note["title"].(string)}
+		notesResponse[index] = models.Note{ID: id, AuthorId: note["authorId"].(string), Title: note["title"].(string)}
 	}
 
 	return &notesResponse, nil
@@ -132,7 +132,7 @@ func buildIdQuery(noteId *string) bson.M {
 func buildAuthodIdQuery(authorId *string) bson.M {
 	query := bson.M{}
 	if *authorId != "" {
-		query["_id"] = authorId
+		query["authorId"] = authorId
 	}
 	return query
 }

@@ -175,15 +175,19 @@ func (srv *notesService) DeleteNote(ctx context.Context, in *notespb.DeleteNoteR
 }
 
 func (srv *notesService) ListNotes(ctx context.Context, in *notespb.ListNotesRequest) (*notespb.ListNotesResponse, error) {
+	if in == nil {
+		srv.logger.Error("failed to delete note, Request is empty")
+		return nil, status.Error(codes.InvalidArgument, "DeleteNoteRequest is empty")
+	}
 	if len(in.AuthorId) < 1 {
 		srv.logger.Error("failed to lists notes, invalid parameters")
-		return nil, status.Errorf(codes.Internal, "authorId is empty")
+		return nil, status.Errorf(codes.InvalidArgument, "authorId is empty")
 	}
 
 	notes, err := srv.repoNote.List(ctx, &in.AuthorId)
 	if err != nil {
 		srv.logger.Error("failed to get note", zap.Error(err))
-		return nil, status.Errorf(codes.Internal, "could not get note")
+		return nil, status.Errorf(codes.NotFound, "could not get note")
 	}
 
 	notesResponse := make([]*notespb.Note, len(*notes))
