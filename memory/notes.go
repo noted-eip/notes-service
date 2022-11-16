@@ -1,11 +1,11 @@
-package mongo
+// Package memory is an in-memory implementation of models.AccountsRepository
+package memory
 
 import (
 	"context"
 	"notes-service/models"
 
 	"github.com/google/uuid"
-	"go.mongodb.org/mongo-driver/mongo"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -13,17 +13,20 @@ import (
 
 type notesRepository struct {
 	logger *zap.Logger
-	db     *mongo.Database
+	db     *Database
 }
 
-func NewNotesRepository(db *mongo.Database, logger *zap.Logger) models.NotesRepository {
+func NewNotesRepository(db *Database, logger *zap.Logger) models.NotesRepository {
 	return &notesRepository{
-		logger: logger,
+		logger: logger.Named("memory").Named("notes"),
 		db:     db,
 	}
 }
 
 func (srv *notesRepository) Create(ctx context.Context, noteRequest *models.Note) (*models.Note, error) {
+	txn := srv.db.DB.Txn(true)
+	defer txn.Abort()
+
 	id, err := uuid.NewRandom()
 
 	if err != nil {
@@ -31,10 +34,9 @@ func (srv *notesRepository) Create(ctx context.Context, noteRequest *models.Note
 		return nil, status.Errorf(codes.Internal, "could not create account")
 	}
 	noteRequest.ID = id
-
 	note := models.Note{ID: noteRequest.ID, AuthorId: noteRequest.AuthorId, Title: noteRequest.Title, Blocks: noteRequest.Blocks}
 
-	_, err = srv.db.Collection("notes").InsertOne(ctx, note)
+	err = txn.Insert("note", note)
 	if err != nil {
 		srv.logger.Error("mongo insert note failed", zap.Error(err), zap.String("note name", note.AuthorId))
 		return nil, status.Errorf(codes.Internal, "could not create note")
