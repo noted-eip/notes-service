@@ -26,7 +26,19 @@ func NewBlocksRepository(db *mongo.Database, logger *zap.Logger) models.BlocksRe
 }
 
 func (srv *blocksRepository) GetBlock(ctx context.Context, blockId *string) (*models.BlockWithIndex, error) {
-	return nil, status.Error(codes.Unimplemented, "not implemented")
+	var block models.BlockWithIndex
+
+	err := srv.db.Collection("blocks").FindOne(ctx, buildIdQuery(blockId)).Decode(&block)
+
+	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, status.Errorf(codes.NotFound, "block not found")
+		}
+		srv.logger.Error("unable to query block", zap.Error(err))
+		return nil, status.Errorf(codes.InvalidArgument, err.Error())
+	}
+
+	return &models.BlockWithIndex{ID: block.ID, NoteId: block.NoteId, Type: block.Type, Index: block.Index, Content: block.Content}, nil
 }
 
 func (srv *blocksRepository) GetBlocks(ctx context.Context, noteId *string) ([]*models.BlockWithIndex, error) {
