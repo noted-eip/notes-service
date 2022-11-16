@@ -8,33 +8,22 @@ import (
 	"github.com/google/uuid"
 )
 
-type NoteWithBlocks struct {
+type Note struct {
 	ID       uuid.UUID `json:"id" bson:"_id,omitempty"`
 	AuthorId string    `json:"authorId" bson:"authorId,omitempty"`
 	Title    string    `json:"title" bson:"title,omitempty"`
 	Blocks   []Block   `json:"blocks" bson:"blocks,omitempty"`
 }
 
-/*type NoteProprieties struct {
-	ID       uuid.UUID `json:"id" bson:"_id,omitempty"`
-	AuthorId string    `json:"authorId" bson:"authorId,omitempty"`
-	Title    *string   `json:"title" bson:"title,omitempty"`
-}*/
-
-type NoteFilter struct {
-	ID       uuid.UUID `json:"id" bson:"_id,omitempty"`
-	AuthorId string    `json:"authorId" bson:"authorId,omitempty"`
-}
-
 // NotesRepository is safe for use in multiple goroutines.
 type NotesRepository interface {
-	Create(ctx context.Context, noteRequest *NoteWithBlocks) (*NoteWithBlocks, error)
+	Create(ctx context.Context, noteRequest *Note) (*Note, error)
 
-	Get(ctx context.Context, filter *NoteFilter) (*NoteWithBlocks, error)
+	Get(ctx context.Context, noteId *string) (*Note, error)
 
-	Delete(ctx context.Context, filter *NoteFilter) error
+	Delete(ctx context.Context, noteId *string) error
 
-	Update(ctx context.Context, filter *NoteFilter, noteRequest *NoteWithBlocks) error
+	Update(ctx context.Context, noteId *string, noteRequest *Note) error
 
-	List(ctx context.Context, filter *NoteFilter) (*[]NoteWithBlocks, error)
+	List(ctx context.Context, authorId *string) (*[]Note, error)
 }

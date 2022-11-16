@@ -13,13 +13,6 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-type note struct {
-	ID       string         `json:"id" bson:"_id,omitempty"`
-	AuthorId string         `json:"authorId" bson:"authorId,omitempty"`
-	Title    *string        `json:"title" bson:"title,omitempty"`
-	Blocks   []models.Block `json:"blocks" bson:"blocks,omitempty"`
-}
-
 type notesRepository struct {
 	logger *zap.Logger
 	db     *mongo.Database
@@ -32,14 +25,14 @@ func NewNotesRepository(db *mongo.Database, logger *zap.Logger) models.NotesRepo
 	}
 }
 
-func (srv *notesRepository) Create(ctx context.Context, noteRequest *models.NoteWithBlocks) (*models.NoteWithBlocks, error) {
-	return nil, nil
+func (srv *notesRepository) Create(ctx context.Context, noteRequest *models.Note) (*models.Note, error) {
+	return nil, status.Errorf(codes.Unimplemented, "not implemented")
 }
 
-func (srv *notesRepository) Get(ctx context.Context, filter *models.NoteFilter) (*models.NoteWithBlocks, error) {
-	var note note
+func (srv *notesRepository) Get(ctx context.Context, noteId *string) (*models.Note, error) {
+	var note models.Note
 
-	err := srv.db.Collection("notes").FindOne(ctx, buildNoteQuery(filter)).Decode(&note)
+	err := srv.db.Collection("notes").FindOne(ctx, buildNoteQuery(noteId)).Decode(&note)
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
 			return nil, status.Errorf(codes.NotFound, "note not found")
@@ -48,34 +41,30 @@ func (srv *notesRepository) Get(ctx context.Context, filter *models.NoteFilter) 
 		return nil, status.Errorf(codes.InvalidArgument, err.Error())
 	}
 
-	uuid, err := uuid.Parse(note.ID)
+	_, err = uuid.Parse(note.ID.String())
 	if err != nil {
 		srv.logger.Error("failed to convert uuid from string", zap.Error(err))
 		return nil, status.Errorf(codes.Internal, "could not get note")
 	}
-
-	return &models.NoteWithBlocks{ID: uuid, AuthorId: note.AuthorId, Title: *note.Title, Blocks: note.Blocks}, nil
+	return &note, nil
 }
 
-func (srv *notesRepository) Delete(ctx context.Context, filter *models.NoteFilter) error {
-	return nil
+func (srv *notesRepository) Delete(ctx context.Context, noteId *string) error {
+	return status.Errorf(codes.Unimplemented, "not implemented")
 }
 
-func (srv *notesRepository) Update(ctx context.Context, filter *models.NoteFilter, noteRequest *models.NoteWithBlocks) error {
-	return nil
+func (srv *notesRepository) Update(ctx context.Context, noteId *string, noteRequest *models.Note) error {
+	return status.Errorf(codes.Unimplemented, "not implemented")
 }
 
-func (srv *notesRepository) List(ctx context.Context, filter *models.NoteFilter) (*[]models.NoteWithBlocks, error) {
-	return nil, nil
+func (srv *notesRepository) List(ctx context.Context, authorId *string) (*[]models.Note, error) {
+	return nil, status.Errorf(codes.Unimplemented, "not implemented")
 }
 
-func buildNoteQuery(filter *models.NoteFilter) bson.M {
+func buildNoteQuery(noteId *string) bson.M {
 	query := bson.M{}
-	if filter.ID != uuid.Nil {
-		query["_id"] = filter.ID.String()
-	}
-	if filter.AuthorId != "" {
-		query["authorId"] = filter.AuthorId
+	if *noteId != "" {
+		query["authorId"] = noteId
 	}
 	return query
 }

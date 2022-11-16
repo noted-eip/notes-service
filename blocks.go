@@ -22,15 +22,15 @@ type blocksService struct {
 var _ notespb.NotesAPIServer = &notesService{}
 
 func (srv *blocksService) InsertBlock(ctx context.Context, in *notespb.InsertBlockRequest) (*emptypb.Empty, error) {
-	return &emptypb.Empty{}, nil
+	return nil, status.Errorf(codes.Unimplemented, "not implemented")
 }
 
 func (srv *blocksService) UpdateBlock(ctx context.Context, in *notespb.UpdateBlockRequest) (*emptypb.Empty, error) {
-	return &emptypb.Empty{}, nil
+	return nil, status.Errorf(codes.Unimplemented, "not implemented")
 }
 
 func (srv *blocksService) DeleteBlock(ctx context.Context, in *notespb.DeleteBlockRequest) (*emptypb.Empty, error) {
-	return &emptypb.Empty{}, nil
+	return nil, status.Errorf(codes.Unimplemented, "not implemented")
 }
 
 func FillContentFromModelToApi(blockRequest *models.BlockWithIndex, contentType uint32, blockApi *notespb.Block) error {

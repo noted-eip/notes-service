@@ -13,21 +13,6 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-type block struct {
-	ID      string `json:"id" bson:"_id,omitempty"`
-	NoteId  string `json:"noteId" bson:"noteId,omitempty"`
-	Type    uint32 `json:"type" bson:"type,omitempty"`
-	Content string `json:"content" bson:"content,omitempty"`
-}
-
-type blockWithIndex struct {
-	ID      string `json:"id" bson:"_id,omitempty"`
-	NoteId  string `json:"noteId" bson:"noteId,omitempty"`
-	Type    uint32 `json:"type" bson:"type,omitempty"`
-	Index   uint32 `json:"index" bson:"index,omitempty"`
-	Content string `json:"content" bson:"content,omitempty"`
-}
-
 type blocksRepository struct {
 	logger          *zap.Logger
 	db              *mongo.Database
@@ -42,13 +27,12 @@ func NewBlocksRepository(db *mongo.Database, logger *zap.Logger, notesRepository
 	}
 }
 
-func (srv *blocksRepository) GetByFilter(ctx context.Context, filter *models.BlockFilter) (*models.BlockWithIndex, error) {
-	return nil, nil
+func (srv *blocksRepository) GetBlock(ctx context.Context, blockId *string) (*models.BlockWithIndex, error) {
+	return nil, status.Errorf(codes.Unimplemented, "not implemented")
 }
 
-func (srv *blocksRepository) GetAllById(ctx context.Context, filter *models.BlockFilter) ([]*models.BlockWithIndex, error) {
-
-	blockCursor, err := srv.db.Collection("blocks").Find(ctx, buildBlockQuery(filter))
+func (srv *blocksRepository) GetBlocks(ctx context.Context, noteId *string) ([]*models.BlockWithIndex, error) {
+	blockCursor, err := srv.db.Collection("blocks").Find(ctx, buildBlockQuery(noteId))
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
 			return nil, status.Errorf(codes.NotFound, "blocks not found")
@@ -71,31 +55,28 @@ func (srv *blocksRepository) GetAllById(ctx context.Context, filter *models.Bloc
 			srv.logger.Error("unable to retrieve id of the block", zap.Error(err))
 			return nil, status.Errorf(codes.Aborted, err.Error())
 		}
-		blocksResponse[index] = &models.BlockWithIndex{ID: id.String(), NoteId: filter.NoteId, Type: uint32(block["type"].(int64)), Index: uint32(block["index"].(int64)), Content: block["content"].(string)}
+		blocksResponse[index] = &models.BlockWithIndex{ID: id.String(), NoteId: *noteId, Type: uint32(block["type"].(int64)), Index: uint32(block["index"].(int64)), Content: block["content"].(string)}
 	}
 
 	return blocksResponse, nil
 }
 
 func (srv *blocksRepository) Create(ctx context.Context, blockRequest *models.BlockWithIndex) error {
-	return nil
+	return status.Errorf(codes.Unimplemented, "not implemented")
 }
 
-func (srv *blocksRepository) Update(ctx context.Context, filter *models.BlockFilter, blockRequest *models.BlockWithIndex) (*models.BlockWithIndex, error) {
-	return blockRequest, nil
+func (srv *blocksRepository) Update(ctx context.Context, blockId *string, blockRequest *models.BlockWithIndex) (*models.BlockWithIndex, error) {
+	return nil, status.Errorf(codes.Unimplemented, "not implemented")
 }
 
-func (srv *blocksRepository) Delete(ctx context.Context, filter *models.BlockFilter) error {
-	return nil
+func (srv *blocksRepository) Delete(ctx context.Context, blockId *string) error {
+	return status.Errorf(codes.Unimplemented, "not implemented")
 }
 
-func buildBlockQuery(filter *models.BlockFilter) bson.M {
+func buildBlockQuery(noteId *string) bson.M {
 	query := bson.M{}
-	if filter.BlockId != "" {
-		query["_id"] = filter.BlockId
-	}
-	if filter.NoteId != "" {
-		query["noteId"] = filter.NoteId
+	if *noteId != "" {
+		query["noteId"] = noteId
 	}
 	return query
 }

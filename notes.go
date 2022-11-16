@@ -25,23 +25,24 @@ type notesService struct {
 var _ notespb.NotesAPIServer = &notesService{}
 
 func (srv *notesService) CreateNote(ctx context.Context, in *notespb.CreateNoteRequest) (*notespb.CreateNoteResponse, error) {
-	return nil, nil
+	return nil, status.Errorf(codes.Unimplemented, "not implemented")
 }
 
 func (srv *notesService) GetNote(ctx context.Context, in *notespb.GetNoteRequest) (*notespb.GetNoteResponse, error) {
-	id, err := uuid.Parse(in.Id)
+	_, err := uuid.Parse(in.Id)
 	if err != nil {
 		srv.logger.Errorw("failed to convert uuid from string", "error", err.Error())
 		return nil, status.Errorf(codes.Internal, "could not get note")
 	}
 
-	note, err := srv.repoNote.Get(ctx, &models.NoteFilter{ID: id, AuthorId: ""})
+	note, err := srv.repoNote.Get(ctx, &in.Id)
 	if err != nil {
 		srv.logger.Errorw("failed to get note", "error", err.Error())
 		return nil, status.Errorf(codes.Internal, "could not get note")
 	}
 
-	blocksTmp, err := srv.repoBlock.GetAllById(ctx, &models.BlockFilter{NoteId: note.ID.String()})
+	noteId := note.ID.String()
+	blocksTmp, err := srv.repoBlock.GetBlocks(ctx, &noteId)
 	if err != nil {
 		srv.logger.Errorw("failed to get blocks", zap.Error(err))
 		return nil, status.Errorf(codes.Internal, "invalid content provided for blocks form noteId : ", note.ID)
@@ -64,13 +65,13 @@ func (srv *notesService) GetNote(ctx context.Context, in *notespb.GetNoteRequest
 }
 
 func (srv *notesService) UpdateNote(ctx context.Context, in *notespb.UpdateNoteRequest) (*notespb.UpdateNoteResponse, error) {
-	return nil, nil
+	return nil, status.Errorf(codes.Unimplemented, "not implemented")
 }
 
 func (srv *notesService) DeleteNote(ctx context.Context, in *notespb.DeleteNoteRequest) (*notespb.DeleteNoteResponse, error) {
-	return nil, nil
+	return nil, status.Errorf(codes.Unimplemented, "not implemented")
 }
 
 func (srv *notesService) ListNotes(ctx context.Context, in *notespb.ListNotesRequest) (*notespb.ListNotesResponse, error) {
-	return nil, nil
+	return nil, status.Errorf(codes.Unimplemented, "not implemented")
 }
