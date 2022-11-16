@@ -52,7 +52,18 @@ func (srv *blocksRepository) Create(ctx context.Context, blockRequest *models.Bl
 }
 
 func (srv *blocksRepository) Update(ctx context.Context, blockId *string, blockRequest *models.BlockWithIndex) (*models.BlockWithIndex, error) {
-	return nil, status.Errorf(codes.Unimplemented, "not implemented")
+	update, err := srv.db.Collection("blocks").UpdateOne(ctx, buildBlockQuery(blockId), bson.D{{Key: "$set", Value: &blockRequest}})
+
+	if err != nil {
+		srv.logger.Error("failed to convert object id from hex", zap.Error(err))
+		return nil, status.Errorf(codes.InvalidArgument, err.Error())
+	}
+	if update.MatchedCount == 0 {
+		srv.logger.Error("mongo update note query matched none", zap.String("block_id : ", *blockId))
+		return nil, status.Errorf(codes.Internal, "could not update block")
+	}
+
+	return blockRequest, nil
 }
 
 //delete one block with BlockId
