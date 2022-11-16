@@ -25,18 +25,18 @@ func NewBlocksRepository(db *mongo.Database, logger *zap.Logger) models.BlocksRe
 }
 
 func (srv *blocksRepository) GetBlock(ctx context.Context, blockId *string) (*models.BlockWithIndex, error) {
-	return nil, status.Errorf(codes.Unimplemented, "not implemented")
+	return nil, status.Error(codes.Unimplemented, "not implemented")
 }
 
 func (srv *blocksRepository) GetBlocks(ctx context.Context, noteId *string) ([]*models.BlockWithIndex, error) {
-	return nil, status.Errorf(codes.Unimplemented, "not implemented")
+	return nil, status.Error(codes.Unimplemented, "not implemented")
 }
 
 func (srv *blocksRepository) Create(ctx context.Context, blockRequest *models.BlockWithIndex) (*string, error) {
 	id, err := uuid.NewRandom()
 	if err != nil {
 		srv.logger.Error("failed to generate new random uuid", zap.Error(err))
-		return nil, status.Errorf(codes.Internal, "could not create account")
+		return nil, status.Error(codes.Internal, "could not create account")
 	}
 	blockId := id.String()
 	block := models.BlockWithIndex{ID: id.String(), NoteId: blockRequest.NoteId, Type: blockRequest.Type, Index: blockRequest.Index, Content: blockRequest.Content}
@@ -44,7 +44,7 @@ func (srv *blocksRepository) Create(ctx context.Context, blockRequest *models.Bl
 	_, err = srv.db.Collection("blocks").InsertOne(ctx, block)
 	if err != nil {
 		srv.logger.Error("mongo insert block failed", zap.Error(err), zap.String("note id : ", blockRequest.NoteId))
-		return nil, status.Errorf(codes.Internal, "could not insert block")
+		return nil, status.Error(codes.Internal, "could not insert block")
 	}
 	return &blockId, nil
 }
@@ -54,11 +54,11 @@ func (srv *blocksRepository) Update(ctx context.Context, blockId *string, blockR
 
 	if err != nil {
 		srv.logger.Error("failed to convert object id from hex", zap.Error(err))
-		return nil, status.Errorf(codes.InvalidArgument, err.Error())
+		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 	if update.MatchedCount == 0 {
 		srv.logger.Error("mongo update note query matched none", zap.String("block_id : ", *blockId))
-		return nil, status.Errorf(codes.Internal, "could not update block")
+		return nil, status.Error(codes.Internal, "could not update block")
 	}
 
 	return blockRequest, nil
@@ -70,11 +70,11 @@ func (srv *blocksRepository) DeleteBlock(ctx context.Context, blockId *string) e
 
 	if err != nil {
 		srv.logger.Error("delete note db query failed", zap.Error(err))
-		return status.Errorf(codes.Internal, "could not delete note")
+		return status.Error(codes.Internal, "could not delete note")
 	}
 	if delete.DeletedCount == 0 {
 		srv.logger.Info("mongo delete block matched none", zap.String("block_id", *blockId))
-		return status.Errorf(codes.Internal, "could not delete block")
+		return status.Error(codes.Internal, "could not delete block")
 	}
 	return nil
 }
@@ -85,11 +85,11 @@ func (srv *blocksRepository) DeleteBlocks(ctx context.Context, noteId *string) e
 
 	if err != nil {
 		srv.logger.Error("delete note db query failed", zap.Error(err))
-		return status.Errorf(codes.Internal, "could not delete note")
+		return status.Error(codes.Internal, "could not delete note")
 	}
 	if delete.DeletedCount == 0 {
 		srv.logger.Info("mongo delete block matched none", zap.String("note_id", *noteId))
-		return status.Errorf(codes.Internal, "could not delete block")
+		return status.Error(codes.Internal, "could not delete block")
 	}
 	return nil
 }
