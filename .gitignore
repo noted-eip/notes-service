@@ -24,5 +24,8 @@ notes-service
 todo
 todo~
 
+# Test
+TEST/
+
 # Debug
 __debug_bin
