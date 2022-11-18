@@ -40,22 +40,19 @@ type BlockWithTags struct {
 	Tags    []string `json:"tags" bson:"tags,omitempty"`
 }
 
-type BlockFilter struct {
-	BlockId string `json:"blockId" bson:"blockId,omitempty"`
-	NoteId  string `json:"noteId" bson:"noteId,omitempty"`
-}
-
 // NotesRepository is safe for use in multiple goroutines.
 type BlocksRepository interface {
-	GetByFilter(ctx context.Context, filter *BlockFilter) (*BlockWithIndex, error)
+	GetBlock(ctx context.Context, blockId *string) (*BlockWithIndex, error)
 
-	GetTagsByFilter(ctx context.Context, filter *BlockFilter) (*BlockWithTags, error)
+	GetBlocks(ctx context.Context, noteId *string) ([]*BlockWithIndex, error)
 
-	GetAllById(ctx context.Context, filter *BlockFilter) ([]*BlockWithIndex, error)
+	GetTagsByFilter(ctx context.Context, noteId *string) (*BlockWithTags, error)
 
-	Create(ctx context.Context, blockRequest *BlockWithTags) (string, error)
+	Create(ctx context.Context, blockRequest *BlockWithTags) (*string, error)
 
-	Delete(ctx context.Context, filter *BlockFilter) error
+	Update(ctx context.Context, blockId *string, blockRequest *BlockWithIndex) (*BlockWithIndex, error)
 
-	Update(ctx context.Context, filter *BlockFilter, blockRequest *BlockWithIndex) (*BlockWithIndex, error)
+	DeleteBlock(ctx context.Context, blockId *string) error
+
+	DeleteBlocks(ctx context.Context, noteId *string) error
 }

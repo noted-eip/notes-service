@@ -18,9 +18,8 @@ import (
 type blocksService struct {
 	notespb.UnimplementedNotesAPIServer
 
-	logger *zap.SugaredLogger
-	repo   models.BlocksRepository
-
+	logger               *zap.Logger
+	repo                 models.BlocksRepository
 	recommendationClient recommendationspb.RecommendationsAPIClient
 }
 
@@ -29,43 +28,43 @@ var _ notespb.NotesAPIServer = &notesService{}
 func (srv *blocksService) InsertBlock(ctx context.Context, in *notespb.InsertBlockRequest) (*notespb.InsertBlockResponse, error) {
 	_, err := uuid.Parse(strconv.Itoa(int(in.NoteId)))
 	if err != nil {
-		srv.logger.Errorw("invalid uuid", "error", err.Error())
-		return nil, status.Errorf(codes.Internal, "could not insert block")
+		srv.logger.Error("invalid uuid :", zap.Error(err))
+		return nil, status.Errorf(codes.InvalidArgument, "could not insert block")
 	}
 
 	if in.Block.Data == nil || in.Index < 1 || in.Block.Type < 1 {
-		srv.logger.Errorw("invalid arguments", err.Error())
-		return nil, status.Errorf(codes.Internal, "could not insert block")
+		srv.logger.Error("invalid arguments")
+		return nil, status.Errorf(codes.InvalidArgument, "could not insert block")
 	}
 	//Convert oneof Data to model content
 	block := models.Block{}
 	err = FillBlockContent(&block, in.Block)
 	if err != nil {
-		srv.logger.Errorw("failed to create block", zap.Error(err))
-		return nil, status.Errorf(codes.Internal, "invalid content provided for block index : ", in.Index)
+		srv.logger.Error("failed to create block", zap.Error(err))
+		return nil, status.Errorf(codes.Internal, "invalid content provided for block index : %d", in.Index)
 	}
 	//Get recommendation tags
 	blockContent, err := GetDataContent(in.Block)
 	if err != nil {
-		srv.logger.Errorw("failed to convert the content of the block", zap.Error(err))
+		srv.logger.Error("failed to convert the content of the block", zap.Error(err))
 		return nil, status.Errorf(codes.Internal, "failed to convert the content of the block : ", in.Index)
 	}
 	recommendationRequest := &recommendationspb.ExtractKeywordsRequest{Content: blockContent}
 	clientResponse, err := srv.recommendationClient.ExtractKeywords(ctx, recommendationRequest)
 	if err != nil {
-		srv.logger.Errorw("failed to get the recommendation from client", zap.Error(err))
+		srv.logger.Error("failed to get the recommendation from client", zap.Error(err))
 		return nil, status.Errorf(codes.Internal, "failed to get the recommendation from client")
 	}
 
-	id, err := srv.repo.Create(ctx, &models.BlockWithTags{NoteId: strconv.Itoa(int(in.NoteId)), Type: uint32(in.Block.Type), Index: in.Index, Content: block.Content, Tags: clientResponse.Keywords})
+	blockId, err := srv.repo.Create(ctx, &models.BlockWithTags{NoteId: strconv.Itoa(int(in.NoteId)), Type: uint32(in.Block.Type), Index: in.Index, Content: block.Content, Tags: clientResponse.Keywords})
 	if err != nil {
-		srv.logger.Errorw("failed to create the block in DB", zap.Error(err))
+		srv.logger.Error("failed to create the block in DB", zap.Error(err))
 		return nil, status.Errorf(codes.Internal, "failed to create the block in DB")
 	}
 
 	return &notespb.InsertBlockResponse{
 		Block: &notespb.Block{
-			Id:   id,
+			Id:   *blockId,
 			Type: in.Block.Type,
 			Data: in.Block.Data,
 		},
@@ -73,11 +72,37 @@ func (srv *blocksService) InsertBlock(ctx context.Context, in *notespb.InsertBlo
 }
 
 func (srv *blocksService) UpdateBlock(ctx context.Context, in *notespb.UpdateBlockRequest) (*emptypb.Empty, error) {
-	return &emptypb.Empty{}, nil
+	_, err := uuid.Parse(in.Id)
+	if err != nil {
+		srv.logger.Error("invalid uuid", zap.Error(err))
+		return nil, status.Errorf(codes.Internal, "could not update block")
+	}
+
+	var block = models.Block{}
+	err = FillBlockContent(&block, in.Block)
+	if err != nil {
+		srv.logger.Error("failed to update block", zap.Error(err))
+		return nil, status.Errorf(codes.Internal, "invalid content provided for block id : %s", in.Id)
+	}
+
+	srv.repo.Update(ctx, &in.Id, &models.BlockWithIndex{ID: in.Id, Type: uint32(in.Block.Type), Index: in.Index, Content: block.Content})
+	return nil, nil
 }
 
 func (srv *blocksService) DeleteBlock(ctx context.Context, in *notespb.DeleteBlockRequest) (*emptypb.Empty, error) {
-	return nil, nil
+	_, err := uuid.Parse(in.Id)
+	if err != nil {
+		srv.logger.Error("invalid uuid", zap.Error(err))
+		return nil, status.Errorf(codes.InvalidArgument, "could not delete block")
+	}
+
+	err = srv.repo.DeleteBlock(ctx, &in.Id)
+	if err != nil {
+		srv.logger.Error("block was not deleted : ", zap.Error(err))
+		return nil, status.Errorf(codes.Internal, "could not delete block")
+	}
+
+	return &emptypb.Empty{}, nil
 }
 
 func GetDataContent(blockRequest *notespb.Block) (string, error) {
@@ -118,7 +143,32 @@ func FillBlockContent(block *models.Block, blockRequest *notespb.Block) error {
 	*/
 	default:
 		fmt.Println("No Data in this block")
-		return status.Errorf(codes.Internal, "no data in this block")
+		return status.Error(codes.Internal, "no data in this block")
+	}
+	return nil
+}
+
+func FillContentFromModelToApi(blockRequest *models.BlockWithIndex, contentType uint32, blockApi *notespb.Block) error {
+	switch contentType {
+	case 1:
+		blockApi.Data = &notespb.Block_Heading{Heading: blockRequest.Content}
+	case 2:
+		blockApi.Data = &notespb.Block_Paragraph{Paragraph: blockRequest.Content}
+	case 3:
+		blockApi.Data = &notespb.Block_NumberPoint{NumberPoint: blockRequest.Content}
+	case 4:
+		blockApi.Data = &notespb.Block_BulletPoint{BulletPoint: blockRequest.Content}
+	case 5:
+		blockApi.Data = &notespb.Block_Math{Math: blockRequest.Content}
+	/*
+		case 6:
+			(*blockApi).Data = &notespb.Block_Image_{Image: {caption: blockRequest.Image.caption, url: blockRequest.Image.url}}
+		case 7:
+			(*blockApi).Data = &notespb.Block_Code_{Code: {sinppet: blockRequest.Code.Snippet, lang: blockRequest.Code.Lang}}
+	*/
+	default:
+		fmt.Println("No such content in this block")
+		return status.Errorf(codes.Internal, "no such content in this block")
 	}
 	return nil
 }
