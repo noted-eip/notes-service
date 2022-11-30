@@ -119,7 +119,6 @@ func (srv *blocksRepository) Update(ctx context.Context, blockId *string, blockR
 	return blockRequest, nil
 }
 
-//delete one block with BlockId
 func (srv *blocksRepository) DeleteBlock(ctx context.Context, blockId *string) error {
 	delete, err := srv.db.Collection("blocks").DeleteOne(ctx, buildIdQuery(blockId))
 
@@ -134,7 +133,6 @@ func (srv *blocksRepository) DeleteBlock(ctx context.Context, blockId *string) e
 	return nil
 }
 
-//delete multiple blocks with NoteId
 func (srv *blocksRepository) DeleteBlocks(ctx context.Context, noteId *string) error {
 	delete, err := srv.db.Collection("blocks").DeleteMany(ctx, BuildNoteIdQuery(noteId))
 

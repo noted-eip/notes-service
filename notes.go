@@ -40,8 +40,6 @@ func (srv *notesService) CreateNote(ctx context.Context, in *notespb.CreateNoteR
 		return nil, status.Error(codes.InvalidArgument, "authorId or title are empty")
 	}
 
-	//stopper la goroutine sur blockId
-
 	note, err := srv.repoNote.Create(ctx, &models.Note{AuthorId: in.Note.AuthorId, Title: in.Note.Title, Blocks: nil})
 
 	if err != nil {
@@ -54,8 +52,6 @@ func (srv *notesService) CreateNote(ctx context.Context, in *notespb.CreateNoteR
 		srv.logger.Error("failed to create blocks", zap.Error(err))
 		return nil, status.Error(codes.Internal, err.Error())
 	}
-
-	//lancer la goroutine sur blockId
 
 	return &notespb.CreateNoteResponse{
 		Note: &notespb.Note{
@@ -197,7 +193,6 @@ func (srv *notesService) ListNotes(ctx context.Context, in *notespb.ListNotesReq
 	}, nil
 }
 
-//Mettre ca en processBackGround
 func CreateBlockWithTags(srv *notesService, ctx context.Context, noteId *string, blocksGrpc []*notespb.Block) error {
 	blocks := make([]models.Block, len(blocksGrpc))
 
