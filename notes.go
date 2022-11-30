@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"time"
 
 	"notes-service/auth"
 	"notes-service/models"
@@ -38,7 +39,7 @@ func (srv *notesService) CreateNote(ctx context.Context, in *notespb.CreateNoteR
 		return nil, status.Error(codes.InvalidArgument, "authorId or title are empty")
 	}
 
-	note, err := srv.repoNote.Create(ctx, &models.Note{AuthorId: in.Note.AuthorId, Title: in.Note.Title, Blocks: nil})
+	note, err := srv.repoNote.Create(ctx, &models.Note{AuthorId: in.Note.AuthorId, Title: in.Note.Title, Blocks: nil, CreationDate: time.Now().UTC(), ModificationDate: time.Now().UTC()})
 
 	if err != nil {
 		srv.logger.Error("failed to create note", zap.Error(err))
@@ -127,7 +128,7 @@ func (srv *notesService) UpdateNote(ctx context.Context, in *notespb.UpdateNoteR
 
 	//update juste les infos de la note et pas les blocks sinon
 	noteId := id.String()
-	err = srv.repoNote.Update(ctx, &noteId, &models.Note{AuthorId: in.Note.AuthorId, Title: in.Note.Title})
+	err = srv.repoNote.Update(ctx, &noteId, &models.Note{AuthorId: in.Note.AuthorId, Title: in.Note.Title, ModificationDate: time.Now().UTC()})
 	if err != nil {
 		srv.logger.Error("failed to update note", zap.Error(err))
 		return nil, status.Error(codes.Internal, "could not update note")

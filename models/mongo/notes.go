@@ -34,7 +34,7 @@ func (srv *notesRepository) Create(ctx context.Context, noteRequest *models.Note
 	}
 	noteRequest.ID = id
 
-	note := models.Note{ID: noteRequest.ID, AuthorId: noteRequest.AuthorId, Title: noteRequest.Title, Blocks: noteRequest.Blocks}
+	note := models.Note{ID: noteRequest.ID, AuthorId: noteRequest.AuthorId, Title: noteRequest.Title, Blocks: noteRequest.Blocks, CreationDate: noteRequest.CreationDate, ModificationDate: noteRequest.ModificationDate}
 
 	_, err = srv.db.Collection("notes").InsertOne(ctx, note)
 	if err != nil {
