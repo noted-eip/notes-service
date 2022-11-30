@@ -32,7 +32,11 @@ func (srv *blocksRepository) GetBlocks(ctx context.Context, noteId *string) ([]*
 	return nil, status.Errorf(codes.Unimplemented, "not implemented")
 }
 
-func (srv *blocksRepository) Create(ctx context.Context, blockRequest *models.BlockWithIndex) (*string, error) {
+func (srv *blocksRepository) GetTagsByFilter(ctx context.Context, noteId *string) (*models.BlockWithTags, error) {
+	return nil, status.Errorf(codes.Unimplemented, "not implemented")
+}
+
+func (srv *blocksRepository) Create(ctx context.Context, blockRequest *models.BlockWithTags) (*string, error) {
 	txn := srv.db.DB.Txn(true)
 	defer txn.Abort()
 
@@ -42,7 +46,7 @@ func (srv *blocksRepository) Create(ctx context.Context, blockRequest *models.Bl
 		return nil, status.Errorf(codes.Internal, "could not create account")
 	}
 	blockId := id.String()
-	block := models.BlockWithIndex{ID: id.String(), NoteId: blockRequest.NoteId, Type: blockRequest.Type, Index: blockRequest.Index, Content: blockRequest.Content}
+	block := models.BlockWithTags{ID: id.String(), NoteId: blockRequest.NoteId, Type: blockRequest.Type, Index: blockRequest.Index, Content: blockRequest.Content}
 
 	err = txn.Insert("block", block)
 	if err != nil {

@@ -37,7 +37,6 @@ func (srv *blocksRepository) GetBlock(ctx context.Context, blockId *string) (*mo
 		srv.logger.Error("unable to query block", zap.Error(err))
 		return nil, status.Errorf(codes.InvalidArgument, err.Error())
 	}
-
 	return &models.BlockWithIndex{ID: block.ID, NoteId: block.NoteId, Type: block.Type, Index: block.Index, Content: block.Content}, nil
 }
 
@@ -71,14 +70,31 @@ func (srv *blocksRepository) GetBlocks(ctx context.Context, noteId *string) ([]*
 	return blocksResponse, nil
 }
 
-func (srv *blocksRepository) Create(ctx context.Context, blockRequest *models.BlockWithIndex) (*string, error) {
+func (srv *blocksRepository) GetTagsByFilter(ctx context.Context, noteId *string) (*models.BlockWithTags, error) {
+	var block models.BlockWithTags
+
+	//jsp si le tableau de tag va aller sans problème dans le champs tags
+	err := srv.db.Collection("notes").FindOne(ctx, BuildNoteIdQuery(noteId)).Decode(&block)
+
+	if err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, status.Errorf(codes.NotFound, "block not found")
+		}
+		srv.logger.Error("unable to query block", zap.Error(err))
+		return nil, status.Errorf(codes.InvalidArgument, err.Error())
+	}
+
+	return &models.BlockWithTags{ID: block.ID, NoteId: *noteId, Type: block.Type, Index: block.Index, Content: block.Content, Tags: block.Tags}, nil
+}
+
+func (srv *blocksRepository) Create(ctx context.Context, blockRequest *models.BlockWithTags) (*string, error) {
 	id, err := uuid.NewRandom()
 	if err != nil {
 		srv.logger.Error("failed to generate new random uuid", zap.Error(err))
-		return nil, status.Error(codes.Internal, "could not create account")
+		return nil, status.Error(codes.Internal, "could not create block")
 	}
 	blockId := id.String()
-	block := models.BlockWithIndex{ID: id.String(), NoteId: blockRequest.NoteId, Type: blockRequest.Type, Index: blockRequest.Index, Content: blockRequest.Content}
+	block := models.BlockWithTags{ID: blockId, NoteId: blockRequest.NoteId, Type: blockRequest.Type, Index: blockRequest.Index, Content: blockRequest.Content, Tags: blockRequest.Tags}
 
 	_, err = srv.db.Collection("blocks").InsertOne(ctx, block)
 	if err != nil {
@@ -103,7 +119,6 @@ func (srv *blocksRepository) Update(ctx context.Context, blockId *string, blockR
 	return blockRequest, nil
 }
 
-//delete one block with BlockId
 func (srv *blocksRepository) DeleteBlock(ctx context.Context, blockId *string) error {
 	delete, err := srv.db.Collection("blocks").DeleteOne(ctx, buildIdQuery(blockId))
 
@@ -118,7 +133,6 @@ func (srv *blocksRepository) DeleteBlock(ctx context.Context, blockId *string) e
 	return nil
 }
 
-//delete multiple blocks with NoteId
 func (srv *blocksRepository) DeleteBlocks(ctx context.Context, noteId *string) error {
 	delete, err := srv.db.Collection("blocks").DeleteMany(ctx, BuildNoteIdQuery(noteId))
 

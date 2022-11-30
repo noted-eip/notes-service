@@ -11,6 +11,7 @@ import (
 	"net"
 	"notes-service/models"
 	notespb "notes-service/protorepo/noted/notes/v1"
+	recommendationspb "notes-service/protorepo/noted/recommendations/v1"
 	"strings"
 	"time"
 
@@ -34,7 +35,8 @@ type server struct {
 	notesRepository  models.NotesRepository
 	blocksRepository models.BlocksRepository
 
-	notesService notespb.NotesAPIServer
+	notesService         notespb.NotesAPIServer
+	recommendationClient recommendationspb.RecommendationsAPIClient
 
 	grpcServer *grpc.Server
 }
@@ -114,11 +116,18 @@ func (s *server) initAuthService() {
 
 func (s *server) initNotesService() {
 	s.notesService = &notesService{
-		auth:      s.authService,
-		logger:    s.logger,
-		repoNote:  s.notesRepository,
-		repoBlock: s.blocksRepository,
+		auth:                 s.authService,
+		logger:               s.logger,
+		repoNote:             s.notesRepository,
+		repoBlock:            s.blocksRepository,
+		recommendationClient: s.recommendationClient,
 	}
+}
+
+func (s *server) initgrpcClient() {
+	conn, err := grpc.Dial(*recommandationUrl, grpc.WithInsecure()) //grpc.WithTransportCredentials(insecure.NewCredentials()
+	must(err, "connection failed to the recommendation api : ")
+	s.recommendationClient = recommendationspb.NewRecommendationsAPIClient(conn)
 }
 
 func (s *server) initgrpcServer(opt ...grpc.ServerOption) {

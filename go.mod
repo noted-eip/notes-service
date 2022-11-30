@@ -16,6 +16,7 @@ require (
 require (
 	github.com/hashicorp/go-immutable-radix v1.3.0 // indirect
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
+	github.com/kardianos/service v1.2.2 // indirect
 )
 
 require (

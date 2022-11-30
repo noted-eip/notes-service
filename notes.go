@@ -6,6 +6,7 @@ import (
 	"notes-service/auth"
 	"notes-service/models"
 	notespb "notes-service/protorepo/noted/notes/v1"
+	recommendationspb "notes-service/protorepo/noted/recommendations/v1"
 
 	"github.com/google/uuid"
 	"go.uber.org/zap"
@@ -16,10 +17,11 @@ import (
 type notesService struct {
 	notespb.UnimplementedNotesAPIServer
 
-	auth      auth.Service
-	logger    *zap.Logger
-	repoNote  models.NotesRepository
-	repoBlock models.BlocksRepository
+	auth                 auth.Service
+	logger               *zap.Logger
+	repoNote             models.NotesRepository
+	repoBlock            models.BlocksRepository
+	recommendationClient recommendationspb.RecommendationsAPIClient
 }
 
 var _ notespb.NotesAPIServer = &notesService{}
@@ -44,16 +46,11 @@ func (srv *notesService) CreateNote(ctx context.Context, in *notespb.CreateNoteR
 		srv.logger.Error("failed to create note", zap.Error(err))
 		return nil, status.Error(codes.Internal, "could not create note")
 	}
-
-	blocks := make([]models.Block, len(in.Note.Blocks))
-
-	for index, block := range in.Note.Blocks {
-		err := FillBlockContent(&blocks[index], block)
-		if err != nil {
-			srv.logger.Error("failed to create note", zap.Error(err))
-			return nil, status.Errorf(codes.Internal, "invalid content provided for block index : %d", index)
-		}
-		srv.repoBlock.Create(ctx, &models.BlockWithIndex{NoteId: note.ID.String(), Type: uint32(in.Note.Blocks[index].Type), Index: uint32(index + 1), Content: blocks[index].Content})
+	//create block with tags in function
+	err = CreateBlockWithTags(srv, ctx, &in.Note.Id, in.Note.Blocks)
+	if err != nil {
+		srv.logger.Error("failed to create blocks", zap.Error(err))
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	return &notespb.CreateNoteResponse{
@@ -125,7 +122,7 @@ func (srv *notesService) UpdateNote(ctx context.Context, in *notespb.UpdateNoteR
 		return nil, status.Error(codes.Internal, "could not delete blocks")
 	}
 
-	//update juste les infos de la note et pas les blocks sinon
+	//update juste les infos de la note
 	noteId := id.String()
 	err = srv.repoNote.Update(ctx, &noteId, &models.Note{AuthorId: in.Note.AuthorId, Title: in.Note.Title})
 	if err != nil {
@@ -134,14 +131,10 @@ func (srv *notesService) UpdateNote(ctx context.Context, in *notespb.UpdateNoteR
 	}
 
 	//appeller createBlock en boucle pour tout les autres blocks
-	blocks := make([]models.Block, len(in.Note.Blocks))
-	for index, block := range in.Note.Blocks {
-		err := FillBlockContent(&blocks[index], block)
-		if err != nil {
-			srv.logger.Error("failed to update blocks", zap.Error(err))
-			return nil, status.Errorf(codes.Internal, "invalid content provided for block index : %d", index)
-		}
-		srv.repoBlock.Create(ctx, &models.BlockWithIndex{NoteId: in.Id, Type: uint32(in.Note.Blocks[index].Type), Index: uint32(index + 1), Content: blocks[index].Content})
+	err = CreateBlockWithTags(srv, ctx, &in.Id, in.Note.Blocks)
+	if err != nil {
+		srv.logger.Error("failed to create blocks", zap.Error(err))
+		return nil, status.Error(codes.Internal, err.Error())
 	}
 
 	return nil, nil
@@ -198,4 +191,40 @@ func (srv *notesService) ListNotes(ctx context.Context, in *notespb.ListNotesReq
 	return &notespb.ListNotesResponse{
 		Notes: notesResponse,
 	}, nil
+}
+
+func CreateBlockWithTags(srv *notesService, ctx context.Context, noteId *string, blocksGrpc []*notespb.Block) error {
+	blocks := make([]models.Block, len(blocksGrpc))
+
+	for index, block := range blocksGrpc {
+		err := FillBlockContent(&blocks[index], block)
+		if err != nil {
+			srv.logger.Error("failed get block content", zap.Error(err))
+			return status.Errorf(codes.Internal, "invalid content provided for block index : ", index)
+		}
+
+		content, err := GetDataContent(blocksGrpc[index])
+		if err != nil {
+			srv.logger.Error("failed to convert the content of the block", zap.Error(err))
+			return status.Errorf(codes.Internal, "failed to convert the content of the block : ", index)
+		}
+		//find tags from block -> enelever ca après juste créer les block et faire ca en BackGround
+		keywords, err := FindTags(srv, ctx, &content)
+		if err != nil {
+			srv.logger.Error("failed to get the recommendation from client", zap.Error(err))
+			return status.Errorf(codes.Internal, "failed to get the recommendation from client")
+		}
+
+		srv.repoBlock.Create(ctx, &models.BlockWithTags{NoteId: *noteId, Type: uint32(blocksGrpc[index].Type), Index: uint32(index + 1), Content: blocks[index].Content, Tags: keywords})
+	}
+	return nil
+}
+
+func FindTags(srv *notesService, ctx context.Context, blockContent *string) ([]string, error) {
+	recommendationRequest := &recommendationspb.ExtractKeywordsRequest{Content: *blockContent}
+	clientResponse, err := srv.recommendationClient.ExtractKeywords(ctx, recommendationRequest)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get the recommendation from client")
+	}
+	return clientResponse.Keywords, nil
 }
