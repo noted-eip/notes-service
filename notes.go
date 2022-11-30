@@ -27,17 +27,6 @@ type notesService struct {
 var _ notespb.NotesAPIServer = &notesService{}
 
 func (srv *notesService) CreateNote(ctx context.Context, in *notespb.CreateNoteRequest) (*notespb.CreateNoteResponse, error) {
-	/*
-		recommendationRequest := &recommendationspb.ExtractKeywordsRequest{Content: "Alan Mathison Turing, né le 23 juin 1912 à Londres et mort le 7 juin 1954 à Wilmslow, est un mathématicien et cryptologue britannique, auteur de travaux qui fondent scientifiquement l'informatique.Pour résoudre le problème fondamental de la décidabilité en arithmétique, il présente en 1936 une expérience de pensée que l'on nommera ensuite machine de Turing et des concepts de programme et de programmation, qui prendront tout leur sens avec la diffusion des ordinateurs, dans la seconde moitié du XXe siècle. Son modèle a contribué à établir la thèse de Church, qui définit le concept mathématique intuitif de fonction calculable.Durant la Seconde Guerre mondiale, il joue un rôle majeur dans la cryptanalyse de la machine Enigma utilisée par les armées allemandes : l'invention de machines usant de procédés électroniques, les bombes1, fera passer le décryptage à plusieurs milliers de messages par jour. Mais tout ce travail doit forcément rester secret, et ne sera connu du public que dans les années 1970. Après la guerre, il travaille sur un des tout premiers ordinateurs, puis contribue au débat sur la possibilité de l'intelligence artificielle, en proposant le test de Turing."}
-		if srv.recommendationClient == nil {
-			fmt.Print("recommendation client is nil")
-		}
-		test, err := srv.recommendationClient.ExtractKeywords(ctx, recommendationRequest)
-		if err != nil {
-			fmt.Print("zebi : %v", err)
-		}
-		fmt.Print(test.Keywords)
-	*/
 	if in == nil {
 		srv.logger.Error("failed to create note, Request is empty")
 		return nil, status.Error(codes.InvalidArgument, "CreateNoteRequest is empty")
@@ -51,19 +40,22 @@ func (srv *notesService) CreateNote(ctx context.Context, in *notespb.CreateNoteR
 		return nil, status.Error(codes.InvalidArgument, "authorId or title are empty")
 	}
 
+	//stopper la goroutine sur blockId
+
 	note, err := srv.repoNote.Create(ctx, &models.Note{AuthorId: in.Note.AuthorId, Title: in.Note.Title, Blocks: nil})
 
 	if err != nil {
 		srv.logger.Error("failed to create note", zap.Error(err))
 		return nil, status.Error(codes.Internal, "could not create note")
 	}
-
-	//create block with tags in function v
+	//create block with tags in function
 	err = CreateBlockWithTags(srv, ctx, &in.Note.Id, in.Note.Blocks)
 	if err != nil {
 		srv.logger.Error("failed to create blocks", zap.Error(err))
 		return nil, status.Error(codes.Internal, err.Error())
 	}
+
+	//lancer la goroutine sur blockId
 
 	return &notespb.CreateNoteResponse{
 		Note: &notespb.Note{
