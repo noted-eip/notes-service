@@ -105,6 +105,10 @@ func (srv *blocksService) DeleteBlock(ctx context.Context, in *notespb.DeleteBlo
 	return &emptypb.Empty{}, nil
 }
 
+func (srv *blocksService) GetRecommandationBlocks(ctx context.Context, in *notespb.GetRecommandationBlocksRequest) (*notespb.GetRecommandationBlocksResponse, error) {
+	return nil, nil
+}
+
 func GetDataContent(blockRequest *notespb.Block) (string, error) {
 	switch op := blockRequest.Data.(type) {
 	case *notespb.Block_Heading:
