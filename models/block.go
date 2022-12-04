@@ -7,23 +7,16 @@ import (
 )
 
 type Code struct {
-	snippet *string
-	lang    *string
+	Snippet *string
+	Lang    *string
 }
 
 type Image struct {
-	url     *string
-	caption *string
+	Url     *string
+	Caption *string
 }
 
 type Block struct {
-	ID      string `json:"id" bson:"_id,omitempty"`
-	NoteId  string `json:"noteId" bson:"noteId,omitempty"`
-	Type    uint32 `json:"type" bson:"type,omitempty"`
-	Content string `json:"content" bson:"content,omitempty"`
-}
-
-type BlockWithIndex struct {
 	ID      string `json:"id" bson:"_id,omitempty"`
 	NoteId  string `json:"noteId" bson:"noteId,omitempty"`
 	Type    uint32 `json:"type" bson:"type,omitempty"`
@@ -33,15 +26,15 @@ type BlockWithIndex struct {
 
 // NotesRepository is safe for use in multiple goroutines.
 type BlocksRepository interface {
-	GetBlock(ctx context.Context, blockId *string) (*BlockWithIndex, error)
+	GetBlock(ctx context.Context, blockId string) (*Block, error)
 
-	GetBlocks(ctx context.Context, noteId *string) ([]*BlockWithIndex, error)
+	GetBlocks(ctx context.Context, noteId string) ([]*Block, error)
 
-	Create(ctx context.Context, blockRequest *BlockWithIndex) (*string, error)
+	Create(ctx context.Context, blockRequest *Block) (*string, error)
 
-	Update(ctx context.Context, blockId *string, blockRequest *BlockWithIndex) (*BlockWithIndex, error)
+	Update(ctx context.Context, blockId string, blockRequest *Block) (*Block, error)
 
-	DeleteBlock(ctx context.Context, blockId *string) error
+	DeleteBlock(ctx context.Context, blockId string) error
 
-	DeleteBlocks(ctx context.Context, noteId *string) error
+	DeleteBlocks(ctx context.Context, noteId string) error
 }
