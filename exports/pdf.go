@@ -1,7 +1,27 @@
 package exports
 
-import notespb "notes-service/protorepo/noted/notes/v1"
+import (
+	"bytes"
+	notespb "notes-service/protorepo/noted/notes/v1"
+
+	"github.com/yuin/goldmark"
+
+	pdf "github.com/stephenafamo/goldmark-pdf"
+)
 
 func NoteToPDF(n *notespb.Note) ([]byte, error) {
-	return nil, nil
+	markdownNote, err := NoteToMarkdown(n)
+	var result bytes.Buffer
+
+	if err != nil {
+		return nil, err
+	}
+
+	converter := goldmark.New(
+		goldmark.WithRenderer(pdf.New()),
+	)
+
+	converter.Convert(markdownNote, &result)
+
+	return result.Bytes(), nil
 }
