@@ -62,10 +62,27 @@ func (srv *notesService) CreateNote(ctx context.Context, in *notespb.CreateNoteR
 
 // QUE SI ELLE EST DANS TON GROUPE auth
 func (srv *notesService) GetNote(ctx context.Context, in *notespb.GetNoteRequest) (*notespb.GetNoteResponse, error) {
-	err := validators.ValidateGetNoteRequest(in)
+	token, err := srv.authenticate(ctx)
+	if err != nil {
+		return nil, status.Error(codes.Unauthenticated, err.Error())
+	}
+	err = validators.ValidateGetNoteRequest(in)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
+
+	//save le groupeId dans la note
+	//quand on update : check le groupeId de la note
+	//Lister les membres du groupe
+	//for (var membre in group)
+	//if (membre == token.UserID.String())
+	//c bon
+
+	//ListAccount()
+
+	//resp, err := srv.accountsClient.GetAccount()
+	//recommendationRequest := &recommendationspb.ExtractKeywordsRequest{Content: *blockContent}
+	//clientResponse, err := srv.recommendationClient.ExtractKeywords(ctx, recommendationRequest)
 
 	note, err := srv.repoNote.Get(ctx, in.Id)
 	if err != nil {
