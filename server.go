@@ -35,8 +35,8 @@ type server struct {
 	notesRepository  models.NotesRepository
 	blocksRepository models.BlocksRepository
 
-	notesService   notespb.NotesAPIServer
-	accountsClient accountspb.AccountsAPIClient
+	notesService notespb.NotesAPIServer
+	groupsClient accountspb.GroupsAPIClient
 
 	grpcServer *grpc.Server
 }
@@ -117,11 +117,11 @@ func (s *server) initAuthService() {
 
 func (s *server) initNotesService() {
 	s.notesService = &notesService{
-		auth:           s.authService,
-		logger:         s.logger,
-		repoNote:       s.notesRepository,
-		repoBlock:      s.blocksRepository,
-		accountsClient: s.accountsClient,
+		auth:         s.authService,
+		logger:       s.logger,
+		repoNote:     s.notesRepository,
+		repoBlock:    s.blocksRepository,
+		groupsClient: s.groupsClient,
 	}
 }
 
@@ -129,7 +129,7 @@ func (s *server) initgrpcClient() {
 	conn, err := grpc.Dial(*accountServiceUrl, grpc.WithInsecure())
 	//grpc.WithTransportCredentials(insecure.NewCredentials()
 	must(err, "connection failed to the recommendation api : ")
-	s.accountsClient = accountspb.NewAccountsAPIClient(conn)
+	s.groupsClient = accountspb.NewGroupsAPIClient(conn)
 }
 
 func (s *server) initgrpcServer(opt ...grpc.ServerOption) {

@@ -14,35 +14,20 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-type BlocksAPISuite struct {
-	suite.Suite
-	srv *blocksService
-}
-
 func TestBlocksService(t *testing.T) {
-	suite.Run(t, &BlocksAPISuite{})
+	suite.Run(t, &NotesAPISuite{})
 }
 
-func (s *BlocksAPISuite) SetupSuite() {
-	logger := newLoggerOrFail(s.T())
-	db := newBlocksDatabaseOrFail(s.T(), logger)
-
-	s.srv = &blocksService{
-		//auth:      auth.NewService(genKeyOrFail(s.T())),
-		logger: logger,
-		repo:   memory.NewBlocksRepository(db, logger),
-	}
-}
-
-func (s *BlocksAPISuite) InsertBlockShouldReturnNil() {
+/*
+func (s *NotesAPISuite) InsertBlockShouldReturnNil() {
 	res, err := s.srv.InsertBlock(context.TODO(), &notespb.InsertBlockRequest{})
 	s.Require().Error(err)
 	s.Equal(status.Code(err), codes.InvalidArgument)
 	s.Nil(res)
-}
+}*/
 
 /*
-func (s *BlocksAPISuite) InsertBlockShouldReturnBlock() {
+func (s *NotesAPISuite) InsertBlockShouldReturnBlock() {
 
 	slice := []byte{0xFF, 0xFF, 0xFF, 0x7F, 0x7F, 0x7F, 0x7F, 0x7F, 0x7F}
 	noteId := binary.LittleEndian.Uint32(slice)
@@ -59,14 +44,14 @@ func (s *BlocksAPISuite) InsertBlockShouldReturnBlock() {
 	s.NotNil(res)
 }*/
 
-func (s *BlocksAPISuite) UpdateBlockShouldReturnError() {
+func (s *NotesAPISuite) UpdateBlockShouldReturnError() {
 	res, err := s.srv.UpdateBlock(context.TODO(), &notespb.UpdateBlockRequest{})
 	s.Require().Error(err)
 	s.Equal(status.Code(err), codes.Internal)
 	s.Nil(res)
 }
 
-func (s *BlocksAPISuite) UpdateBlockShouldReturnNoError() {
+func (s *NotesAPISuite) UpdateBlockShouldReturnNoError() {
 	blockId, err := uuid.NewRandom()
 
 	res, err := s.srv.UpdateBlock(context.TODO(), &notespb.UpdateBlockRequest{
@@ -81,7 +66,7 @@ func (s *BlocksAPISuite) UpdateBlockShouldReturnNoError() {
 	s.Nil(res)
 }
 
-func (s *BlocksAPISuite) DeleteBlockShouldReturnError() {
+func (s *NotesAPISuite) DeleteBlockShouldReturnError() {
 	res, err := s.srv.DeleteBlock(context.TODO(), &notespb.DeleteBlockRequest{})
 	s.Require().Error(err)
 	s.Equal(status.Code(err), codes.InvalidArgument)
@@ -89,7 +74,7 @@ func (s *BlocksAPISuite) DeleteBlockShouldReturnError() {
 }
 
 /*
-func (s *BlocksAPISuite) DeleteBlockShouldReturnNoError() {
+func (s *NotesAPISuite) DeleteBlockShouldReturnNoError() {
 	id, err := uuid.NewRandom()
 
 	res, err := s.srv.DeleteBlock(context.TODO(), &notespb.DeleteBlockRequest{
