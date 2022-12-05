@@ -32,16 +32,15 @@ func (srv *notesRepository) Create(ctx context.Context, noteRequest *models.Note
 		srv.logger.Error("failed to generate new random uuid", zap.Error(err))
 		return nil, status.Error(codes.Internal, "could not create account")
 	}
-	noteRequest.ID = id
 
-	note := models.Note{ID: noteRequest.ID, AuthorId: noteRequest.AuthorId, Title: noteRequest.Title, Blocks: noteRequest.Blocks}
+	note := models.Note{ID: id.String(), AuthorId: noteRequest.AuthorId, Title: noteRequest.Title, Blocks: noteRequest.Blocks}
 
 	_, err = srv.db.Collection("notes").InsertOne(ctx, note)
 	if err != nil {
 		srv.logger.Error("mongo insert note failed", zap.Error(err), zap.String("note name", note.AuthorId))
 		return nil, status.Error(codes.Internal, "could not create note")
 	}
-	return noteRequest, nil
+	return &note, nil
 }
 
 func (srv *notesRepository) Get(ctx context.Context, noteId *string) (*models.Note, error) {
@@ -56,7 +55,7 @@ func (srv *notesRepository) Get(ctx context.Context, noteId *string) (*models.No
 		return nil, status.Errorf(codes.InvalidArgument, err.Error())
 	}
 
-	_, err = uuid.Parse(note.ID.String())
+	_, err = uuid.Parse(note.ID)
 	if err != nil {
 		srv.logger.Error("failed to convert uuid from string", zap.Error(err))
 		return nil, status.Errorf(codes.Internal, "could not get note")
@@ -103,7 +102,7 @@ func (srv *notesRepository) List(ctx context.Context, authorId *string) (*[]mode
 
 	notesResponse := make([]models.Note, notesCursor.RemainingBatchLength())
 
-	//convert notes from mongo to []models.NoteWithBlocks
+	//convert notes from mongo to []models.Note
 	var notes []bson.M
 	if err := notesCursor.All(context.TODO(), &notes); err != nil {
 		srv.logger.Error("unable to parse notes", zap.Error(err))
@@ -115,7 +114,7 @@ func (srv *notesRepository) List(ctx context.Context, authorId *string) (*[]mode
 			srv.logger.Error("unable to retrieve id of the note", zap.Error(err))
 			return nil, status.Errorf(codes.Aborted, err.Error())
 		}
-		notesResponse[index] = models.Note{ID: id, AuthorId: note["authorId"].(string), Title: note["title"].(string)}
+		notesResponse[index] = models.Note{ID: id.String(), AuthorId: note["authorId"].(string), Title: note["title"].(string)}
 	}
 
 	return &notesResponse, nil
