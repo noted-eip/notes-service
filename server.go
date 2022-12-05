@@ -15,6 +15,7 @@ import (
 	"time"
 
 	mongoServices "notes-service/models/mongo"
+	accountspb "notes-service/protorepo/noted/accounts/v1"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -34,7 +35,8 @@ type server struct {
 	notesRepository  models.NotesRepository
 	blocksRepository models.BlocksRepository
 
-	notesService notespb.NotesAPIServer
+	notesService   notespb.NotesAPIServer
+	accountsClient accountspb.AccountsAPIClient
 
 	grpcServer *grpc.Server
 }
@@ -43,6 +45,7 @@ func (s *server) Init(opt ...grpc.ServerOption) {
 	s.initLogger()
 	s.initAuthService()
 	s.initRepositories()
+	s.initgrpcClient()
 	s.initNotesService()
 	s.initgrpcServer(opt...)
 }
@@ -114,11 +117,19 @@ func (s *server) initAuthService() {
 
 func (s *server) initNotesService() {
 	s.notesService = &notesService{
-		auth:      s.authService,
-		logger:    s.logger,
-		repoNote:  s.notesRepository,
-		repoBlock: s.blocksRepository,
+		auth:           s.authService,
+		logger:         s.logger,
+		repoNote:       s.notesRepository,
+		repoBlock:      s.blocksRepository,
+		accountsClient: s.accountsClient,
 	}
+}
+
+func (s *server) initgrpcClient() {
+	conn, err := grpc.Dial(*accountServiceUrl, grpc.WithInsecure())
+	//grpc.WithTransportCredentials(insecure.NewCredentials()
+	must(err, "connection failed to the recommendation api : ")
+	s.accountsClient = accountspb.NewAccountsAPIClient(conn)
 }
 
 func (s *server) initgrpcServer(opt ...grpc.ServerOption) {
