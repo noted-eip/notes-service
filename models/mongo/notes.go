@@ -29,14 +29,19 @@ func (srv *notesRepository) Create(ctx context.Context, noteRequest *models.Note
 		srv.logger.Error("note request is nil")
 		return nil, status.Error(codes.Internal, "could not create account")
 	}
+<<<<<<< HEAD
 	note := models.Note{AuthorId: noteRequest.AuthorId, Title: noteRequest.Title}
+=======
+
+	note := models.Note{ID: id.String(), AuthorId: noteRequest.AuthorId, Title: noteRequest.Title, Blocks: noteRequest.Blocks}
+>>>>>>> main
 
 	_, err := srv.db.Collection("notes").InsertOne(ctx, note)
 	if err != nil {
 		srv.logger.Error("mongo insert note failed", zap.Error(err), zap.String("note name", note.AuthorId))
 		return nil, status.Error(codes.Internal, "could not create note")
 	}
-	return noteRequest, nil
+	return &note, nil
 }
 
 func (srv *notesRepository) Get(ctx context.Context, noteId string) (*models.Note, error) {
@@ -51,6 +56,14 @@ func (srv *notesRepository) Get(ctx context.Context, noteId string) (*models.Not
 		return nil, status.Errorf(codes.InvalidArgument, err.Error())
 	}
 
+<<<<<<< HEAD
+=======
+	_, err = uuid.Parse(note.ID)
+	if err != nil {
+		srv.logger.Error("failed to convert uuid from string", zap.Error(err))
+		return nil, status.Errorf(codes.Internal, "could not get note")
+	}
+>>>>>>> main
 	return &note, nil
 }
 
@@ -104,7 +117,11 @@ func (srv *notesRepository) List(ctx context.Context, authorId string) (*[]model
 			srv.logger.Error("unable to retrieve id of the note", zap.Error(err))
 			return nil, status.Errorf(codes.Aborted, err.Error())
 		}
+<<<<<<< HEAD
 		notesResponse[index] = models.Note{ID: note["_id"].(string), AuthorId: note["authorId"].(string), Title: note["title"].(string)}
+=======
+		notesResponse[index] = models.Note{ID: id.String(), AuthorId: note["authorId"].(string), Title: note["title"].(string)}
+>>>>>>> main
 	}
 
 	return &notesResponse, nil

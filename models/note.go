@@ -7,9 +7,16 @@ import (
 )
 
 type Note struct {
+<<<<<<< HEAD
 	ID       string `json:"id" bson:"_id,omitempty"`
 	AuthorId string `json:"authorId" bson:"authorId,omitempty"`
 	Title    string `json:"title" bson:"title,omitempty"`
+=======
+	ID       string  `json:"id" bson:"_id,omitempty"`
+	AuthorId string  `json:"authorId" bson:"authorId,omitempty"`
+	Title    string  `json:"title" bson:"title,omitempty"`
+	Blocks   []Block `json:"blocks" bson:"blocks,omitempty"`
+>>>>>>> main
 }
 
 // NotesRepository is safe for use in multiple goroutines.

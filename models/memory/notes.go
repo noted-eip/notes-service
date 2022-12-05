@@ -63,7 +63,12 @@ func (srv *notesRepository) Create(ctx context.Context, noteRequest *models.Note
 		srv.logger.Error("NoteRequest is nil")
 		return nil, status.Errorf(codes.Internal, "could not create account")
 	}
+<<<<<<< HEAD:models/memory/notes.go
 	note := models.Note{AuthorId: noteRequest.AuthorId, Title: noteRequest.Title}
+=======
+	noteRequest.ID = id.String()
+	note := models.Note{ID: noteRequest.ID, AuthorId: noteRequest.AuthorId, Title: noteRequest.Title, Blocks: noteRequest.Blocks}
+>>>>>>> main:memory/notes.go
 
 	err := txn.Insert("note", note)
 	if err != nil {

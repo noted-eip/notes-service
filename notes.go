@@ -109,7 +109,7 @@ func (srv *notesService) GetNote(ctx context.Context, in *notespb.GetNoteRequest
 	note, err := srv.repoNote.Get(ctx, in.Id)
 	if err != nil {
 		srv.logger.Error("failed to get note", zap.Error(err))
-		return nil, status.Error(codes.InvalidArgument, "could not get note")
+		return nil, status.Error(codes.Internal, "could not get note")
 	}
 
 	blocksTmp, err := srv.repoBlock.GetBlocks(ctx, note.ID)
