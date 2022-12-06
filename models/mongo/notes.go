@@ -5,6 +5,7 @@ import (
 	"errors"
 	"notes-service/models"
 
+	"github.com/google/uuid"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.uber.org/zap"
@@ -25,6 +26,13 @@ func NewNotesRepository(db *mongo.Database, logger *zap.Logger) models.NotesRepo
 }
 
 func (srv *notesRepository) Create(ctx context.Context, noteRequest *models.Note) (*models.Note, error) {
+	id, err := uuid.NewRandom()
+
+	if err != nil {
+		srv.logger.Error("failed to generate new random uuid", zap.Error(err))
+		return nil, status.Error(codes.Internal, "could not create account")
+	}
+
 	if noteRequest == nil {
 		srv.logger.Error("note request is nil")
 		return nil, status.Error(codes.Internal, "could not create account")
@@ -32,7 +40,7 @@ func (srv *notesRepository) Create(ctx context.Context, noteRequest *models.Note
 
 	note := models.Note{ID: id.String(), AuthorId: noteRequest.AuthorId, Title: noteRequest.Title, Blocks: noteRequest.Blocks}
 
-	_, err := srv.db.Collection("notes").InsertOne(ctx, note)
+	_, err = srv.db.Collection("notes").InsertOne(ctx, note)
 	if err != nil {
 		srv.logger.Error("mongo insert note failed", zap.Error(err), zap.String("note name", note.AuthorId))
 		return nil, status.Error(codes.Internal, "could not create note")

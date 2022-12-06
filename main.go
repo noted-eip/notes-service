@@ -18,7 +18,7 @@ var (
 	mongoUri          = app.Flag("mongo-uri", "mongo uri with password to connect client").Default("mongodb://localhost:27017").String()
 	mongoDbName       = app.Flag("mongo-db-name", "name of the mongo database").Default("notes-service").String()
 	jwtPrivateKey     = app.Flag("jwt-private-key", "base64 encoded ed25519 private key").Default("SGfCQAb05CtmhEesWxcrfXSQR6JjmEMeyjR7Mo21S60ZDW9VVTUuCvEMlGjlqiw4I/z8T11KqAXexvGIPiuffA==").String()
-	accountServiceUrl = app.Flag("accounts-service-url", "account service Url").Default("https://localhost:3000").String()
+	accountServiceUrl = app.Flag("accounts-service-url", "account service Url").Default("https://localhost:3001").String()
 )
 
 var (

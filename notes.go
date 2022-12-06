@@ -61,34 +61,6 @@ func (srv *notesService) CreateNote(ctx context.Context, in *notespb.CreateNoteR
 	}, nil
 }
 
-func userIsInGroupNote(srv *notesService, ctx context.Context, token *auth.Token) (bool, error) {
-	groupRequest := &accountspb.ListGroupMembersRequest{
-		GroupId: "cf6c6f3e-3383-4d0a-a193-0ae31510afdd",
-		Limit:   2,
-		Offset:  0,
-	}
-
-	resp, err := srv.groupsClient.ListGroupMembers(ctx, groupRequest)
-	if err != nil {
-		return false, status.Errorf(codes.Internal, "failed to get the group note")
-	}
-
-	var userIsFound bool = false
-
-	for _, member := range resp.GetMembers() {
-		if member.AccountId == token.UserID.String() {
-			userIsFound = true
-		}
-	}
-
-	if !userIsFound {
-		return false, status.Errorf(codes.PermissionDenied, "user has not the rights to get the note")
-	}
-
-	return true, nil
-}
-
-// QUE SI ELLE EST DANS TON GROUPE auth
 func (srv *notesService) GetNote(ctx context.Context, in *notespb.GetNoteRequest) (*notespb.GetNoteResponse, error) {
 	token, err := srv.authenticate(ctx)
 	if err != nil {
@@ -98,13 +70,10 @@ func (srv *notesService) GetNote(ctx context.Context, in *notespb.GetNoteRequest
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
-
-	//check if user in in group note
-	userIsInGroup, err := userIsInGroupNote(srv, ctx, token)
+	userIsInGroup, err := userIsInGroupNote(srv, ctx, token, in.Id)
 	if userIsInGroup == false {
 		return nil, err
 	}
-	///
 
 	note, err := srv.repoNote.Get(ctx, in.Id)
 	if err != nil {
@@ -217,11 +186,18 @@ func (srv *notesService) DeleteNote(ctx context.Context, in *notespb.DeleteNoteR
 	return nil, nil
 }
 
-// QUE SI ELLE EST DANS TON GROUPE auth
 func (srv *notesService) ListNotes(ctx context.Context, in *notespb.ListNotesRequest) (*notespb.ListNotesResponse, error) {
-	err := validators.ValidateListNoteRequest(in)
+	token, err := srv.authenticate(ctx)
+	if err != nil {
+		return nil, status.Error(codes.Unauthenticated, err.Error())
+	}
+	err = validators.ValidateListNoteRequest(in)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+	userIsInGroup, err := userIsInGroupNote(srv, ctx, token)
+	if userIsInGroup == false {
+		return nil, err
 	}
 
 	notes, err := srv.repoNote.List(ctx, in.AuthorId)
@@ -287,6 +263,38 @@ func fillContentFromModelToApi(blockRequest *models.Block, contentType uint32, b
 		return status.Errorf(codes.Internal, "no such content in this block")
 	}
 	return nil
+}
+
+func userIsInGroupNote(srv *notesService, ctx context.Context, token *auth.Token, noteId string) (bool, error) {
+	//check on which groupId belongs the note
+	getGroupNoteRequest := &accountspb.GetGroupNoteRequest{
+		NoteId: noteId,
+	}
+	respGroupNote, err := srv.groupsClient.GetGroupNote(ctx, getGroupNoteRequest)
+	if err != nil {
+		return false, status.Errorf(codes.Internal, "failed to get the group note : ", zap.Error(err))
+	}
+	//check if the userId is in the note dedicated group
+	listGroupMembersRequest := &accountspb.ListGroupMembersRequest{
+		GroupId: respGroupNote.GROUPID//"cf6c6f3e-3383-4d0a-a193-0ae31510afdd",
+	}
+	resp, err := srv.groupsClient.ListGroupMembers(ctx, listGroupMembersRequest)
+	if err != nil {
+		return false, status.Errorf(codes.Internal, "failed to get members of group : ", zap.Error(err))
+	}
+	//check in all group members if the userId belongs to the group
+	var userIsFound bool = false
+	for _, member := range resp.GetMembers() {
+		if member.AccountId == token.UserID.String() {
+			userIsFound = true
+		}
+	}
+
+	if !userIsFound {
+		return false, status.Errorf(codes.PermissionDenied, "user has not the rights to get the note")
+	}
+
+	return true, nil
 }
 
 func (srv *notesService) authenticate(ctx context.Context) (*auth.Token, error) {
