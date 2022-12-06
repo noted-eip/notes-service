@@ -4,17 +4,13 @@ package models
 
 import (
 	"context"
-
-	"github.com/google/uuid"
 )
 
-//NoteWithBlocks
-
 type Note struct {
-	ID       uuid.UUID `json:"id" bson:"_id,omitempty"`
-	AuthorId string    `json:"authorId" bson:"authorId,omitempty"`
-	Title    string    `json:"title" bson:"title,omitempty"`
-	Blocks   []Block   `json:"blocks" bson:"blocks,omitempty"`
+	ID       string  `json:"id" bson:"_id,omitempty"`
+	AuthorId string  `json:"authorId" bson:"authorId,omitempty"`
+	Title    string  `json:"title" bson:"title,omitempty"`
+	Blocks   []Block `json:"blocks" bson:"blocks,omitempty"`
 }
 
 // NotesRepository is safe for use in multiple goroutines.

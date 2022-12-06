@@ -23,6 +23,19 @@ func headingBlockToMarkdown(b *notespb.Block) (string, error) {
 	return result, nil
 }
 
+func codeBlockToMarkdown(b *notespb.Block) string {
+	codeData := b.GetCode()
+	result := "```" + codeData.Lang + "\n" + codeData.Snippet
+	sanitizeNewLines(&result)
+	result = result + "```\n"
+	return result
+}
+
+func imageBlockToMarkdown(b *notespb.Block) string {
+	imageData := b.GetImage()
+	return "![](" + imageData.Url + " " + imageData.Caption + ")\n"
+}
+
 func sanitizeNewLines(str *string) {
 	*str = strings.ReplaceAll(*str, "\r\n", "\n")
 	if (*str)[len(*str)-1] != '\n' {
@@ -35,10 +48,10 @@ func NoteToMarkdown(n *notespb.Note) ([]byte, error) {
 	var err error = nil
 	var converted string = ""
 
-	for _, val := range n.Blocks {
-		switch op := val.Data.(type) {
+	for _, block := range n.Blocks {
+		switch op := block.Data.(type) {
 		case *notespb.Block_Heading:
-			converted, err = headingBlockToMarkdown(val)
+			converted, err = headingBlockToMarkdown(block)
 		case *notespb.Block_Paragraph: // NOTE: Is already formatted as Markdown.
 			sanitizeNewLines(&op.Paragraph)
 			converted = op.Paragraph
@@ -51,6 +64,10 @@ func NoteToMarkdown(n *notespb.Note) ([]byte, error) {
 		case *notespb.Block_Math:
 			sanitizeNewLines(&op.Math)
 			converted = op.Math
+		case *notespb.Block_Code_:
+			converted = codeBlockToMarkdown(block)
+		case *notespb.Block_Image_:
+			converted = imageBlockToMarkdown(block)
 		}
 		if err != nil {
 			return nil, err

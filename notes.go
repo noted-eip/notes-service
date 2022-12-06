@@ -53,12 +53,12 @@ func (srv *notesService) CreateNote(ctx context.Context, in *notespb.CreateNoteR
 			srv.logger.Error("failed to create note", zap.Error(err))
 			return nil, status.Errorf(codes.Internal, "invalid content provided for block index : %d", index)
 		}
-		srv.repoBlock.Create(ctx, &models.BlockWithIndex{NoteId: note.ID.String(), Type: uint32(in.Note.Blocks[index].Type), Index: uint32(index + 1), Content: blocks[index].Content})
+		srv.repoBlock.Create(ctx, &models.BlockWithIndex{NoteId: note.ID, Type: uint32(in.Note.Blocks[index].Type), Index: uint32(index + 1), Content: blocks[index].Content})
 	}
 
 	return &notespb.CreateNoteResponse{
 		Note: &notespb.Note{
-			Id:       note.ID.String(),
+			Id:       note.ID,
 			AuthorId: note.AuthorId,
 			Title:    note.Title,
 			Blocks:   in.Note.Blocks,
@@ -76,10 +76,10 @@ func (srv *notesService) GetNote(ctx context.Context, in *notespb.GetNoteRequest
 	note, err := srv.repoNote.Get(ctx, &in.Id)
 	if err != nil {
 		srv.logger.Error("failed to get note", zap.Error(err))
-		return nil, status.Error(codes.InvalidArgument, "could not get note")
+		return nil, status.Error(codes.Internal, "could not get note")
 	}
 
-	noteId := note.ID.String()
+	noteId := note.ID
 	blocksTmp, err := srv.repoBlock.GetBlocks(ctx, &noteId)
 	if err != nil {
 		srv.logger.Error("failed to get blocks", zap.Error(err))
@@ -97,7 +97,7 @@ func (srv *notesService) GetNote(ctx context.Context, in *notespb.GetNoteRequest
 		}
 		blocks[index] = &notespb.Block{Id: block.ID, Type: notespb.Block_Type(block.Type), Data: blocks[index].Data}
 	}
-	noteToReturn := notespb.Note{Id: note.ID.String(), AuthorId: note.AuthorId, Title: note.Title, Blocks: blocks}
+	noteToReturn := notespb.Note{Id: note.ID, AuthorId: note.AuthorId, Title: note.Title, Blocks: blocks}
 
 	return &notespb.GetNoteResponse{Note: &noteToReturn}, nil
 }
@@ -192,7 +192,7 @@ func (srv *notesService) ListNotes(ctx context.Context, in *notespb.ListNotesReq
 
 	notesResponse := make([]*notespb.Note, len(*notes))
 	for index, note := range *notes {
-		notesResponse[index] = &notespb.Note{Id: note.ID.String(), AuthorId: note.AuthorId, Title: note.Title}
+		notesResponse[index] = &notespb.Note{Id: note.ID, AuthorId: note.AuthorId, Title: note.Title}
 	}
 
 	return &notespb.ListNotesResponse{

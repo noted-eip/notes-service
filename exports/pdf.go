@@ -17,6 +17,7 @@ func NoteToPDF(n *notespb.Note) ([]byte, error) {
 		return nil, err
 	}
 
+	// NOTE: Can be customized later on
 	converter := goldmark.New(
 		goldmark.WithRenderer(pdf.New()),
 	)

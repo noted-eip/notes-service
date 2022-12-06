@@ -33,7 +33,7 @@ func (srv *notesRepository) Create(ctx context.Context, noteRequest *models.Note
 		srv.logger.Error("failed to generate new random uuid", zap.Error(err))
 		return nil, status.Errorf(codes.Internal, "could not create account")
 	}
-	noteRequest.ID = id
+	noteRequest.ID = id.String()
 	note := models.Note{ID: noteRequest.ID, AuthorId: noteRequest.AuthorId, Title: noteRequest.Title, Blocks: noteRequest.Blocks}
 
 	err = txn.Insert("note", note)
