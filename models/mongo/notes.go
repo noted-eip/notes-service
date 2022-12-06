@@ -60,11 +60,6 @@ func (srv *notesRepository) Get(ctx context.Context, noteId string) (*models.Not
 		return nil, status.Errorf(codes.InvalidArgument, err.Error())
 	}
 
-	/*_, err = uuid.Parse(note.ID)
-	if err != nil {
-		srv.logger.Error("failed to convert uuid from string", zap.Error(err))
-		return nil, status.Errorf(codes.Internal, "could not get note")
-	}*/
 	return &note, nil
 }
 

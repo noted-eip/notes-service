@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 
 	"notes-service/auth"
 	"notes-service/models"
@@ -232,7 +231,6 @@ func convertApiBlockToModelBlock(block *models.Block, blockRequest *notespb.Bloc
 	//	block.Code.Snippet = &op.Code.Snippet
 
 	default:
-		fmt.Println("No Data in this block")
 		return status.Error(codes.Internal, "no data in this block")
 	}
 	return nil
@@ -255,7 +253,6 @@ func convertModelBlockToApiBlock(blockSrc *models.Block, blockDest *notespb.Bloc
 	//case 7:
 	//	(*blockDest).Data = &notespb.Block_Code_{Code: {sinppet: blockSrc.Code.Snippet, lang: blockSrc.Code.Lang}}
 	default:
-		fmt.Println("No such content in this block")
 		return status.Errorf(codes.Internal, "no such content in this block")
 	}
 	return nil
