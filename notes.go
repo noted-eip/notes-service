@@ -199,3 +199,7 @@ func (srv *notesService) ListNotes(ctx context.Context, in *notespb.ListNotesReq
 		Notes: notesResponse,
 	}, nil
 }
+
+func (srv *notesService) GetRecommendationWebsiteWidgets(ctx context.Context, in *notespb.GetRecommendationWebsiteWidgetsRequest) (*notespb.GetRecommendationWebsiteWidgetsResponse, error) {
+
+}

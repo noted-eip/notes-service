@@ -6,6 +6,18 @@ import (
 	"context"
 )
 
+type Widget struct {
+	Title       string `json:"title" bson:"title,omitempty"`
+	Description string `json:"description" bson:"description,omitempty"`
+}
+
+//Inheritance from Widget
+type WebsiteWidget struct {
+	Widget
+	Url  string `json:"url" bson:"url,omitempty"`
+	Type string `json:"Type" bson:"Type,omitempty"`
+}
+
 type Note struct {
 	ID       string  `json:"id" bson:"_id,omitempty"`
 	AuthorId string  `json:"authorId" bson:"authorId,omitempty"`
