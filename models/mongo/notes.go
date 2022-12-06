@@ -38,7 +38,7 @@ func (srv *notesRepository) Create(ctx context.Context, noteRequest *models.Note
 		return nil, status.Error(codes.Internal, "could not create account")
 	}
 
-	note := models.Note{ID: id.String(), AuthorId: noteRequest.AuthorId, Title: noteRequest.Title, Blocks: noteRequest.Blocks}
+	note := models.Note{ID: id.String(), AuthorId: noteRequest.AuthorId, Title: noteRequest.Title}
 
 	_, err = srv.db.Collection("notes").InsertOne(ctx, note)
 	if err != nil {
