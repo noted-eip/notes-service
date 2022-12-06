@@ -4,6 +4,7 @@ import (
 	notespb "notes-service/protorepo/noted/notes/v1"
 
 	validation "github.com/go-ozzo/ozzo-validation/v4"
+	"github.com/go-ozzo/ozzo-validation/v4/is"
 )
 
 func ValidateCreateNoteRequest(in *notespb.CreateNoteRequest) error {
@@ -20,14 +21,14 @@ func ValidateCreateNoteRequest(in *notespb.CreateNoteRequest) error {
 
 func ValidateGetNoteRequest(in *notespb.GetNoteRequest) error {
 	return validation.ValidateStruct(in,
-		validation.Field(&in.Id, validation.Required),
+		validation.Field(&in.Id, validation.Required, is.UUID),
 	)
 }
 
 func ValidateUpdateNoteRequest(in *notespb.UpdateNoteRequest) error {
 	err := validation.ValidateStruct(in,
 		validation.Field(&in.Note, validation.NotNil),
-		validation.Field(&in.Id, validation.Required),
+		validation.Field(&in.Id, validation.Required, is.UUID),
 	)
 	if err != nil {
 		return err
@@ -41,7 +42,7 @@ func ValidateUpdateNoteRequest(in *notespb.UpdateNoteRequest) error {
 
 func ValidateDeleteNoteRequest(in *notespb.DeleteNoteRequest) error {
 	return validation.ValidateStruct(in,
-		validation.Field(&in.Id, validation.Required),
+		validation.Field(&in.Id, validation.Required, is.UUID),
 	)
 }
 
