@@ -57,10 +57,10 @@ func NoteToMarkdown(n *notespb.Note) ([]byte, error) {
 			converted = op.Paragraph
 		case *notespb.Block_NumberPoint: // NOTE: Is already formatted as Markdown ?
 			sanitizeNewLines(&op.NumberPoint)
-			converted = op.NumberPoint
+			converted = op.NumberPoint + "\n"
 		case *notespb.Block_BulletPoint: // NOTE: Is already formatted as Markdown ?
 			sanitizeNewLines(&op.BulletPoint)
-			converted = op.BulletPoint
+			converted = op.BulletPoint + "\n"
 		case *notespb.Block_Math:
 			sanitizeNewLines(&op.Math)
 			converted = op.Math
