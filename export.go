@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"strings"
 
 	"notes-service/exports"
 	notespb "notes-service/protorepo/noted/notes/v1"
@@ -13,33 +12,29 @@ import (
 )
 
 func (srv *notesService) ExportNote(ctx context.Context, in *notespb.ExportNoteRequest) (*notespb.ExportNoteResponse, error) {
-	m := map[string]func(*notespb.Note) ([]byte, error){
-		"markdown": exports.NoteToMarkdown,
-		"pdf":      exports.NoteToPDF,
+	m := map[notespb.NoteExportFormat]func(*notespb.Note) ([]byte, error){
+		notespb.NoteExportFormat_NOTE_EXPORT_FORMAT_MARKDOWN: exports.NoteToMarkdown,
+		notespb.NoteExportFormat_NOTE_EXPORT_FORMAT_PDF:      exports.NoteToPDF,
 	}
 
 	note, err := srv.GetNote(ctx, &notespb.GetNoteRequest{Id: in.NoteId})
 
 	if err != nil {
-		srv.logger.Error("failed to fetch note", zap.Error(err))
-		return nil, status.Errorf(codes.Internal, "failed to retrieve note with id : %s", in.NoteId)
+		return nil, err
 	}
 
-	splittedEnumName := strings.Split(in.ExportFormat.String(), "_")
-	formatName := strings.ToLower(splittedEnumName[len(splittedEnumName)-1])
-
-	formatter, ok := m[formatName]
+	formatter, ok := m[in.ExportFormat]
 
 	if !ok {
 		srv.logger.Error("format not recognized", zap.Error(err))
-		return nil, status.Errorf(codes.Internal, "format not recognized : %s", formatName)
+		return nil, status.Errorf(codes.Internal, "format not recognized : %s", in.ExportFormat.String())
 	}
 
 	fileBytes, err := formatter(note.Note)
 
 	if err != nil {
 		srv.logger.Error("failed to convert note", zap.Error(err))
-		return nil, status.Errorf(codes.Internal, "failed to convert note to: %s", formatName)
+		return nil, status.Errorf(codes.Internal, "failed to convert note to: %s", in.ExportFormat.String())
 	}
 
 	return &notespb.ExportNoteResponse{File: fileBytes}, nil
