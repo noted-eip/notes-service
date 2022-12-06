@@ -28,10 +28,14 @@ type notesService struct {
 var _ notespb.NotesAPIServer = &notesService{}
 
 func (srv *notesService) CreateNote(ctx context.Context, in *notespb.CreateNoteRequest) (*notespb.CreateNoteResponse, error) {
-	/*err := validators.ValidateCreateNoteRequest(in)
+	_, err := srv.authenticate(ctx)
+	if err != nil {
+		return nil, status.Error(codes.Unauthenticated, err.Error())
+	}
+	err = validators.ValidateCreateNoteRequest(in)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
-	}*/
+	}
 
 	note, err := srv.repoNote.Create(ctx, &models.Note{AuthorId: in.Note.AuthorId, Title: in.Note.Title})
 
@@ -62,18 +66,18 @@ func (srv *notesService) CreateNote(ctx context.Context, in *notespb.CreateNoteR
 }
 
 func (srv *notesService) GetNote(ctx context.Context, in *notespb.GetNoteRequest) (*notespb.GetNoteResponse, error) {
-	token, err := srv.authenticate(ctx)
+	_, err := srv.authenticate(ctx)
 	if err != nil {
 		return nil, status.Error(codes.Unauthenticated, err.Error())
 	}
 	err = validators.ValidateGetNoteRequest(in)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
-	}
-	userIsInGroup, err := userIsInGroupNote(srv, ctx, token, in.Id)
-	if userIsInGroup == false {
-		return nil, err
-	}
+	} /*
+		userIsInGroup, err := userIsInGroupNote(srv, ctx, token, in.Id)
+		if userIsInGroup == false {
+			return nil, err
+		}*/
 
 	note, err := srv.repoNote.Get(ctx, in.Id)
 	if err != nil {
@@ -187,7 +191,7 @@ func (srv *notesService) DeleteNote(ctx context.Context, in *notespb.DeleteNoteR
 }
 
 func (srv *notesService) ListNotes(ctx context.Context, in *notespb.ListNotesRequest) (*notespb.ListNotesResponse, error) {
-	token, err := srv.authenticate(ctx)
+	_, err := srv.authenticate(ctx)
 	if err != nil {
 		return nil, status.Error(codes.Unauthenticated, err.Error())
 	}
@@ -195,10 +199,10 @@ func (srv *notesService) ListNotes(ctx context.Context, in *notespb.ListNotesReq
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
-	userIsInGroup, err := userIsInGroupNote(srv, ctx, token)
+	/*userIsInGroup, err := userIsInGroupNote(srv, ctx, token)
 	if userIsInGroup == false {
 		return nil, err
-	}
+	}*/
 
 	notes, err := srv.repoNote.List(ctx, in.AuthorId)
 	if err != nil {
@@ -265,6 +269,7 @@ func fillContentFromModelToApi(blockRequest *models.Block, contentType uint32, b
 	return nil
 }
 
+/*
 func userIsInGroupNote(srv *notesService, ctx context.Context, token *auth.Token, noteId string) (bool, error) {
 	//check on which groupId belongs the note
 	getGroupNoteRequest := &accountspb.GetGroupNoteRequest{
@@ -296,7 +301,7 @@ func userIsInGroupNote(srv *notesService, ctx context.Context, token *auth.Token
 
 	return true, nil
 }
-
+*/
 func (srv *notesService) authenticate(ctx context.Context) (*auth.Token, error) {
 	token, err := srv.auth.TokenFromContext(ctx)
 	if err != nil {

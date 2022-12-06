@@ -7,34 +7,46 @@ import (
 )
 
 func ValidateCreateNoteRequest(in *notespb.CreateNoteRequest) error {
-	return validation.ValidateStruct(in,
-		validation.Field(&in.Note, validation.When(in.Note == nil, validation.Required)),
-		validation.Field(&in.Note.AuthorId, validation.When(in.Note.AuthorId == "", validation.Required)),
-	)
+	err := validation.ValidateStruct(in, validation.Field(&in.Note, validation.NotNil))
+	if err != nil {
+		return err
+	}
+	err = validation.ValidateStruct(in.Note, validation.Field(&in.Note.AuthorId, validation.Required))
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func ValidateGetNoteRequest(in *notespb.GetNoteRequest) error {
 	return validation.ValidateStruct(in,
-		validation.Field(&in.Id, validation.When(in.Id == "", validation.Required)),
+		validation.Field(&in.Id, validation.Required),
 	)
 }
 
 func ValidateUpdateNoteRequest(in *notespb.UpdateNoteRequest) error {
-	return validation.ValidateStruct(in,
-		validation.Field(&in.Id, validation.When(in.Id == "", validation.Required)),
-		validation.Field(&in.Note, validation.When(in.Note == nil, validation.Required)),
-		validation.Field(&in.Note.AuthorId, validation.When(in.Note.AuthorId == "", validation.Required)),
+	err := validation.ValidateStruct(in,
+		validation.Field(&in.Note, validation.NotNil),
+		validation.Field(&in.Id, validation.Required),
 	)
+	if err != nil {
+		return err
+	}
+	err = validation.ValidateStruct(in.Note, validation.Field(&in.Note.AuthorId, validation.Required))
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func ValidateDeleteNoteRequest(in *notespb.DeleteNoteRequest) error {
 	return validation.ValidateStruct(in,
-		validation.Field(&in.Id, validation.When(in.Id == "", validation.Required)),
+		validation.Field(&in.Id, validation.Required),
 	)
 }
 
 func ValidateListNoteRequest(in *notespb.ListNotesRequest) error {
 	return validation.ValidateStruct(in,
-		validation.Field(&in.AuthorId, validation.When(in.AuthorId == "", validation.Required)),
+		validation.Field(&in.AuthorId, validation.Required),
 	)
 }
