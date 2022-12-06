@@ -45,7 +45,7 @@ func (srv *notesService) CreateNote(ctx context.Context, in *notespb.CreateNoteR
 	blocks := make([]models.Block, len(in.Note.Blocks))
 
 	for index, block := range in.Note.Blocks {
-		err := fillBlockContent(&blocks[index], block)
+		err := convertApiBlockToModelBlock(&blocks[index], block)
 		if err != nil {
 			srv.logger.Error("failed to create note", zap.Error(err))
 			return nil, status.Errorf(codes.Internal, "invalid content provided for block index : %d", index)
@@ -90,7 +90,7 @@ func (srv *notesService) GetNote(ctx context.Context, in *notespb.GetNoteRequest
 	blocks := make([]*notespb.Block, len(blocksTmp))
 	for index, block := range blocksTmp {
 		blocks[index] = &notespb.Block{}
-		err := fillContentFromModelToApi(block, block.Type, blocks[index])
+		err := convertModelBlockToApiBlock(block, blocks[index], block.Type)
 		if err != nil {
 			srv.logger.Error("failed to the content of a block", zap.Error(err))
 			return nil, status.Errorf(codes.Internal, "fail to get content from block Id : %s", block.ID)
@@ -139,7 +139,7 @@ func (srv *notesService) UpdateNote(ctx context.Context, in *notespb.UpdateNoteR
 	//appeller createBlock en boucle pour tout les autres blocks
 	blocks := make([]models.Block, len(in.Note.Blocks))
 	for index, block := range in.Note.Blocks {
-		err := fillBlockContent(&blocks[index], block)
+		err := convertApiBlockToModelBlock(&blocks[index], block)
 		if err != nil {
 			srv.logger.Error("failed to update blocks", zap.Error(err))
 			return nil, status.Errorf(codes.Internal, "invalid content provided for block index : %d", index)
@@ -212,7 +212,7 @@ func (srv *notesService) ListNotes(ctx context.Context, in *notespb.ListNotesReq
 	}, nil
 }
 
-func fillBlockContent(block *models.Block, blockRequest *notespb.Block) error {
+func convertApiBlockToModelBlock(block *models.Block, blockRequest *notespb.Block) error {
 	switch op := blockRequest.Data.(type) {
 	case *notespb.Block_Heading:
 		block.Content = op.Heading
@@ -238,22 +238,22 @@ func fillBlockContent(block *models.Block, blockRequest *notespb.Block) error {
 	return nil
 }
 
-func fillContentFromModelToApi(blockRequest *models.Block, contentType uint32, blockApi *notespb.Block) error {
+func convertModelBlockToApiBlock(blockSrc *models.Block, blockDest *notespb.Block, contentType uint32) error {
 	switch contentType {
 	case 1:
-		blockApi.Data = &notespb.Block_Heading{Heading: blockRequest.Content}
+		blockDest.Data = &notespb.Block_Heading{Heading: blockSrc.Content}
 	case 2:
-		blockApi.Data = &notespb.Block_Paragraph{Paragraph: blockRequest.Content}
+		blockDest.Data = &notespb.Block_Paragraph{Paragraph: blockSrc.Content}
 	case 3:
-		blockApi.Data = &notespb.Block_NumberPoint{NumberPoint: blockRequest.Content}
+		blockDest.Data = &notespb.Block_NumberPoint{NumberPoint: blockSrc.Content}
 	case 4:
-		blockApi.Data = &notespb.Block_BulletPoint{BulletPoint: blockRequest.Content}
+		blockDest.Data = &notespb.Block_BulletPoint{BulletPoint: blockSrc.Content}
 	case 5:
-		blockApi.Data = &notespb.Block_Math{Math: blockRequest.Content}
+		blockDest.Data = &notespb.Block_Math{Math: blockSrc.Content}
 	//case 6:
-	//	(*blockApi).Data = &notespb.Block_Image_{Image: {caption: blockRequest.Image.caption, url: blockRequest.Image.url}}
+	//	(*blockDest).Data = &notespb.Block_Image_{Image: {caption: blockSrc.Image.caption, url: blockSrc.Image.url}}
 	//case 7:
-	//	(*blockApi).Data = &notespb.Block_Code_{Code: {sinppet: blockRequest.Code.Snippet, lang: blockRequest.Code.Lang}}
+	//	(*blockDest).Data = &notespb.Block_Code_{Code: {sinppet: blockSrc.Code.Snippet, lang: blockSrc.Code.Lang}}
 	default:
 		fmt.Println("No such content in this block")
 		return status.Errorf(codes.Internal, "no such content in this block")

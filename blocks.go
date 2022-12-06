@@ -32,7 +32,7 @@ func (srv *notesService) InsertBlock(ctx context.Context, in *notespb.InsertBloc
 	}
 
 	var block = models.Block{}
-	err = fillBlockContent(&block, in.Block)
+	err = convertApiBlockToModelBlock(&block, in.Block)
 	if err != nil {
 		srv.logger.Error("failed to create block", zap.Error(err))
 		return nil, status.Errorf(codes.Internal, "invalid content provided for block index : %d", in.Index)
@@ -69,7 +69,7 @@ func (srv *notesService) UpdateBlock(ctx context.Context, in *notespb.UpdateBloc
 	}
 
 	var block = models.Block{}
-	err = fillBlockContent(&block, in.Block)
+	err = convertApiBlockToModelBlock(&block, in.Block)
 	if err != nil {
 		srv.logger.Error("failed to update block", zap.Error(err))
 		return nil, status.Errorf(codes.Internal, "invalid content provided for block id : %s", in.Id)
