@@ -11,6 +11,7 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type notesService struct {
@@ -38,7 +39,7 @@ func (srv *notesService) CreateNote(ctx context.Context, in *notespb.CreateNoteR
 		return nil, status.Error(codes.InvalidArgument, "authorId or title are empty")
 	}
 
-	note, err := srv.repoNote.Create(ctx, &models.Note{AuthorId: in.Note.AuthorId, Title: in.Note.Title, Blocks: nil})
+	note, err := srv.repoNote.Create(ctx, &models.NotePayload{AuthorId: in.Note.AuthorId, Title: in.Note.Title})
 
 	if err != nil {
 		srv.logger.Error("failed to create note", zap.Error(err))
@@ -76,7 +77,7 @@ func (srv *notesService) GetNote(ctx context.Context, in *notespb.GetNoteRequest
 	note, err := srv.repoNote.Get(ctx, &in.Id)
 	if err != nil {
 		srv.logger.Error("failed to get note", zap.Error(err))
-		return nil, status.Error(codes.Internal, "could not get note")
+		return nil, status.Error(codes.NotFound, "could not get note.")
 	}
 
 	noteId := note.ID
@@ -97,7 +98,7 @@ func (srv *notesService) GetNote(ctx context.Context, in *notespb.GetNoteRequest
 		}
 		blocks[index] = &notespb.Block{Id: block.ID, Type: notespb.Block_Type(block.Type), Data: blocks[index].Data}
 	}
-	noteToReturn := notespb.Note{Id: note.ID, AuthorId: note.AuthorId, Title: note.Title, Blocks: blocks}
+	noteToReturn := notespb.Note{Id: note.ID, AuthorId: note.AuthorId, Title: note.Title, Blocks: blocks, CreatedAt: timestamppb.New(note.CreationDate), ModifiedAt: timestamppb.New(note.ModificationDate)}
 
 	return &notespb.GetNoteResponse{Note: &noteToReturn}, nil
 }
@@ -127,7 +128,7 @@ func (srv *notesService) UpdateNote(ctx context.Context, in *notespb.UpdateNoteR
 
 	//update juste les infos de la note et pas les blocks sinon
 	noteId := id.String()
-	err = srv.repoNote.Update(ctx, &noteId, &models.Note{AuthorId: in.Note.AuthorId, Title: in.Note.Title})
+	err = srv.repoNote.Update(ctx, &noteId, &models.NotePayload{AuthorId: in.Note.AuthorId, Title: in.Note.Title})
 	if err != nil {
 		srv.logger.Error("failed to update note", zap.Error(err))
 		return nil, status.Error(codes.Internal, "could not update note")
@@ -192,7 +193,7 @@ func (srv *notesService) ListNotes(ctx context.Context, in *notespb.ListNotesReq
 
 	notesResponse := make([]*notespb.Note, len(*notes))
 	for index, note := range *notes {
-		notesResponse[index] = &notespb.Note{Id: note.ID, AuthorId: note.AuthorId, Title: note.Title}
+		notesResponse[index] = &notespb.Note{Id: note.ID, AuthorId: note.AuthorId, Title: note.Title, CreatedAt: timestamppb.New(note.CreationDate), ModifiedAt: timestamppb.New(note.ModificationDate)}
 	}
 
 	return &notespb.ListNotesResponse{
