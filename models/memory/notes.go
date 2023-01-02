@@ -5,6 +5,7 @@ import (
 	"context"
 	"notes-service/models"
 
+	"github.com/google/uuid"
 	"github.com/hashicorp/go-memdb"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
@@ -55,22 +56,24 @@ func NewNotesDatabaseSchema() *memdb.DBSchema {
 	}
 }
 
-func (srv *notesRepository) Create(ctx context.Context, noteRequest *models.Note) (*models.Note, error) {
+func (srv *notesRepository) Create(ctx context.Context, noteRequest *models.NotePayload) (*models.Note, error) {
 	txn := srv.db.DB.Txn(true)
+	id, err := uuid.NewRandom()
 	defer txn.Abort()
 
 	if noteRequest == nil {
 		srv.logger.Error("NoteRequest is nil")
 		return nil, status.Errorf(codes.Internal, "could not create account")
 	}
-	note := models.Note{AuthorId: noteRequest.AuthorId, Title: noteRequest.Title}
 
-	err := txn.Insert("note", note)
+	note := models.Note{ID: id.String(), AuthorId: noteRequest.AuthorId, Title: noteRequest.Title}
+
+	err = txn.Insert("note", note)
 	if err != nil {
 		srv.logger.Error("mongo insert note failed", zap.Error(err), zap.String("note name", note.AuthorId))
 		return nil, status.Errorf(codes.Internal, "could not create note")
 	}
-	return noteRequest, nil
+	return &note, nil
 }
 
 func (srv *notesRepository) Get(ctx context.Context, noteId string) (*models.Note, error) {
@@ -81,7 +84,7 @@ func (srv *notesRepository) Delete(ctx context.Context, noteId string) error {
 	return status.Errorf(codes.Unimplemented, "not implemented")
 }
 
-func (srv *notesRepository) Update(ctx context.Context, noteId string, noteRequest *models.Note) error {
+func (srv *notesRepository) Update(ctx context.Context, noteId string, noteRequest *models.NotePayload) error {
 	/*txn := srv.db.DB.Txn(true)
 	defer txn.Abort()
 
