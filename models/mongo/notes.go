@@ -46,7 +46,7 @@ func (srv *notesRepository) Create(ctx context.Context, noteRequest *models.Note
 	return &note, nil
 }
 
-func (srv *notesRepository) Get(ctx context.Context, noteId *string) (*models.Note, error) {
+func (srv *notesRepository) Get(ctx context.Context, noteId string) (*models.Note, error) {
 	var note models.Note
 
 	err := srv.db.Collection("notes").FindOne(ctx, buildIdQuery(noteId)).Decode(&note)
@@ -65,7 +65,7 @@ func (srv *notesRepository) Get(ctx context.Context, noteId *string) (*models.No
 	return &note, nil
 }
 
-func (srv *notesRepository) Delete(ctx context.Context, noteId *string) error {
+func (srv *notesRepository) Delete(ctx context.Context, noteId string) error {
 	delete, err := srv.db.Collection("notes").DeleteOne(ctx, buildIdQuery(noteId))
 
 	if err != nil {
@@ -73,13 +73,13 @@ func (srv *notesRepository) Delete(ctx context.Context, noteId *string) error {
 		return status.Errorf(codes.Internal, "could not delete note")
 	}
 	if delete.DeletedCount == 0 {
-		srv.logger.Info("mongo delete note matched none", zap.String("note_id", *noteId))
+		srv.logger.Info("mongo delete note matched none", zap.String("note_id", noteId))
 		return status.Errorf(codes.Internal, "could not delete note")
 	}
 	return nil
 }
 
-func (srv *notesRepository) Update(ctx context.Context, noteId *string, noteRequest *models.NotePayload) error {
+func (srv *notesRepository) Update(ctx context.Context, noteId string, noteRequest *models.NotePayload) error {
 	var note models.Note
 	err := copier.Copy(&note, &noteRequest)
 	if err != nil {
@@ -94,13 +94,13 @@ func (srv *notesRepository) Update(ctx context.Context, noteId *string, noteRequ
 		return status.Error(codes.InvalidArgument, err.Error())
 	}
 	if update.MatchedCount == 0 {
-		srv.logger.Error("mongo update note query matched none", zap.String("user_id", *noteId))
+		srv.logger.Error("mongo update note query matched none", zap.String("user_id", noteId))
 		return status.Error(codes.Internal, "could not update note")
 	}
 	return nil
 }
 
-func (srv *notesRepository) List(ctx context.Context, authorId *string) (*[]models.Note, error) {
+func (srv *notesRepository) List(ctx context.Context, authorId string) (*[]models.Note, error) {
 	cursor, err := srv.db.Collection("notes").Find(ctx, buildAuthodIdQuery(authorId))
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
@@ -127,17 +127,17 @@ func (srv *notesRepository) List(ctx context.Context, authorId *string) (*[]mode
 	return &notesResponse, nil
 }
 
-func buildIdQuery(noteId *string) bson.M {
+func buildIdQuery(noteId string) bson.M {
 	query := bson.M{}
-	if *noteId != "" {
+	if noteId != "" {
 		query["_id"] = noteId
 	}
 	return query
 }
 
-func buildAuthodIdQuery(authorId *string) bson.M {
+func buildAuthodIdQuery(authorId string) bson.M {
 	query := bson.M{}
-	if *authorId != "" {
+	if authorId != "" {
 		query["authorId"] = authorId
 	}
 	return query

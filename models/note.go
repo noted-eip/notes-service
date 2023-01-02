@@ -27,11 +27,11 @@ type NotePayload struct {
 type NotesRepository interface {
 	Create(ctx context.Context, noteRequest *NotePayload) (*Note, error)
 
-	Get(ctx context.Context, noteId *string) (*Note, error)
+	Get(ctx context.Context, noteId string) (*Note, error)
 
-	Delete(ctx context.Context, noteId *string) error
+	Delete(ctx context.Context, noteId string) error
 
-	Update(ctx context.Context, noteId *string, noteRequest *NotePayload) error
+	Update(ctx context.Context, noteId string, noteRequest *NotePayload) error
 
-	List(ctx context.Context, authorId *string) (*[]Note, error)
+	List(ctx context.Context, authorId string) (*[]Note, error)
 }

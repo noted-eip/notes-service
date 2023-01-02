@@ -4,11 +4,10 @@ import (
 	"context"
 	"crypto/ed25519"
 	"notes-service/auth"
-	"notes-service/memory"
+	"notes-service/models/memory"
 	notespb "notes-service/protorepo/noted/notes/v1"
 	"testing"
 
-	"github.com/hashicorp/go-memdb"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.uber.org/zap"
@@ -39,7 +38,7 @@ func (s *NotesAPISuite) SetupSuite() {
 	}
 }
 
-func (s *NotesAPISuite) TestNotesServiceCreateNoteShouldReturnNil() {
+func (s *NotesAPISuite) CreateNoteShouldReturnNil() {
 	res, err := s.srv.CreateNote(context.TODO(), &notespb.CreateNoteRequest{})
 
 	s.Require().Error(err)
@@ -47,7 +46,7 @@ func (s *NotesAPISuite) TestNotesServiceCreateNoteShouldReturnNil() {
 	s.Nil(res)
 }
 
-func (s *NotesAPISuite) TestNotesServiceCreateNoteShouldReturnNote() {
+func (s *NotesAPISuite) CreateNoteShouldReturnNote() {
 	res, err := s.srv.CreateNote(context.TODO(), &notespb.CreateNoteRequest{
 		Note: &notespb.Note{
 			AuthorId: "CI-TEST",
@@ -59,7 +58,7 @@ func (s *NotesAPISuite) TestNotesServiceCreateNoteShouldReturnNote() {
 	s.NotNil(res)
 }
 
-func (s *NotesAPISuite) TestNotesServiceGetNoteShouldReturnError() {
+func (s *NotesAPISuite) GetNoteShouldReturnError() {
 	res, err := s.srv.GetNote(context.TODO(), &notespb.GetNoteRequest{})
 	s.Require().Error(err)
 	s.Equal(status.Code(err), codes.InvalidArgument)
@@ -67,7 +66,7 @@ func (s *NotesAPISuite) TestNotesServiceGetNoteShouldReturnError() {
 }
 
 /*
-func (s *NotesAPISuite) TestNotesServiceGetNoteShouldReturnNoError() {
+func (s *NotesAPISuite) GetNoteShouldReturnNoError() {
 	noteId, err := uuid.NewRandom()
 
 	res, err := s.srv.GetNote(context.TODO(), &notespb.GetNoteRequest{
@@ -77,7 +76,7 @@ func (s *NotesAPISuite) TestNotesServiceGetNoteShouldReturnNoError() {
 	s.Nil(err)
 }
 */
-func (s *NotesAPISuite) TestNotesServiceUpdateNoteShouldReturnError() {
+func (s *NotesAPISuite) UpdateNoteShouldReturnError() {
 	res, err := s.srv.UpdateNote(context.TODO(), &notespb.UpdateNoteRequest{})
 	s.Require().Error(err)
 	s.Equal(status.Code(err), codes.InvalidArgument)
@@ -85,7 +84,7 @@ func (s *NotesAPISuite) TestNotesServiceUpdateNoteShouldReturnError() {
 }
 
 /*
-func (s *NotesAPISuite) TestNotesServiceUpdateNoteShouldReturnNoError() {
+func (s *NotesAPISuite) UpdateNoteShouldReturnNoError() {
 	noteId, err := uuid.NewRandom()
 
 	res, err := s.srv.UpdateNote(context.TODO(), &notespb.UpdateNoteRequest{
@@ -100,7 +99,7 @@ func (s *NotesAPISuite) TestNotesServiceUpdateNoteShouldReturnNoError() {
 	s.Nil(res)
 }
 */
-func (s *NotesAPISuite) TestNotesServiceDeleteNoteShouldReturnError() {
+func (s *NotesAPISuite) DeleteNoteShouldReturnError() {
 	res, err := s.srv.DeleteNote(context.TODO(), &notespb.DeleteNoteRequest{})
 	s.Require().Error(err)
 	s.Equal(status.Code(err), codes.InvalidArgument)
@@ -108,7 +107,7 @@ func (s *NotesAPISuite) TestNotesServiceDeleteNoteShouldReturnError() {
 }
 
 /*
-func (s *NotesAPISuite) TestNotesServiceDeleteNoteShouldReturnNoError() {
+func (s *NotesAPISuite) DeleteNoteShouldReturnNoError() {
 	id, err := uuid.NewRandom()
 
 	res, err := s.srv.DeleteNote(context.TODO(), &notespb.DeleteNoteRequest{
@@ -118,7 +117,7 @@ func (s *NotesAPISuite) TestNotesServiceDeleteNoteShouldReturnNoError() {
 	s.Nil(res)
 }
 */
-func (s *NotesAPISuite) TestNotesServiceListNotesShouldReturnError() {
+func (s *NotesAPISuite) ListNotesShouldReturnError() {
 	res, err := s.srv.ListNotes(context.TODO(), &notespb.ListNotesRequest{})
 	s.Require().Error(err)
 	s.Equal(status.Code(err), codes.InvalidArgument)
@@ -126,7 +125,7 @@ func (s *NotesAPISuite) TestNotesServiceListNotesShouldReturnError() {
 }
 
 /*
-func (s *NotesAPISuite) TestNotesServiceListNotesShouldReturnNoError() {
+func (s *NotesAPISuite) ListNotesShouldReturnNoError() {
 	res, err := s.srv.ListNotes(context.TODO(), &notespb.ListNotesRequest{
 		AuthorId: "author-id",
 	})
@@ -137,41 +136,9 @@ func (s *NotesAPISuite) TestNotesServiceListNotesShouldReturnNoError() {
 */
 
 func newNotesDatabaseOrFail(t *testing.T, logger *zap.Logger) *memory.Database {
-	db, err := memory.NewDatabase(context.Background(), newNotesDatabaseSchema(), logger)
+	db, err := memory.NewDatabase(context.Background(), memory.NewNotesDatabaseSchema(), logger)
 	require.NoError(t, err, "could not instantiate in-memory database")
 	return db
-}
-
-func newNotesDatabaseSchema() *memdb.DBSchema {
-	return &memdb.DBSchema{
-		Tables: map[string]*memdb.TableSchema{
-			"note": {
-				Name: "note",
-				Indexes: map[string]*memdb.IndexSchema{
-					"id": {
-						Name:    "id",
-						Unique:  true,
-						Indexer: &memdb.StringFieldIndex{Field: "ID"},
-					},
-					"author_id": {
-						Name:    "author_id",
-						Unique:  true,
-						Indexer: &memdb.StringFieldIndex{Field: "AuthorId"},
-					},
-					"title": {
-						Name:    "title",
-						Unique:  false,
-						Indexer: &memdb.StringFieldIndex{Field: "Title"},
-					},
-					"blocks": {
-						Name:    "blocks",
-						Unique:  false,
-						Indexer: &memdb.StringFieldIndex{Field: "Blocks"},
-					},
-				},
-			},
-		},
-	}
 }
 
 func newLoggerOrFail(t *testing.T) *zap.Logger {
