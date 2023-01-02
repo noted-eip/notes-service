@@ -52,15 +52,8 @@ func (srv *notesService) CreateNote(ctx context.Context, in *notespb.CreateNoteR
 		}
 		srv.repoBlock.Create(ctx, &models.Block{NoteId: note.ID, Type: uint32(in.Note.Blocks[index].Type), Index: uint32(index + 1), Content: blocks[index].Content})
 	}
-
-	return &notespb.CreateNoteResponse{
-		Note: &notespb.Note{
-			Id:       note.ID,
-			AuthorId: note.AuthorId,
-			Title:    note.Title,
-			Blocks:   in.Note.Blocks,
-		},
-	}, nil
+	noteResponse := notespb.Note{Id: note.ID, AuthorId: note.AuthorId, Title: note.Title, Blocks: in.Note.Blocks, CreatedAt: timestamppb.New(note.CreationDate), ModifiedAt: timestamppb.New(note.ModificationDate)}
+	return &notespb.CreateNoteResponse{Note: &noteResponse}, nil
 }
 
 func (srv *notesService) GetNote(ctx context.Context, in *notespb.GetNoteRequest) (*notespb.GetNoteResponse, error) {
@@ -97,9 +90,8 @@ func (srv *notesService) GetNote(ctx context.Context, in *notespb.GetNoteRequest
 		}
 		blocks[index] = &notespb.Block{Id: block.ID, Type: notespb.Block_Type(block.Type), Data: blocks[index].Data}
 	}
-	noteToReturn := notespb.Note{Id: note.ID, AuthorId: note.AuthorId, Title: note.Title, Blocks: blocks, CreatedAt: timestamppb.New(note.CreationDate), ModifiedAt: timestamppb.New(note.ModificationDate)}
-
-	return &notespb.GetNoteResponse{Note: &noteToReturn}, nil
+	noteResponse := notespb.Note{Id: note.ID, AuthorId: note.AuthorId, Title: note.Title, Blocks: blocks, CreatedAt: timestamppb.New(note.CreationDate), ModifiedAt: timestamppb.New(note.ModificationDate)}
+	return &notespb.GetNoteResponse{Note: &noteResponse}, nil
 }
 
 func (srv *notesService) UpdateNote(ctx context.Context, in *notespb.UpdateNoteRequest) (*notespb.UpdateNoteResponse, error) {
@@ -205,10 +197,7 @@ func (srv *notesService) ListNotes(ctx context.Context, in *notespb.ListNotesReq
 	for index, note := range *notes {
 		notesResponse[index] = &notespb.Note{Id: note.ID, AuthorId: note.AuthorId, Title: note.Title, CreatedAt: timestamppb.New(note.CreationDate), ModifiedAt: timestamppb.New(note.ModificationDate)}
 	}
-
-	return &notespb.ListNotesResponse{
-		Notes: notesResponse,
-	}, nil
+	return &notespb.ListNotesResponse{Notes: notesResponse}, nil
 }
 
 func convertApiBlockToModelBlock(block *models.Block, blockRequest *notespb.Block) error {

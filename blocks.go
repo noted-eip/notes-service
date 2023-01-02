@@ -22,31 +22,24 @@ func (srv *notesService) InsertBlock(ctx context.Context, in *notespb.InsertBloc
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 	//check si la note appartient a celui qui veut la modifier
-	note, err := srv.repoNote.Get(ctx, strconv.Itoa(int(in.NoteId)))
+	note, err := srv.repoNote.Get(ctx, in.NoteId)//NoteId going to be switched in string
 	if err != nil {
-		srv.logger.Error("Note not found in database", zap.Error(err))
-		return nil, status.Error(codes.NotFound, "could not update note")
+		return nil, status.Error(codes.NotFound, "could not get block")
 	}
 	if token.UserID.String() != note.AuthorId {
-		return nil, status.Error(codes.PermissionDenied, "This author has not the rights to update this note")
+		return nil, status.Error(codes.PermissionDenied, "This author has not the rights to create a block")
 	}
 
 	var block = models.Block{}
 	err = convertApiBlockToModelBlock(&block, in.Block)
 	if err != nil {
 		srv.logger.Error("failed to create block", zap.Error(err))
-		return nil, status.Errorf(codes.Internal, "invalid content provided for block index : %d", in.Index)
+		return nil, status.Errorf(codes.Internal, "invalid data content provided for block index : %d", in.Index)
 	}
-
-	BlockId, err := srv.repoBlock.Create(ctx, &models.Block{NoteId: strconv.Itoa(int(in.NoteId)), Type: uint32(in.Block.Type), Index: in.Index, Content: block.Content})
-
-	return &notespb.InsertBlockResponse{
-		Block: &notespb.Block{
-			Id:   *BlockId,
-			Type: in.Block.Type,
-			Data: in.Block.Data,
-		},
-	}, nil
+	//NoteId going to be switched in string
+	BlockId, err := srv.repoBlock.Create(ctx, &models.Block{NoteId: in.NoteId), Type: uint32(in.Block.Type), Index: in.Index, Content: block.Content})
+	blockResponse := &notespb.Block{Id: *BlockId, Type: in.Block.Type, Data: in.Block.Data}
+	return &notespb.InsertBlockResponse{Block: blockResponse}, nil
 }
 
 func (srv *notesService) UpdateBlock(ctx context.Context, in *notespb.UpdateBlockRequest) (*notespb.UpdateBlockResponse, error) {
