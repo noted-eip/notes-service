@@ -65,7 +65,8 @@ func (srv *notesService) GetNote(ctx context.Context, in *notespb.GetNoteRequest
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
-	//check if user is a note group member
+
+	//Check if user is a note group member
 
 	note, err := srv.repoNote.Get(ctx, in.Id)
 	if err != nil {
@@ -79,7 +80,7 @@ func (srv *notesService) GetNote(ctx context.Context, in *notespb.GetNoteRequest
 		return nil, status.Errorf(codes.NotFound, "invalid content provided for blocks form noteId : %d", note.ID)
 	}
 
-	//convert []models.block to []notespb.Block
+	//Convert []models.block to []notespb.Block
 	blocks := make([]*notespb.Block, len(blocksTmp))
 	for index, block := range blocksTmp {
 		blocks[index] = &notespb.Block{}
@@ -103,7 +104,7 @@ func (srv *notesService) UpdateNote(ctx context.Context, in *notespb.UpdateNoteR
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
-	//check si la note appartient a celui qui veut la modifier
+	//Check if the user own the note
 	note, err := srv.repoNote.Get(ctx, in.Id)
 	if err != nil {
 		srv.logger.Error("Note not found in database", zap.Error(err))
@@ -113,21 +114,21 @@ func (srv *notesService) UpdateNote(ctx context.Context, in *notespb.UpdateNoteR
 		return nil, status.Error(codes.PermissionDenied, "This author has not the rights to update this note")
 	}
 
-	//appeler deleteBlock avec le filtre note_id
+	//Delete all blocks
 	err = srv.repoBlock.DeleteBlocks(ctx, in.Id)
 	if err != nil {
 		srv.logger.Error("blocks weren't deleted : ", zap.Error(err))
 		return nil, status.Error(codes.Internal, "could not delete blocks")
 	}
 
-	//update juste les infos de la note et pas les blocks sinon
+	//Todo : Update only the note metInformation if the blocks are nil
 	err = srv.repoNote.Update(ctx, in.Id, &models.NotePayload{AuthorId: in.Note.AuthorId, Title: in.Note.Title})
 	if err != nil {
 		srv.logger.Error("failed to update note", zap.Error(err))
 		return nil, status.Error(codes.Internal, "could not update note")
 	}
 
-	//appeller createBlock en boucle pour tout les autres blocks
+	//Create all blocks
 	blocks := make([]models.Block, len(in.Note.Blocks))
 	for index, block := range in.Note.Blocks {
 		err := convertApiBlockToModelBlock(&blocks[index], block)
@@ -150,7 +151,7 @@ func (srv *notesService) DeleteNote(ctx context.Context, in *notespb.DeleteNoteR
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
-	//check si la note appartient a celui qui veut la modifier
+	//Check if the user own the note
 	note, err := srv.repoNote.Get(ctx, in.Id)
 	if err != nil {
 		srv.logger.Error("Note not found in database", zap.Error(err))
@@ -159,14 +160,13 @@ func (srv *notesService) DeleteNote(ctx context.Context, in *notespb.DeleteNoteR
 	if token.UserID.String() != note.AuthorId {
 		return nil, status.Error(codes.PermissionDenied, "This author has not the rights to update this note")
 	}
-
-	//appeler deleteBlock avec le filtre note_id
+	//Delete all blocks related to the noteId
 	err = srv.repoBlock.DeleteBlocks(ctx, in.Id)
 	if err != nil {
 		srv.logger.Error("blocks weren't deleted : ", zap.Error(err))
 		return nil, status.Error(codes.Internal, "could not delete blocks")
 	}
-
+	//Delete the note
 	err = srv.repoNote.Delete(ctx, in.Id)
 	if err != nil {
 		srv.logger.Error("failed to delete note", zap.Error(err))
@@ -185,7 +185,8 @@ func (srv *notesService) ListNotes(ctx context.Context, in *notespb.ListNotesReq
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
-	//check if user is a note group member
+
+	//TODO: check if user is a note group member
 
 	notes, err := srv.repoNote.List(ctx, in.AuthorId)
 	if err != nil {
@@ -212,12 +213,12 @@ func convertApiBlockToModelBlock(block *models.Block, blockRequest *notespb.Bloc
 		block.Content = op.BulletPoint
 	case *notespb.Block_Math:
 		block.Content = op.Math
-	//case *notespb.Block_Image_:
-	//	block.Image.caption = &op.Image.Caption
-	//	block.Image.url = &op.Image.Url
-	//case *notespb.Block_Code_:
-	//	block.Code.lang = &op.Code.Lang
-	//	block.Code.Snippet = &op.Code.Snippet
+	case *notespb.Block_Image_:
+		block.Image.Caption = op.Image.Caption
+		block.Image.Url = op.Image.Url
+	case *notespb.Block_Code_:
+		block.Code.Lang = op.Code.Lang
+		block.Code.Snippet = op.Code.Snippet
 
 	default:
 		return status.Error(codes.Internal, "no data in this block")
@@ -237,10 +238,10 @@ func convertModelBlockToApiBlock(blockSrc *models.Block, blockDest *notespb.Bloc
 		blockDest.Data = &notespb.Block_BulletPoint{BulletPoint: blockSrc.Content}
 	case 5:
 		blockDest.Data = &notespb.Block_Math{Math: blockSrc.Content}
-	//case 6:
-	//	(*blockDest).Data = &notespb.Block_Image_{Image: {caption: blockSrc.Image.caption, url: blockSrc.Image.url}}
-	//case 7:
-	//	(*blockDest).Data = &notespb.Block_Code_{Code: {sinppet: blockSrc.Code.Snippet, lang: blockSrc.Code.Lang}}
+	case 6:
+		(*blockDest).Data = &notespb.Block_Image_{Image: &notespb.Block_Image{Caption: blockSrc.Image.Caption, Url: blockSrc.Image.Url}}
+	case 7:
+		(*blockDest).Data = &notespb.Block_Code_{Code: &notespb.Block_Code{Snippet: blockSrc.Code.Snippet, Lang: blockSrc.Code.Lang}}
 	default:
 		return status.Errorf(codes.Internal, "no such content in this block")
 	}

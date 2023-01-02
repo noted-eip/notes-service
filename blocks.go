@@ -20,8 +20,8 @@ func (srv *notesService) InsertBlock(ctx context.Context, in *notespb.InsertBloc
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
-	//check si la note appartient a celui qui veut la modifier
-	note, err := srv.repoNote.Get(ctx, in.NoteId) //NoteId going to be switched in string
+	//Check if the user own the note
+	note, err := srv.repoNote.Get(ctx, in.NoteId)
 	if err != nil {
 		return nil, status.Error(codes.NotFound, "could not get block")
 	}
@@ -35,7 +35,6 @@ func (srv *notesService) InsertBlock(ctx context.Context, in *notespb.InsertBloc
 		srv.logger.Error("failed to create block", zap.Error(err))
 		return nil, status.Errorf(codes.Internal, "invalid data content provided for block index : %d", in.Index)
 	}
-	//NoteId going to be switched in string
 	BlockId, err := srv.repoBlock.Create(ctx, &models.Block{NoteId: in.NoteId, Type: uint32(in.Block.Type), Index: in.Index, Content: block.Content})
 	blockResponse := &notespb.Block{Id: *BlockId, Type: in.Block.Type, Data: in.Block.Data}
 	return &notespb.InsertBlockResponse{Block: blockResponse}, nil
@@ -50,7 +49,7 @@ func (srv *notesService) UpdateBlock(ctx context.Context, in *notespb.UpdateBloc
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
-	//check si la note appartient a celui qui veut la modifier
+	//Check if the user own the note
 	note, err := srv.repoNote.Get(ctx, in.Id)
 	if err != nil {
 		srv.logger.Error("Note not found in database", zap.Error(err))
@@ -86,7 +85,7 @@ func (srv *notesService) DeleteBlock(ctx context.Context, in *notespb.DeleteBloc
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
-	//check si la note appartient a celui qui veut la modifier
+	//Check if the user own the note
 	note, err := srv.repoNote.Get(ctx, in.Id)
 	if err != nil {
 		srv.logger.Error("Note not found in database", zap.Error(err))

@@ -7,13 +7,13 @@ import (
 )
 
 type Code struct {
-	Snippet *string
-	Lang    *string
+	Snippet string
+	Lang    string
 }
 
 type Image struct {
-	Url     *string
-	Caption *string
+	Url     string
+	Caption string
 }
 
 type Block struct {
@@ -22,6 +22,8 @@ type Block struct {
 	Type    uint32 `json:"type" bson:"type,omitempty"`
 	Index   uint32 `json:"index" bson:"index,omitempty"`
 	Content string `json:"content" bson:"content,omitempty"`
+	Image   *Image `json:"image" bson:"image,omitempty"`
+	Code    *Code  `json:"code" bson:"code,omitempty"`
 }
 
 // NotesRepository is safe for use in multiple goroutines.
