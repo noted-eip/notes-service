@@ -5,12 +5,10 @@ package models
 import (
 	"context"
 	"time"
-
-	"github.com/google/uuid"
 )
 
 type Note struct {
-	ID               uuid.UUID `json:"id" bson:"_id,omitempty"`
+	ID               string    `json:"id" bson:"_id,omitempty"`
 	AuthorId         string    `json:"authorId" bson:"authorId,omitempty"`
 	Title            string    `json:"title" bson:"title,omitempty"`
 	Blocks           []Block   `json:"blocks" bson:"blocks,omitempty"`

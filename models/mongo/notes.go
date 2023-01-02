@@ -4,8 +4,10 @@ import (
 	"context"
 	"errors"
 	"notes-service/models"
+	"time"
 
 	"github.com/google/uuid"
+
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.uber.org/zap"
@@ -32,9 +34,9 @@ func (srv *notesRepository) Create(ctx context.Context, noteRequest *models.Note
 		srv.logger.Error("failed to generate new random uuid", zap.Error(err))
 		return nil, status.Error(codes.Internal, "could not create account")
 	}
-	noteRequest.ID = id
+	noteRequest.ID = id.String()
 
-	note := models.Note{ID: noteRequest.ID, AuthorId: noteRequest.AuthorId, Title: noteRequest.Title, Blocks: noteRequest.Blocks, CreationDate: noteRequest.CreationDate, ModificationDate: noteRequest.ModificationDate}
+	note := models.Note{ID: noteRequest.ID, AuthorId: noteRequest.AuthorId, Title: noteRequest.Title, Blocks: noteRequest.Blocks, CreationDate: time.Now().UTC(), ModificationDate: time.Now().UTC()}
 
 	_, err = srv.db.Collection("notes").InsertOne(ctx, note)
 	if err != nil {
@@ -55,8 +57,7 @@ func (srv *notesRepository) Get(ctx context.Context, noteId *string) (*models.No
 		srv.logger.Error("unable to query note", zap.Error(err))
 		return nil, status.Errorf(codes.InvalidArgument, err.Error())
 	}
-
-	_, err = uuid.Parse(note.ID.String())
+	_, err = uuid.Parse(note.ID)
 	if err != nil {
 		srv.logger.Error("failed to convert uuid from string", zap.Error(err))
 		return nil, status.Errorf(codes.Internal, "could not get note")
@@ -79,6 +80,8 @@ func (srv *notesRepository) Delete(ctx context.Context, noteId *string) error {
 }
 
 func (srv *notesRepository) Update(ctx context.Context, noteId *string, noteRequest *models.Note) error {
+	noteRequest.ModificationDate = time.Now().UTC()
+
 	update, err := srv.db.Collection("notes").UpdateOne(ctx, buildIdQuery(noteId), bson.D{{Key: "$set", Value: &noteRequest}})
 	if err != nil {
 		srv.logger.Error("failed to convert object id from hex", zap.Error(err))
@@ -92,7 +95,7 @@ func (srv *notesRepository) Update(ctx context.Context, noteId *string, noteRequ
 }
 
 func (srv *notesRepository) List(ctx context.Context, authorId *string) (*[]models.Note, error) {
-	notesCursor, err := srv.db.Collection("notes").Find(ctx, buildAuthodIdQuery(authorId))
+	cursor, err := srv.db.Collection("notes").Find(ctx, buildAuthodIdQuery(authorId))
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
 			return nil, status.Errorf(codes.NotFound, "note not found")
@@ -101,23 +104,20 @@ func (srv *notesRepository) List(ctx context.Context, authorId *string) (*[]mode
 		return nil, status.Errorf(codes.Aborted, err.Error())
 	}
 
-	notesResponse := make([]models.Note, notesCursor.RemainingBatchLength())
+	var notesResponse []models.Note
+	for cursor.Next(context.TODO()) {
+		var note models.Note
 
-	//convert notes from mongo to []models.NoteWithBlocks
-	var notes []bson.M
-	if err := notesCursor.All(context.TODO(), &notes); err != nil {
-		srv.logger.Error("unable to parse notes", zap.Error(err))
-		return nil, status.Errorf(codes.InvalidArgument, err.Error())
-	}
-	for index, note := range notes {
-		id, err := uuid.Parse(note["_id"].(string))
-		if err != nil {
-			srv.logger.Error("unable to retrieve id of the note", zap.Error(err))
+		if err := cursor.Decode(&note); err != nil {
+			srv.logger.Error("unable to parse notes", zap.Error(err))
+			return nil, status.Errorf(codes.Internal, err.Error())
+		}
+		if _, err := uuid.Parse(note.ID); err != nil {
+			srv.logger.Error("wrong id from note", zap.Error(err))
 			return nil, status.Errorf(codes.Aborted, err.Error())
 		}
-		notesResponse[index] = models.Note{ID: id, AuthorId: note["authorId"].(string), Title: note["title"].(string)}
+		notesResponse = append(notesResponse, note)
 	}
-
 	return &notesResponse, nil
 }
 
