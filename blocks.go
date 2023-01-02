@@ -5,7 +5,6 @@ import (
 	"notes-service/models"
 	notespb "notes-service/protorepo/noted/notes/v1"
 	"notes-service/validators"
-	"strconv"
 
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
@@ -22,7 +21,7 @@ func (srv *notesService) InsertBlock(ctx context.Context, in *notespb.InsertBloc
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 	//check si la note appartient a celui qui veut la modifier
-	note, err := srv.repoNote.Get(ctx, in.NoteId)//NoteId going to be switched in string
+	note, err := srv.repoNote.Get(ctx, in.NoteId) //NoteId going to be switched in string
 	if err != nil {
 		return nil, status.Error(codes.NotFound, "could not get block")
 	}
@@ -37,7 +36,7 @@ func (srv *notesService) InsertBlock(ctx context.Context, in *notespb.InsertBloc
 		return nil, status.Errorf(codes.Internal, "invalid data content provided for block index : %d", in.Index)
 	}
 	//NoteId going to be switched in string
-	BlockId, err := srv.repoBlock.Create(ctx, &models.Block{NoteId: in.NoteId), Type: uint32(in.Block.Type), Index: in.Index, Content: block.Content})
+	BlockId, err := srv.repoBlock.Create(ctx, &models.Block{NoteId: in.NoteId, Type: uint32(in.Block.Type), Index: in.Index, Content: block.Content})
 	blockResponse := &notespb.Block{Id: *BlockId, Type: in.Block.Type, Data: in.Block.Data}
 	return &notespb.InsertBlockResponse{Block: blockResponse}, nil
 }
