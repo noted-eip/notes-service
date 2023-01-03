@@ -6,7 +6,6 @@ import (
 	"notes-service/models"
 
 	"github.com/google/uuid"
-	"github.com/hashicorp/go-memdb"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -24,42 +23,9 @@ func NewNotesRepository(db *Database, logger *zap.Logger) models.NotesRepository
 	}
 }
 
-func NewNotesDatabaseSchema() *memdb.DBSchema {
-	return &memdb.DBSchema{
-		Tables: map[string]*memdb.TableSchema{
-			"note": {
-				Name: "note",
-				Indexes: map[string]*memdb.IndexSchema{
-					"id": {
-						Name:    "id",
-						Unique:  true,
-						Indexer: &memdb.StringFieldIndex{Field: "ID"},
-					},
-					"author_id": {
-						Name:    "author_id",
-						Unique:  true,
-						Indexer: &memdb.StringFieldIndex{Field: "AuthorId"},
-					},
-					"title": {
-						Name:    "title",
-						Unique:  false,
-						Indexer: &memdb.StringFieldIndex{Field: "Title"},
-					},
-					"blocks": {
-						Name:    "blocks",
-						Unique:  false,
-						Indexer: &memdb.StringFieldIndex{Field: "Blocks"},
-					},
-				},
-			},
-		},
-	}
-}
-
 func (srv *notesRepository) Create(ctx context.Context, noteRequest *models.NotePayload) (*models.Note, error) {
 	txn := srv.db.DB.Txn(true)
 	id, err := uuid.NewRandom()
-	defer txn.Abort()
 
 	if noteRequest == nil {
 		srv.logger.Error("NoteRequest is nil")
@@ -73,6 +39,8 @@ func (srv *notesRepository) Create(ctx context.Context, noteRequest *models.Note
 		srv.logger.Error("mongo insert note failed", zap.Error(err), zap.String("note name", note.AuthorId))
 		return nil, status.Errorf(codes.Internal, "could not create note")
 	}
+
+	txn.Commit()
 	return &note, nil
 }
 

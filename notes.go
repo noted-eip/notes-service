@@ -77,7 +77,7 @@ func (srv *notesService) GetNote(ctx context.Context, in *notespb.GetNoteRequest
 	blocksTmp, err := srv.repoBlock.GetBlocks(ctx, note.ID)
 	if err != nil {
 		srv.logger.Error("failed to get blocks", zap.Error(err))
-		return nil, status.Errorf(codes.NotFound, "invalid content provided for blocks form noteId : %d", note.ID)
+		return nil, status.Errorf(codes.NotFound, "invalid content provided for blocks form noteId : %s", note.ID)
 	}
 
 	//Convert []models.block to []notespb.Block

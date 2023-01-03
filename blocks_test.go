@@ -2,14 +2,11 @@ package main
 
 import (
 	"context"
-	"notes-service/models/memory"
 	notespb "notes-service/protorepo/noted/notes/v1"
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
-	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -44,14 +41,14 @@ func (s *NotesAPISuite) InsertBlockShouldReturnBlock() {
 	s.NotNil(res)
 }*/
 
-func (s *NotesAPISuite) UpdateBlockShouldReturnError() {
+func (s *NotesAPISuite) TestUpdateBlockShouldReturnError() {
 	res, err := s.srv.UpdateBlock(context.TODO(), &notespb.UpdateBlockRequest{})
 	s.Require().Error(err)
 	s.Equal(status.Code(err), codes.Internal)
 	s.Nil(res)
 }
 
-func (s *NotesAPISuite) UpdateBlockShouldReturnNoError() {
+func (s *NotesAPISuite) TestUpdateBlockShouldReturnNoError() {
 	blockId, err := uuid.NewRandom()
 
 	res, err := s.srv.UpdateBlock(context.TODO(), &notespb.UpdateBlockRequest{
@@ -66,7 +63,7 @@ func (s *NotesAPISuite) UpdateBlockShouldReturnNoError() {
 	s.Nil(res)
 }
 
-func (s *NotesAPISuite) DeleteBlockShouldReturnError() {
+func (s *NotesAPISuite) TestDeleteBlockShouldReturnError() {
 	res, err := s.srv.DeleteBlock(context.TODO(), &notespb.DeleteBlockRequest{})
 	s.Require().Error(err)
 	s.Equal(status.Code(err), codes.InvalidArgument)
@@ -74,18 +71,13 @@ func (s *NotesAPISuite) DeleteBlockShouldReturnError() {
 }
 
 /*
-func (s *NotesAPISuite) DeleteBlockShouldReturnNoError() {
-	id, err := uuid.NewRandom()
+	func (s *NotesAPISuite) DeleteBlockShouldReturnNoError() {
+		id, err := uuid.NewRandom()
 
-	res, err := s.srv.DeleteBlock(context.TODO(), &notespb.DeleteBlockRequest{
-		Id: id.String(),
-	})
-	s.Nil(err)
-	s.Nil(res)
-}
+		res, err := s.srv.DeleteBlock(context.TODO(), &notespb.DeleteBlockRequest{
+			Id: id.String(),
+		})
+		s.Nil(err)
+		s.Nil(res)
+	}
 */
-func newBlocksDatabaseOrFail(t *testing.T, logger *zap.Logger) *memory.Database {
-	db, err := memory.NewDatabase(context.Background(), memory.NewBlockDatabaseSchema(), logger)
-	require.NoError(t, err, "could not instantiate in-memory database")
-	return db
-}

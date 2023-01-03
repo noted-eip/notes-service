@@ -27,8 +27,8 @@ func TestNotesService(t *testing.T) {
 
 func (s *NotesAPISuite) SetupSuite() {
 	logger := newLoggerOrFail(s.T())
-	dbNote := newNotesDatabaseOrFail(s.T(), logger)
-	dbBlock := newBlocksDatabaseOrFail(s.T(), logger)
+	dbNote := newDatabaseOrFail(s.T(), logger)
+	dbBlock := newDatabaseOrFail(s.T(), logger)
 
 	s.srv = &notesService{
 		auth:      auth.NewService(genKeyOrFail(s.T())),
@@ -38,7 +38,7 @@ func (s *NotesAPISuite) SetupSuite() {
 	}
 }
 
-func (s *NotesAPISuite) CreateNoteShouldReturnNil() {
+func (s *NotesAPISuite) TestCreateNoteShouldReturnNil() {
 	res, err := s.srv.CreateNote(context.TODO(), &notespb.CreateNoteRequest{})
 
 	s.Require().Error(err)
@@ -46,7 +46,7 @@ func (s *NotesAPISuite) CreateNoteShouldReturnNil() {
 	s.Nil(res)
 }
 
-func (s *NotesAPISuite) CreateNoteShouldReturnNote() {
+func (s *NotesAPISuite) TestCreateNoteShouldReturnNote() {
 	res, err := s.srv.CreateNote(context.TODO(), &notespb.CreateNoteRequest{
 		Note: &notespb.Note{
 			AuthorId: "CI-TEST",
@@ -58,7 +58,7 @@ func (s *NotesAPISuite) CreateNoteShouldReturnNote() {
 	s.NotNil(res)
 }
 
-func (s *NotesAPISuite) GetNoteShouldReturnError() {
+func (s *NotesAPISuite) TestGetNoteShouldReturnError() {
 	res, err := s.srv.GetNote(context.TODO(), &notespb.GetNoteRequest{})
 	s.Require().Error(err)
 	s.Equal(status.Code(err), codes.InvalidArgument)
@@ -66,17 +66,17 @@ func (s *NotesAPISuite) GetNoteShouldReturnError() {
 }
 
 /*
-func (s *NotesAPISuite) GetNoteShouldReturnNoError() {
-	noteId, err := uuid.NewRandom()
+	func (s *NotesAPISuite) GetNoteShouldReturnNoError() {
+		noteId, err := uuid.NewRandom()
 
-	res, err := s.srv.GetNote(context.TODO(), &notespb.GetNoteRequest{
-		Id: noteId.String(),
-	})
-	s.NotNil(res)
-	s.Nil(err)
-}
+		res, err := s.srv.GetNote(context.TODO(), &notespb.GetNoteRequest{
+			Id: noteId.String(),
+		})
+		s.NotNil(res)
+		s.Nil(err)
+	}
 */
-func (s *NotesAPISuite) UpdateNoteShouldReturnError() {
+func (s *NotesAPISuite) TestUpdateNoteShouldReturnError() {
 	res, err := s.srv.UpdateNote(context.TODO(), &notespb.UpdateNoteRequest{})
 	s.Require().Error(err)
 	s.Equal(status.Code(err), codes.InvalidArgument)
@@ -84,22 +84,22 @@ func (s *NotesAPISuite) UpdateNoteShouldReturnError() {
 }
 
 /*
-func (s *NotesAPISuite) UpdateNoteShouldReturnNoError() {
-	noteId, err := uuid.NewRandom()
+	func (s *NotesAPISuite) UpdateNoteShouldReturnNoError() {
+		noteId, err := uuid.NewRandom()
 
-	res, err := s.srv.UpdateNote(context.TODO(), &notespb.UpdateNoteRequest{
-		Id: noteId.String(),
-		Note: &notespb.Note{
-			AuthorId: "CI-TEST",
-			Title:    "ci-test",
-			Blocks:   nil,
-		},
-	})
-	s.Nil(err)
-	s.Nil(res)
-}
+		res, err := s.srv.UpdateNote(context.TODO(), &notespb.UpdateNoteRequest{
+			Id: noteId.String(),
+			Note: &notespb.Note{
+				AuthorId: "CI-TEST",
+				Title:    "ci-test",
+				Blocks:   nil,
+			},
+		})
+		s.Nil(err)
+		s.Nil(res)
+	}
 */
-func (s *NotesAPISuite) DeleteNoteShouldReturnError() {
+func (s *NotesAPISuite) TestDeleteNoteShouldReturnError() {
 	res, err := s.srv.DeleteNote(context.TODO(), &notespb.DeleteNoteRequest{})
 	s.Require().Error(err)
 	s.Equal(status.Code(err), codes.InvalidArgument)
@@ -107,17 +107,17 @@ func (s *NotesAPISuite) DeleteNoteShouldReturnError() {
 }
 
 /*
-func (s *NotesAPISuite) DeleteNoteShouldReturnNoError() {
-	id, err := uuid.NewRandom()
+	func (s *NotesAPISuite) DeleteNoteShouldReturnNoError() {
+		id, err := uuid.NewRandom()
 
-	res, err := s.srv.DeleteNote(context.TODO(), &notespb.DeleteNoteRequest{
-		Id: id.String(),
-	})
-	s.Nil(err)
-	s.Nil(res)
-}
+		res, err := s.srv.DeleteNote(context.TODO(), &notespb.DeleteNoteRequest{
+			Id: id.String(),
+		})
+		s.Nil(err)
+		s.Nil(res)
+	}
 */
-func (s *NotesAPISuite) ListNotesShouldReturnError() {
+func (s *NotesAPISuite) TestListNotesShouldReturnError() {
 	res, err := s.srv.ListNotes(context.TODO(), &notespb.ListNotesRequest{})
 	s.Require().Error(err)
 	s.Equal(status.Code(err), codes.InvalidArgument)
@@ -135,8 +135,8 @@ func (s *NotesAPISuite) ListNotesShouldReturnNoError() {
 }
 */
 
-func newNotesDatabaseOrFail(t *testing.T, logger *zap.Logger) *memory.Database {
-	db, err := memory.NewDatabase(context.Background(), memory.NewNotesDatabaseSchema(), logger)
+func newDatabaseOrFail(t *testing.T, logger *zap.Logger) *memory.Database {
+	db, err := memory.NewDatabase(context.Background(), logger)
 	require.NoError(t, err, "could not instantiate in-memory database")
 	return db
 }

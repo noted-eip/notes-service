@@ -6,7 +6,6 @@ import (
 	"notes-service/models"
 
 	"github.com/google/uuid"
-	"github.com/hashicorp/go-memdb"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
@@ -22,43 +21,6 @@ func NewBlocksRepository(db *Database, logger *zap.Logger) models.BlocksReposito
 	return &blocksRepository{
 		logger: logger.Named("memory").Named("blocks"),
 		db:     db,
-	}
-}
-
-func NewBlockDatabaseSchema() *memdb.DBSchema {
-	return &memdb.DBSchema{
-		Tables: map[string]*memdb.TableSchema{
-			"block": {
-				Name: "block",
-				Indexes: map[string]*memdb.IndexSchema{
-					"id": {
-						Name:    "id",
-						Unique:  true,
-						Indexer: &memdb.StringFieldIndex{Field: "ID"},
-					},
-					"note_id": {
-						Name:    "note_id",
-						Unique:  true,
-						Indexer: &memdb.StringFieldIndex{Field: "NoteId"},
-					},
-					"type": {
-						Name:    "type",
-						Unique:  true,
-						Indexer: &memdb.StringFieldIndex{Field: "Type"},
-					},
-					"index": {
-						Name:    "index",
-						Unique:  false,
-						Indexer: &memdb.StringFieldIndex{Field: "Index"},
-					},
-					"content": {
-						Name:    "content",
-						Unique:  false,
-						Indexer: &memdb.StringFieldIndex{Field: "Content"},
-					},
-				},
-			},
-		},
 	}
 }
 

@@ -36,6 +36,10 @@ type Service interface {
 	// extracts the payload. If the token is missing or invalid an error
 	// is returned.
 	TokenFromContext(ctx context.Context) (*Token, error)
+
+	// ContextWithToken returns a copy of parent in which a new value for the
+	// key 'authorization' is set to a string encoded JWT.
+	ContextWithToken(parent context.Context, info *Token) (context.Context, error)
 }
 
 // NewService creates a new authentication service which encodes/decodes
@@ -48,6 +52,10 @@ func NewService(key ed25519.PublicKey) Service {
 
 type service struct {
 	key ed25519.PublicKey
+}
+
+func (srv *service) ContextWithToken(parent context.Context, info *Token) (context.Context, error) {
+	return nil, errors.New("Unimplemented")
 }
 
 func (srv *service) TokenFromContext(ctx context.Context) (*Token, error) {
