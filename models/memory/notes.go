@@ -6,6 +6,7 @@ import (
 	"notes-service/models"
 
 	"github.com/google/uuid"
+	"github.com/hashicorp/go-memdb"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -23,36 +24,67 @@ func NewNotesRepository(db *Database, logger *zap.Logger) models.NotesRepository
 	}
 }
 
-func (srv *notesRepository) Create(ctx context.Context, noteRequest *models.Note) (*models.Note, error) {
+func NewNotesDatabaseSchema() *memdb.DBSchema {
+	return &memdb.DBSchema{
+		Tables: map[string]*memdb.TableSchema{
+			"note": {
+				Name: "note",
+				Indexes: map[string]*memdb.IndexSchema{
+					"id": {
+						Name:    "id",
+						Unique:  true,
+						Indexer: &memdb.StringFieldIndex{Field: "ID"},
+					},
+					"author_id": {
+						Name:    "author_id",
+						Unique:  true,
+						Indexer: &memdb.StringFieldIndex{Field: "AuthorId"},
+					},
+					"title": {
+						Name:    "title",
+						Unique:  false,
+						Indexer: &memdb.StringFieldIndex{Field: "Title"},
+					},
+					"blocks": {
+						Name:    "blocks",
+						Unique:  false,
+						Indexer: &memdb.StringFieldIndex{Field: "Blocks"},
+					},
+				},
+			},
+		},
+	}
+}
+
+func (srv *notesRepository) Create(ctx context.Context, noteRequest *models.NotePayload) (*models.Note, error) {
 	txn := srv.db.DB.Txn(true)
+	id, err := uuid.NewRandom()
 	defer txn.Abort()
 
-	id, err := uuid.NewRandom()
-
-	if err != nil {
-		srv.logger.Error("failed to generate new random uuid", zap.Error(err))
+	if noteRequest == nil {
+		srv.logger.Error("NoteRequest is nil")
 		return nil, status.Errorf(codes.Internal, "could not create account")
 	}
-	noteRequest.ID = id.String()
-	note := models.Note{ID: noteRequest.ID, AuthorId: noteRequest.AuthorId, Title: noteRequest.Title, Blocks: noteRequest.Blocks}
+
+	note := models.Note{ID: id.String(), AuthorId: noteRequest.AuthorId, Title: noteRequest.Title}
 
 	err = txn.Insert("note", note)
 	if err != nil {
 		srv.logger.Error("mongo insert note failed", zap.Error(err), zap.String("note name", note.AuthorId))
 		return nil, status.Errorf(codes.Internal, "could not create note")
 	}
-	return noteRequest, nil
+	return &note, nil
 }
 
-func (srv *notesRepository) Get(ctx context.Context, noteId *string) (*models.Note, error) {
+func (srv *notesRepository) Get(ctx context.Context, noteId string) (*models.Note, error) {
 	return nil, status.Errorf(codes.Unimplemented, "not implemented")
 }
 
-func (srv *notesRepository) Delete(ctx context.Context, noteId *string) error {
+func (srv *notesRepository) Delete(ctx context.Context, noteId string) error {
 	return status.Errorf(codes.Unimplemented, "not implemented")
 }
 
-func (srv *notesRepository) Update(ctx context.Context, noteId *string, noteRequest *models.Note) error {
+func (srv *notesRepository) Update(ctx context.Context, noteId string, noteRequest *models.NotePayload) error {
 	/*txn := srv.db.DB.Txn(true)
 	defer txn.Abort()
 
@@ -66,6 +98,6 @@ func (srv *notesRepository) Update(ctx context.Context, noteId *string, noteRequ
 	return nil
 }
 
-func (srv *notesRepository) List(ctx context.Context, authorId *string) (*[]models.Note, error) {
+func (srv *notesRepository) List(ctx context.Context, authorId string) (*[]models.Note, error) {
 	return nil, status.Errorf(codes.Unimplemented, "not implemented")
 }
