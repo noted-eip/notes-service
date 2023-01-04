@@ -26,7 +26,7 @@ type notesService struct {
 var _ notespb.NotesAPIServer = &notesService{}
 
 func (srv *notesService) CreateNote(ctx context.Context, in *notespb.CreateNoteRequest) (*notespb.CreateNoteResponse, error) {
-	_, err := srv.authenticate(ctx)
+	_, err := Authenticate(srv, ctx)
 	if err != nil {
 		return nil, status.Error(codes.Unauthenticated, err.Error())
 	}
@@ -57,7 +57,7 @@ func (srv *notesService) CreateNote(ctx context.Context, in *notespb.CreateNoteR
 }
 
 func (srv *notesService) GetNote(ctx context.Context, in *notespb.GetNoteRequest) (*notespb.GetNoteResponse, error) {
-	_, err := srv.authenticate(ctx)
+	_, err := Authenticate(srv, ctx)
 	if err != nil {
 		return nil, status.Error(codes.Unauthenticated, err.Error())
 	}
@@ -77,7 +77,7 @@ func (srv *notesService) GetNote(ctx context.Context, in *notespb.GetNoteRequest
 	blocksTmp, err := srv.repoBlock.GetBlocks(ctx, note.ID)
 	if err != nil {
 		srv.logger.Error("failed to get blocks", zap.Error(err))
-		return nil, status.Errorf(codes.NotFound, "invalid content provided for blocks form noteId : %d", note.ID)
+		return nil, status.Errorf(codes.NotFound, "invalid content provided for blocks form noteId : %s", note.ID)
 	}
 
 	//Convert []models.block to []notespb.Block
@@ -96,7 +96,7 @@ func (srv *notesService) GetNote(ctx context.Context, in *notespb.GetNoteRequest
 }
 
 func (srv *notesService) UpdateNote(ctx context.Context, in *notespb.UpdateNoteRequest) (*notespb.UpdateNoteResponse, error) {
-	token, err := srv.authenticate(ctx)
+	token, err := Authenticate(srv, ctx)
 	if err != nil {
 		return nil, status.Error(codes.Unauthenticated, err.Error())
 	}
@@ -143,7 +143,7 @@ func (srv *notesService) UpdateNote(ctx context.Context, in *notespb.UpdateNoteR
 }
 
 func (srv *notesService) DeleteNote(ctx context.Context, in *notespb.DeleteNoteRequest) (*notespb.DeleteNoteResponse, error) {
-	token, err := srv.authenticate(ctx)
+	token, err := Authenticate(srv, ctx)
 	if err != nil {
 		return nil, status.Error(codes.Unauthenticated, err.Error())
 	}
@@ -177,7 +177,7 @@ func (srv *notesService) DeleteNote(ctx context.Context, in *notespb.DeleteNoteR
 }
 
 func (srv *notesService) ListNotes(ctx context.Context, in *notespb.ListNotesRequest) (*notespb.ListNotesResponse, error) {
-	_, err := srv.authenticate(ctx)
+	_, err := Authenticate(srv, ctx)
 	if err != nil {
 		return nil, status.Error(codes.Unauthenticated, err.Error())
 	}
@@ -194,8 +194,8 @@ func (srv *notesService) ListNotes(ctx context.Context, in *notespb.ListNotesReq
 		return nil, status.Errorf(codes.NotFound, "could not get note")
 	}
 
-	notesResponse := make([]*notespb.Note, len(*notes))
-	for index, note := range *notes {
+	notesResponse := make([]*notespb.Note, len(notes))
+	for index, note := range notes {
 		notesResponse[index] = &notespb.Note{Id: note.ID, AuthorId: note.AuthorId, Title: note.Title, CreatedAt: timestamppb.New(note.CreationDate), ModifiedAt: timestamppb.New(note.ModificationDate)}
 	}
 	return &notespb.ListNotesResponse{Notes: notesResponse}, nil
@@ -246,6 +246,14 @@ func convertModelBlockToApiBlock(blockSrc *models.Block, blockDest *notespb.Bloc
 		return status.Errorf(codes.Internal, "no such content in this block")
 	}
 	return nil
+}
+
+func Authenticate(srv *notesService, ctx context.Context) (*auth.Token, error) {
+	token, err := srv.authenticate(ctx)
+	if err != nil {
+		return nil, status.Error(codes.Unauthenticated, err.Error())
+	}
+	return token, nil
 }
 
 func (srv *notesService) authenticate(ctx context.Context) (*auth.Token, error) {

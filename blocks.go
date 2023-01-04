@@ -12,7 +12,7 @@ import (
 )
 
 func (srv *notesService) InsertBlock(ctx context.Context, in *notespb.InsertBlockRequest) (*notespb.InsertBlockResponse, error) {
-	token, err := srv.authenticate(ctx)
+	token, err := Authenticate(srv, ctx)
 	if err != nil {
 		return nil, status.Error(codes.Unauthenticated, err.Error())
 	}
@@ -41,7 +41,7 @@ func (srv *notesService) InsertBlock(ctx context.Context, in *notespb.InsertBloc
 }
 
 func (srv *notesService) UpdateBlock(ctx context.Context, in *notespb.UpdateBlockRequest) (*notespb.UpdateBlockResponse, error) {
-	token, err := srv.authenticate(ctx)
+	token, err := Authenticate(srv, ctx)
 	if err != nil {
 		return nil, status.Error(codes.Unauthenticated, err.Error())
 	}
@@ -77,7 +77,7 @@ func (srv *notesService) UpdateBlock(ctx context.Context, in *notespb.UpdateBloc
 }
 
 func (srv *notesService) DeleteBlock(ctx context.Context, in *notespb.DeleteBlockRequest) (*notespb.DeleteBlockResponse, error) {
-	token, err := srv.authenticate(ctx)
+	token, err := Authenticate(srv, ctx)
 	if err != nil {
 		return nil, status.Error(codes.Unauthenticated, err.Error())
 	}
@@ -85,11 +85,17 @@ func (srv *notesService) DeleteBlock(ctx context.Context, in *notespb.DeleteBloc
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
+	//check if the block exist
+	block, err := srv.repoBlock.GetBlock(ctx, in.Id)
+	if err != nil {
+		srv.logger.Error("Block not found in database", zap.Error(err))
+		return nil, status.Error(codes.NotFound, "could not delete block")
+	}
 	//Check if the user own the note
-	note, err := srv.repoNote.Get(ctx, in.Id)
+	note, err := srv.repoNote.Get(ctx, block.NoteId)
 	if err != nil {
 		srv.logger.Error("Note not found in database", zap.Error(err))
-		return nil, status.Error(codes.NotFound, "could not update note")
+		return nil, status.Error(codes.NotFound, "could not delete block")
 	}
 	if token.UserID.String() != note.AuthorId {
 		return nil, status.Error(codes.PermissionDenied, "This author has not the rights to update this note")

@@ -33,5 +33,5 @@ type NotesRepository interface {
 
 	Update(ctx context.Context, noteId string, noteRequest *NotePayload) error
 
-	List(ctx context.Context, authorId string) (*[]Note, error)
+	List(ctx context.Context, authorId string) ([]*Note, error)
 }
