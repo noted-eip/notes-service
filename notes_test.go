@@ -92,7 +92,7 @@ func (s *NotesAPISuite) TestCreateNoteReturnNote() {
 	s.srv.auth = NewMockService()
 	res, err := s.srv.CreateNote(context.TODO(), &notespb.CreateNoteRequest{
 		Note: &notespb.Note{
-			AuthorId: "CI-TEST",
+			AuthorId: "CI-TEST-CREATE",
 			Title:    "ci-test",
 			Blocks:   nil,
 		},
@@ -125,7 +125,7 @@ func (s *NotesAPISuite) TestGetNoteShouldReturnNote() {
 
 	resExpected, err := s.srv.CreateNote(context.TODO(), &notespb.CreateNoteRequest{
 		Note: &notespb.Note{
-			AuthorId: "CI-TEST",
+			AuthorId: "CI-TEST-GET",
 			Title:    "ci-test",
 			Blocks:   nil,
 		},
@@ -258,10 +258,13 @@ func (s *NotesAPISuite) TestListNotesReturnNotes() {
 	saveAuthPackage := s.srv.auth
 	s.srv.auth = NewMockService()
 
-	authorId := "CI-TEST"
+	authorId := "CI-TEST-LIST"
 	noteName := "ci-test-"
 
 	ctx := context.TODO()
+
+	//get all notes
+	//delete all notes
 
 	_, err := s.srv.CreateNote(ctx, &notespb.CreateNoteRequest{
 		Note: &notespb.Note{AuthorId: authorId, Title: (noteName + "1"), Blocks: nil},
