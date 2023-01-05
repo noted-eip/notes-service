@@ -73,9 +73,17 @@ func (s *ExportAPISuite) TestExportInvalidFormatShouldReturnAnError() {
 }
 
 func (s *ExportAPISuite) TestExportMarkdownShouldBeValid() {
-	res_note, err := s.srv.CreateNote(context.TODO(), &notespb.CreateNoteRequest{
+	generatedUuid, err := uuid.NewRandom()
+	s.Require().NoError(err)
+	ctx, err := s.auth.ContextWithToken(context.TODO(), &auth.Token{UserID: generatedUuid})
+	s.Require().NoError(err)
+
+	// a, err := s.srv.authenticate(ctx)
+	// print("--------", a.Id, "-------\n")
+
+	res_note, err := s.srv.CreateNote(ctx, &notespb.CreateNoteRequest{
 		Note: &notespb.Note{
-			AuthorId: "placeholder-author-id",
+			AuthorId: generatedUuid.String(),
 			Title:    "Placeholder Title",
 			Blocks: []*notespb.Block{
 				{
@@ -92,13 +100,9 @@ func (s *ExportAPISuite) TestExportMarkdownShouldBeValid() {
 	s.Nil(err)
 	s.NotNil(res_note)
 
-	print(res_note.Note.Id)
-
-	res, err := s.srv.ExportNote(context.TODO(), &notespb.ExportNoteRequest{NoteId: res_note.Note.Id, ExportFormat: notespb.NoteExportFormat_NOTE_EXPORT_FORMAT_MARKDOWN})
-
-	print(err.Error())
+	res, err := s.srv.ExportNote(ctx, &notespb.ExportNoteRequest{NoteId: res_note.Note.Id, ExportFormat: notespb.NoteExportFormat_NOTE_EXPORT_FORMAT_MARKDOWN})
 
 	s.Nil(err)
 	s.NotNil(res)
-	print(string(res.File))
+	// TODO
 }

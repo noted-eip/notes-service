@@ -29,7 +29,21 @@ func (srv *blocksRepository) GetBlock(ctx context.Context, blockId string) (*mod
 }
 
 func (srv *blocksRepository) GetBlocks(ctx context.Context, noteId string) ([]*models.Block, error) {
-	return nil, status.Errorf(codes.Unimplemented, "not implemented")
+	var blocks []*models.Block
+
+	txn := srv.db.DB.Txn(false)
+
+	it, err := txn.Get("block", "note_id", noteId)
+	if err != nil {
+		srv.logger.Error("unable to list blocks", zap.Error(err))
+		return nil, err
+	}
+
+	for obj := it.Next(); obj != nil; obj = it.Next() {
+		blocks = append(blocks, obj.(*models.Block))
+	}
+
+	return blocks, nil
 }
 
 func (srv *blocksRepository) Create(ctx context.Context, blockRequest *models.Block) (*string, error) {

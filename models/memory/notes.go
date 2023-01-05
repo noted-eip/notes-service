@@ -45,7 +45,20 @@ func (srv *notesRepository) Create(ctx context.Context, noteRequest *models.Note
 }
 
 func (srv *notesRepository) Get(ctx context.Context, noteId string) (*models.Note, error) {
-	return nil, status.Errorf(codes.Unimplemented, "not implemented")
+	txn := srv.db.DB.Txn(false)
+
+	raw, err := txn.First("note", "id", noteId)
+
+	if err != nil {
+		srv.logger.Error("unable to query note", zap.Error(err))
+		return nil, err
+	}
+	if raw == nil {
+		return nil, status.Errorf(codes.NotFound, "note not found")
+	}
+	var note models.Note = raw.(models.Note)
+	txn.Commit()
+	return &note, nil
 }
 
 func (srv *notesRepository) Delete(ctx context.Context, noteId string) error {

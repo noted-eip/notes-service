@@ -11,10 +11,15 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+var protobufFormatToFormatter = map[notespb.NoteExportFormat]func(*notespb.Note) ([]byte, error){
+	notespb.NoteExportFormat_NOTE_EXPORT_FORMAT_MARKDOWN: exports.NoteToMarkdown,
+	notespb.NoteExportFormat_NOTE_EXPORT_FORMAT_PDF:      exports.NoteToPDF,
+}
+
 func (srv *notesService) ExportNote(ctx context.Context, in *notespb.ExportNoteRequest) (*notespb.ExportNoteResponse, error) {
-	m := map[notespb.NoteExportFormat]func(*notespb.Note) ([]byte, error){
-		notespb.NoteExportFormat_NOTE_EXPORT_FORMAT_MARKDOWN: exports.NoteToMarkdown,
-		notespb.NoteExportFormat_NOTE_EXPORT_FORMAT_PDF:      exports.NoteToPDF,
+	token, err := srv.authenticate(ctx)
+	if err != nil {
+		return nil, status.Error(codes.Unauthenticated, err.Error())
 	}
 
 	note, err := srv.GetNote(ctx, &notespb.GetNoteRequest{Id: in.NoteId})
@@ -23,7 +28,11 @@ func (srv *notesService) ExportNote(ctx context.Context, in *notespb.ExportNoteR
 		return nil, err
 	}
 
-	formatter, ok := m[in.ExportFormat]
+	if note.Note.AuthorId != token.Id {
+		return nil, status.Errorf(codes.NotFound, "could not get note. lol %s - %s", note.Note.AuthorId, token.Id)
+	}
+
+	formatter, ok := protobufFormatToFormatter[in.ExportFormat]
 
 	if !ok {
 		srv.logger.Error("format not recognized", zap.Error(err))
