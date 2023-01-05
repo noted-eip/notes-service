@@ -25,8 +25,8 @@ func NewBlocksRepository(db *mongo.Database, logger *zap.Logger) models.BlocksRe
 	}
 }
 
-func (srv *blocksRepository) GetBlock(ctx context.Context, blockId *string) (*models.BlockWithIndex, error) {
-	var block models.BlockWithIndex
+func (srv *blocksRepository) GetBlock(ctx context.Context, blockId string) (*models.Block, error) {
+	var block models.Block
 
 	err := srv.db.Collection("blocks").FindOne(ctx, buildIdQuery(blockId)).Decode(&block)
 
@@ -38,11 +38,11 @@ func (srv *blocksRepository) GetBlock(ctx context.Context, blockId *string) (*mo
 		return nil, status.Errorf(codes.InvalidArgument, err.Error())
 	}
 
-	return &models.BlockWithIndex{ID: block.ID, NoteId: block.NoteId, Type: block.Type, Index: block.Index, Content: block.Content}, nil
+	return &models.Block{ID: block.ID, NoteId: block.NoteId, Type: block.Type, Index: block.Index, Content: block.Content}, nil
 }
 
-func (srv *blocksRepository) GetBlocks(ctx context.Context, noteId *string) ([]*models.BlockWithIndex, error) {
-	blockCursor, err := srv.db.Collection("blocks").Find(ctx, BuildNoteIdQuery(noteId))
+func (srv *blocksRepository) GetBlocks(ctx context.Context, noteId string) ([]*models.Block, error) {
+	blockCursor, err := srv.db.Collection("blocks").Find(ctx, buildNoteIdQuery(noteId))
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
 			return nil, status.Errorf(codes.NotFound, "blocks not found")
@@ -51,34 +51,34 @@ func (srv *blocksRepository) GetBlocks(ctx context.Context, noteId *string) ([]*
 		return nil, status.Errorf(codes.Aborted, err.Error())
 	}
 
-	//convert blocks from mongo to []*BlockWithIndex
+	//convert blocks from mongo to []*Block
 	var blocks []bson.M
 	if err := blockCursor.All(context.TODO(), &blocks); err != nil {
 		srv.logger.Error("unable to parse blocks", zap.Error(err))
 		return nil, status.Errorf(codes.InvalidArgument, err.Error())
 	}
 
-	blocksResponse := make([]*models.BlockWithIndex, blockCursor.RemainingBatchLength())
+	blocksResponse := make([]*models.Block, blockCursor.RemainingBatchLength())
 	for index, block := range blocks {
 		id, err := uuid.Parse(block["_id"].(string))
 		if err != nil {
 			srv.logger.Error("unable to retrieve id of the block", zap.Error(err))
 			return nil, status.Errorf(codes.Aborted, err.Error())
 		}
-		blocksResponse[index] = &models.BlockWithIndex{ID: id.String(), NoteId: *noteId, Type: uint32(block["type"].(int64)), Index: uint32(block["index"].(int64)), Content: block["content"].(string)}
+		blocksResponse[index] = &models.Block{ID: id.String(), NoteId: noteId, Type: uint32(block["type"].(int64)), Index: uint32(block["index"].(int64)), Content: block["content"].(string)}
 	}
 
 	return blocksResponse, nil
 }
 
-func (srv *blocksRepository) Create(ctx context.Context, blockRequest *models.BlockWithIndex) (*string, error) {
+func (srv *blocksRepository) Create(ctx context.Context, blockRequest *models.Block) (*string, error) {
 	id, err := uuid.NewRandom()
 	if err != nil {
 		srv.logger.Error("failed to generate new random uuid", zap.Error(err))
 		return nil, status.Error(codes.Internal, "could not create account")
 	}
 	blockId := id.String()
-	block := models.BlockWithIndex{ID: id.String(), NoteId: blockRequest.NoteId, Type: blockRequest.Type, Index: blockRequest.Index, Content: blockRequest.Content}
+	block := models.Block{ID: id.String(), NoteId: blockRequest.NoteId, Type: blockRequest.Type, Index: blockRequest.Index, Content: blockRequest.Content}
 
 	_, err = srv.db.Collection("blocks").InsertOne(ctx, block)
 	if err != nil {
@@ -88,7 +88,7 @@ func (srv *blocksRepository) Create(ctx context.Context, blockRequest *models.Bl
 	return &blockId, nil
 }
 
-func (srv *blocksRepository) Update(ctx context.Context, blockId *string, blockRequest *models.BlockWithIndex) (*models.BlockWithIndex, error) {
+func (srv *blocksRepository) Update(ctx context.Context, blockId string, blockRequest *models.Block) (*models.Block, error) {
 	update, err := srv.db.Collection("blocks").UpdateOne(ctx, buildIdQuery(blockId), bson.D{{Key: "$set", Value: &blockRequest}})
 
 	if err != nil {
@@ -96,14 +96,14 @@ func (srv *blocksRepository) Update(ctx context.Context, blockId *string, blockR
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 	if update.MatchedCount == 0 {
-		srv.logger.Error("mongo update block query matched none", zap.String("block_id : ", *blockId))
+		srv.logger.Error("mongo update block query matched none", zap.String("block_id : ", blockId))
 		return nil, status.Error(codes.Internal, "could not update block")
 	}
 
 	return blockRequest, nil
 }
 
-func (srv *blocksRepository) DeleteBlock(ctx context.Context, blockId *string) error {
+func (srv *blocksRepository) DeleteBlock(ctx context.Context, blockId string) error {
 	delete, err := srv.db.Collection("blocks").DeleteOne(ctx, buildIdQuery(blockId))
 
 	if err != nil {
@@ -111,29 +111,29 @@ func (srv *blocksRepository) DeleteBlock(ctx context.Context, blockId *string) e
 		return status.Error(codes.Internal, "could not delete block")
 	}
 	if delete.DeletedCount == 0 {
-		srv.logger.Info("mongo delete block matched none", zap.String("block_id", *blockId))
+		srv.logger.Info("mongo delete block matched none", zap.String("block_id", blockId))
 		return status.Error(codes.Internal, "could not delete block")
 	}
 	return nil
 }
 
-func (srv *blocksRepository) DeleteBlocks(ctx context.Context, noteId *string) error {
-	delete, err := srv.db.Collection("blocks").DeleteMany(ctx, BuildNoteIdQuery(noteId))
+func (srv *blocksRepository) DeleteBlocks(ctx context.Context, noteId string) error {
+	delete, err := srv.db.Collection("blocks").DeleteMany(ctx, buildNoteIdQuery(noteId))
 
 	if err != nil {
 		srv.logger.Error("delete blocks db query failed", zap.Error(err))
 		return status.Error(codes.Internal, "could not delete blocks")
 	}
 	if delete.DeletedCount == 0 {
-		srv.logger.Info("mongo delete block matched none", zap.String("note_id", *noteId))
+		srv.logger.Info("mongo delete block matched none", zap.String("note_id", noteId))
 		return status.Error(codes.Internal, "could not delete block")
 	}
 	return nil
 }
 
-func BuildNoteIdQuery(noteId *string) bson.M {
+func buildNoteIdQuery(noteId string) bson.M {
 	query := bson.M{}
-	if *noteId != "" {
+	if noteId != "" {
 		query["noteId"] = noteId
 	}
 	return query
