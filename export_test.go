@@ -45,7 +45,7 @@ func (s *ExportAPISuite) TestExportWrongNoteIDShouldReturnAnError() {
 
 	generatedUuid, err = uuid.NewRandom()
 	s.Require().NoError(err)
-	res, err := s.srv.ExportNote(ctx, &notespb.ExportNoteRequest{NoteId: generatedUuid.String()})
+	res, err := s.srv.ExportNote(ctx, &notespb.ExportNoteRequest{NoteId: generatedUuid.String(), ExportFormat: notespb.NoteExportFormat_NOTE_EXPORT_FORMAT_INVALID})
 	s.Require().Error(err)
 	s.Equal(status.Code(err), codes.NotFound)
 	s.Nil(res)
@@ -53,8 +53,7 @@ func (s *ExportAPISuite) TestExportWrongNoteIDShouldReturnAnError() {
 
 func (s *ExportAPISuite) TestUnauthenticatedShouldReturnAnError() {
 	uuid, _ := uuid.NewRandom()
-	res, err := s.srv.ExportNote(context.TODO(), &notespb.ExportNoteRequest{NoteId: uuid.String()})
-
+	res, err := s.srv.ExportNote(context.TODO(), &notespb.ExportNoteRequest{NoteId: uuid.String(), ExportFormat: notespb.NoteExportFormat_NOTE_EXPORT_FORMAT_MARKDOWN})
 	s.Require().Error(err)
 	s.Equal(status.Code(err), codes.Unauthenticated)
 	s.Nil(res)
