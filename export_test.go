@@ -15,7 +15,8 @@ import (
 
 type ExportAPISuite struct {
 	suite.Suite
-	srv *notesService
+	auth auth.TestService
+	srv  *notesService
 }
 
 func TestExport(t *testing.T) {
@@ -28,7 +29,7 @@ func (s *ExportAPISuite) SetupSuite() {
 	dbBlock := newDatabaseOrFail(s.T(), logger)
 
 	s.srv = &notesService{
-		auth:      &auth.TestService{},
+		auth:      &s.auth,
 		logger:    logger,
 		repoNote:  memory.NewNotesRepository(dbNote, logger),
 		repoBlock: memory.NewBlocksRepository(dbBlock, logger),
@@ -38,7 +39,7 @@ func (s *ExportAPISuite) SetupSuite() {
 func (s *ExportAPISuite) TestExportWrongNoteIDShouldReturnAnError() {
 	generatedUuid, err := uuid.NewRandom()
 	s.Require().NoError(err)
-	ctx, err := s.srv.auth.ContextWithToken(context.TODO(), &auth.Token{UserID: generatedUuid})
+	ctx, err := s.auth.ContextWithToken(context.TODO(), &auth.Token{UserID: generatedUuid})
 	s.Require().NoError(err)
 
 	generatedUuid, err = uuid.NewRandom()
