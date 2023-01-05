@@ -32,6 +32,12 @@ type Keyword struct {
 	URL     string      `json:"url" bson:"url,omitempty"`
 }
 
+// GET
+//dans getNote enpoint ne pas remonter Keyword
+//dans getNote model remonter Keyword
+
+//dans create gen les Keywords & save
+//dans update gen les Keyword & save
 type Note struct {
 	ID               string    `json:"id" bson:"_id,omitempty"`
 	AuthorId         string    `json:"authorId" bson:"authorId,omitempty"`

@@ -256,15 +256,3 @@ func (srv *notesService) authenticate(ctx context.Context) (*auth.Token, error) 
 	}
 	return token, nil
 }
-
-func (srv *notesService) GenerateWidgets(ctx context.Context, in *notespb.GenerateWidgetsRequest) (*notespb.GenerateWidgetsResponse, error) {
-
-	//getNote(noteId)
-
-	//for keyword in note.keywords
-	//	remplir les widgets
-
-	//return widgets
-
-	return nil, nil
-}
