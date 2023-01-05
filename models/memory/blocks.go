@@ -6,6 +6,7 @@ import (
 	"notes-service/models"
 
 	"github.com/google/uuid"
+	"github.com/hashicorp/go-memdb"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
@@ -24,15 +25,52 @@ func NewBlocksRepository(db *Database, logger *zap.Logger) models.BlocksReposito
 	}
 }
 
-func (srv *blocksRepository) GetBlock(ctx context.Context, blockId *string) (*models.BlockWithIndex, error) {
+func NewBlockDatabaseSchema() *memdb.DBSchema {
+	return &memdb.DBSchema{
+		Tables: map[string]*memdb.TableSchema{
+			"block": {
+				Name: "block",
+				Indexes: map[string]*memdb.IndexSchema{
+					"id": {
+						Name:    "id",
+						Unique:  true,
+						Indexer: &memdb.StringFieldIndex{Field: "ID"},
+					},
+					"note_id": {
+						Name:    "note_id",
+						Unique:  true,
+						Indexer: &memdb.StringFieldIndex{Field: "NoteId"},
+					},
+					"type": {
+						Name:    "type",
+						Unique:  true,
+						Indexer: &memdb.StringFieldIndex{Field: "Type"},
+					},
+					"index": {
+						Name:    "index",
+						Unique:  false,
+						Indexer: &memdb.StringFieldIndex{Field: "Index"},
+					},
+					"content": {
+						Name:    "content",
+						Unique:  false,
+						Indexer: &memdb.StringFieldIndex{Field: "Content"},
+					},
+				},
+			},
+		},
+	}
+}
+
+func (srv *blocksRepository) GetBlock(ctx context.Context, blockId string) (*models.Block, error) {
 	return nil, status.Errorf(codes.Unimplemented, "not implemented")
 }
 
-func (srv *blocksRepository) GetBlocks(ctx context.Context, noteId *string) ([]*models.BlockWithIndex, error) {
+func (srv *blocksRepository) GetBlocks(ctx context.Context, noteId string) ([]*models.Block, error) {
 	return nil, status.Errorf(codes.Unimplemented, "not implemented")
 }
 
-func (srv *blocksRepository) Create(ctx context.Context, blockRequest *models.BlockWithIndex) (*string, error) {
+func (srv *blocksRepository) Create(ctx context.Context, blockRequest *models.Block) (*string, error) {
 	txn := srv.db.DB.Txn(true)
 	defer txn.Abort()
 
@@ -42,7 +80,7 @@ func (srv *blocksRepository) Create(ctx context.Context, blockRequest *models.Bl
 		return nil, status.Errorf(codes.Internal, "could not create account")
 	}
 	blockId := id.String()
-	block := models.BlockWithIndex{ID: id.String(), NoteId: blockRequest.NoteId, Type: blockRequest.Type, Index: blockRequest.Index, Content: blockRequest.Content}
+	block := models.Block{ID: id.String(), NoteId: blockRequest.NoteId, Type: blockRequest.Type, Index: blockRequest.Index, Content: blockRequest.Content}
 
 	err = txn.Insert("block", block)
 	if err != nil {
@@ -52,11 +90,11 @@ func (srv *blocksRepository) Create(ctx context.Context, blockRequest *models.Bl
 	return &blockId, nil
 }
 
-func (srv *blocksRepository) Update(ctx context.Context, blockId *string, blockRequest *models.BlockWithIndex) (*models.BlockWithIndex, error) {
+func (srv *blocksRepository) Update(ctx context.Context, blockId string, blockRequest *models.Block) (*models.Block, error) {
 	return nil, status.Errorf(codes.Unimplemented, "not implemented")
 }
 
-func (srv *blocksRepository) DeleteBlock(ctx context.Context, blockId *string) error {
+func (srv *blocksRepository) DeleteBlock(ctx context.Context, blockId string) error {
 	txn := srv.db.DB.Txn(true)
 	defer txn.Abort()
 
@@ -69,11 +107,11 @@ func (srv *blocksRepository) DeleteBlock(ctx context.Context, blockId *string) e
 	return nil
 }
 
-func (srv *blocksRepository) DeleteBlocks(ctx context.Context, noteId *string) error {
+func (srv *blocksRepository) DeleteBlocks(ctx context.Context, noteId string) error {
 	txn := srv.db.DB.Txn(true)
 	defer txn.Abort()
 
-	err := txn.Delete("block", models.Block{NoteId: *noteId})
+	err := txn.Delete("block", models.Block{NoteId: noteId})
 
 	if err != nil {
 		srv.logger.Error("delete blocks db query failed", zap.Error(err))
@@ -82,17 +120,17 @@ func (srv *blocksRepository) DeleteBlocks(ctx context.Context, noteId *string) e
 	return nil
 }
 
-func buildBlockQuery(blockId *string) bson.M {
+func buildBlockQuery(blockId string) bson.M {
 	query := bson.M{}
-	if *blockId != "" {
+	if blockId != "" {
 		query["_id"] = blockId
 	}
 	return query
 }
 
-func buildBlocksQuery(noteId *string) bson.M {
+func buildBlocksQuery(noteId string) bson.M {
 	query := bson.M{}
-	if *noteId != "" {
+	if noteId != "" {
 		query["noteId"] = noteId
 	}
 	return query

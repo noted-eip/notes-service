@@ -2,12 +2,11 @@ package main
 
 import (
 	"context"
-	"notes-service/memory"
+	"notes-service/models/memory"
 	notespb "notes-service/protorepo/noted/notes/v1"
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/hashicorp/go-memdb"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.uber.org/zap"
@@ -15,35 +14,20 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-type BlocksAPISuite struct {
-	suite.Suite
-	srv *blocksService
-}
-
 func TestBlocksService(t *testing.T) {
-	suite.Run(t, &BlocksAPISuite{})
+	suite.Run(t, &NotesAPISuite{})
 }
 
-func (s *BlocksAPISuite) SetupSuite() {
-	logger := newLoggerOrFail(s.T())
-	db := newBlocksDatabaseOrFail(s.T(), logger)
-
-	s.srv = &blocksService{
-		//auth:      auth.NewService(genKeyOrFail(s.T())),
-		logger: logger,
-		repo:   memory.NewBlocksRepository(db, logger),
-	}
-}
-
-func (s *BlocksAPISuite) TestBlocksServiceInsertBlockShouldReturnNil() {
+/*
+func (s *NotesAPISuite) InsertBlockShouldReturnNil() {
 	res, err := s.srv.InsertBlock(context.TODO(), &notespb.InsertBlockRequest{})
 	s.Require().Error(err)
 	s.Equal(status.Code(err), codes.InvalidArgument)
 	s.Nil(res)
-}
+}*/
 
 /*
-func (s *BlocksAPISuite) TestBlocksServiceInsertBlockShouldReturnBlock() {
+func (s *NotesAPISuite) InsertBlockShouldReturnBlock() {
 
 	slice := []byte{0xFF, 0xFF, 0xFF, 0x7F, 0x7F, 0x7F, 0x7F, 0x7F, 0x7F}
 	noteId := binary.LittleEndian.Uint32(slice)
@@ -60,14 +44,14 @@ func (s *BlocksAPISuite) TestBlocksServiceInsertBlockShouldReturnBlock() {
 	s.NotNil(res)
 }*/
 
-func (s *BlocksAPISuite) TestBlocksServiceUpdateBlockShouldReturnError() {
+func (s *NotesAPISuite) UpdateBlockShouldReturnError() {
 	res, err := s.srv.UpdateBlock(context.TODO(), &notespb.UpdateBlockRequest{})
 	s.Require().Error(err)
 	s.Equal(status.Code(err), codes.Internal)
 	s.Nil(res)
 }
 
-func (s *BlocksAPISuite) TestBlocksServiceUpdateBlockShouldReturnNoError() {
+func (s *NotesAPISuite) UpdateBlockShouldReturnNoError() {
 	blockId, err := uuid.NewRandom()
 
 	res, err := s.srv.UpdateBlock(context.TODO(), &notespb.UpdateBlockRequest{
@@ -82,7 +66,7 @@ func (s *BlocksAPISuite) TestBlocksServiceUpdateBlockShouldReturnNoError() {
 	s.Nil(res)
 }
 
-func (s *BlocksAPISuite) TestBlocksServiceDeleteBlockShouldReturnError() {
+func (s *NotesAPISuite) DeleteBlockShouldReturnError() {
 	res, err := s.srv.DeleteBlock(context.TODO(), &notespb.DeleteBlockRequest{})
 	s.Require().Error(err)
 	s.Equal(status.Code(err), codes.InvalidArgument)
@@ -90,7 +74,7 @@ func (s *BlocksAPISuite) TestBlocksServiceDeleteBlockShouldReturnError() {
 }
 
 /*
-func (s *BlocksAPISuite) TestBlocksServiceDeleteBlockShouldReturnNoError() {
+func (s *NotesAPISuite) DeleteBlockShouldReturnNoError() {
 	id, err := uuid.NewRandom()
 
 	res, err := s.srv.DeleteBlock(context.TODO(), &notespb.DeleteBlockRequest{
@@ -101,44 +85,7 @@ func (s *BlocksAPISuite) TestBlocksServiceDeleteBlockShouldReturnNoError() {
 }
 */
 func newBlocksDatabaseOrFail(t *testing.T, logger *zap.Logger) *memory.Database {
-	db, err := memory.NewDatabase(context.Background(), newBlockDatabaseSchema(), logger)
+	db, err := memory.NewDatabase(context.Background(), memory.NewBlockDatabaseSchema(), logger)
 	require.NoError(t, err, "could not instantiate in-memory database")
 	return db
-}
-
-func newBlockDatabaseSchema() *memdb.DBSchema {
-	return &memdb.DBSchema{
-		Tables: map[string]*memdb.TableSchema{
-			"block": {
-				Name: "block",
-				Indexes: map[string]*memdb.IndexSchema{
-					"id": {
-						Name:    "id",
-						Unique:  true,
-						Indexer: &memdb.StringFieldIndex{Field: "ID"},
-					},
-					"note_id": {
-						Name:    "note_id",
-						Unique:  true,
-						Indexer: &memdb.StringFieldIndex{Field: "NoteId"},
-					},
-					"type": {
-						Name:    "type",
-						Unique:  true,
-						Indexer: &memdb.StringFieldIndex{Field: "Type"},
-					},
-					"index": {
-						Name:    "index",
-						Unique:  false,
-						Indexer: &memdb.StringFieldIndex{Field: "Index"},
-					},
-					"content": {
-						Name:    "content",
-						Unique:  false,
-						Indexer: &memdb.StringFieldIndex{Field: "Content"},
-					},
-				},
-			},
-		},
-	}
 }
