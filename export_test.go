@@ -78,9 +78,6 @@ func (s *ExportAPISuite) TestExportMarkdownShouldBeValid() {
 	ctx, err := s.auth.ContextWithToken(context.TODO(), &auth.Token{UserID: generatedUuid})
 	s.Require().NoError(err)
 
-	// a, err := s.srv.authenticate(ctx)
-	// print("--------", a.Id, "-------\n")
-
 	res_note, err := s.srv.CreateNote(ctx, &notespb.CreateNoteRequest{
 		Note: &notespb.Note{
 			AuthorId: generatedUuid.String(),
@@ -104,5 +101,4 @@ func (s *ExportAPISuite) TestExportMarkdownShouldBeValid() {
 
 	s.Nil(err)
 	s.NotNil(res)
-	// TODO
 }

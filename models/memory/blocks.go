@@ -43,6 +43,7 @@ func (srv *blocksRepository) GetBlocks(ctx context.Context, noteId string) ([]*m
 		blocks = append(blocks, obj.(*models.Block))
 	}
 
+	txn.Commit()
 	return blocks, nil
 }
 
@@ -63,6 +64,7 @@ func (srv *blocksRepository) Create(ctx context.Context, blockRequest *models.Bl
 		srv.logger.Error("mongo insert block failed", zap.Error(err), zap.String("note id : ", blockRequest.NoteId))
 		return nil, status.Errorf(codes.Internal, "could not insert block")
 	}
+	txn.Commit()
 	return &blockId, nil
 }
 
@@ -80,6 +82,7 @@ func (srv *blocksRepository) DeleteBlock(ctx context.Context, blockId string) er
 		srv.logger.Error("delete block db query failed", zap.Error(err))
 		return status.Error(codes.Internal, "could not delete block")
 	}
+	txn.Commit()
 	return nil
 }
 
@@ -93,6 +96,7 @@ func (srv *blocksRepository) DeleteBlocks(ctx context.Context, noteId string) er
 		srv.logger.Error("delete blocks db query failed", zap.Error(err))
 		return status.Error(codes.Internal, "could not delete blocks")
 	}
+	txn.Commit()
 	return nil
 }
 

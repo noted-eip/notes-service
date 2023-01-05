@@ -28,8 +28,8 @@ func (srv *notesService) ExportNote(ctx context.Context, in *notespb.ExportNoteR
 		return nil, err
 	}
 
-	if note.Note.AuthorId != token.Id {
-		return nil, status.Errorf(codes.NotFound, "could not get note. lol %s - %s", note.Note.AuthorId, token.Id)
+	if note.Note.AuthorId != token.UserID.String() {
+		return nil, status.Errorf(codes.NotFound, "could not get note.", note.Note.AuthorId, token.Id)
 	}
 
 	formatter, ok := protobufFormatToFormatter[in.ExportFormat]
