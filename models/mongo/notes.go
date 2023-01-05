@@ -100,7 +100,7 @@ func (srv *notesRepository) Update(ctx context.Context, noteId string, noteReque
 	return nil
 }
 
-func (srv *notesRepository) List(ctx context.Context, authorId string) (*[]models.Note, error) {
+func (srv *notesRepository) List(ctx context.Context, authorId string) ([]*models.Note, error) {
 	cursor, err := srv.db.Collection("notes").Find(ctx, buildAuthodIdQuery(authorId))
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
@@ -110,7 +110,7 @@ func (srv *notesRepository) List(ctx context.Context, authorId string) (*[]model
 		return nil, status.Errorf(codes.Aborted, err.Error())
 	}
 
-	var notesResponse []models.Note
+	var notesResponse []*models.Note
 	for cursor.Next(context.TODO()) {
 		var note models.Note
 
@@ -122,9 +122,9 @@ func (srv *notesRepository) List(ctx context.Context, authorId string) (*[]model
 			srv.logger.Error("wrong id from note", zap.Error(err))
 			return nil, status.Errorf(codes.Aborted, err.Error())
 		}
-		notesResponse = append(notesResponse, note)
+		notesResponse = append(notesResponse, &note)
 	}
-	return &notesResponse, nil
+	return notesResponse, nil
 }
 
 func buildIdQuery(noteId string) bson.M {

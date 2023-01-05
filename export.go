@@ -5,6 +5,7 @@ import (
 
 	"notes-service/exports"
 	notespb "notes-service/protorepo/noted/notes/v1"
+	"notes-service/validators"
 
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
@@ -17,6 +18,11 @@ var protobufFormatToFormatter = map[notespb.NoteExportFormat]func(*notespb.Note)
 }
 
 func (srv *notesService) ExportNote(ctx context.Context, in *notespb.ExportNoteRequest) (*notespb.ExportNoteResponse, error) {
+	err := validators.ValidateExportNoteRequest(in)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
 	token, err := srv.authenticate(ctx)
 	if err != nil {
 		return nil, status.Error(codes.Unauthenticated, err.Error())
@@ -29,7 +35,7 @@ func (srv *notesService) ExportNote(ctx context.Context, in *notespb.ExportNoteR
 	}
 
 	if note.Note.AuthorId != token.UserID.String() {
-		return nil, status.Errorf(codes.NotFound, "could not get note.", note.Note.AuthorId, token.Id)
+		return nil, status.Errorf(codes.NotFound, "could not get note.")
 	}
 
 	formatter, ok := protobufFormatToFormatter[in.ExportFormat]

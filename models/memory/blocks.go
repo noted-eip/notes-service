@@ -6,7 +6,7 @@ import (
 	"notes-service/models"
 
 	"github.com/google/uuid"
-	"go.mongodb.org/mongo-driver/bson"
+	"github.com/hashicorp/go-memdb"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -25,7 +25,19 @@ func NewBlocksRepository(db *Database, logger *zap.Logger) models.BlocksReposito
 }
 
 func (srv *blocksRepository) GetBlock(ctx context.Context, blockId string) (*models.Block, error) {
-	return nil, status.Errorf(codes.Unimplemented, "not implemented")
+	txn := srv.db.DB.Txn(false)
+	defer txn.Abort()
+
+	raw, err := txn.First("block", "id", blockId)
+
+	if err != nil {
+		srv.logger.Error("unable to query block", zap.Error(err))
+		return nil, err
+	}
+	if raw == nil {
+		return nil, status.Errorf(codes.NotFound, "block not found")
+	}
+	return raw.(*models.Block), nil
 }
 
 func (srv *blocksRepository) GetBlocks(ctx context.Context, noteId string) ([]*models.Block, error) {
@@ -59,7 +71,7 @@ func (srv *blocksRepository) Create(ctx context.Context, blockRequest *models.Bl
 	blockId := id.String()
 	block := models.Block{ID: id.String(), NoteId: blockRequest.NoteId, Type: blockRequest.Type, Index: blockRequest.Index, Content: blockRequest.Content}
 
-	err = txn.Insert("block", block)
+	err = txn.Insert("block", &block)
 	if err != nil {
 		srv.logger.Error("mongo insert block failed", zap.Error(err), zap.String("note id : ", blockRequest.NoteId))
 		return nil, status.Errorf(codes.Internal, "could not insert block")
@@ -69,6 +81,18 @@ func (srv *blocksRepository) Create(ctx context.Context, blockRequest *models.Bl
 }
 
 func (srv *blocksRepository) Update(ctx context.Context, blockId string, blockRequest *models.Block) (*models.Block, error) {
+	/*update, err := srv.db.Collection("blocks").UpdateOne(ctx, buildIdQuery(blockId), bson.D{{Key: "$set", Value: &blockRequest}})
+	if err != nil {
+		srv.logger.Error("failed to convert object id from hex", zap.Error(err))
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+	if update.MatchedCount == 0 {
+		srv.logger.Error("mongo update block query matched none", zap.String("block_id : ", blockId))
+		return nil, status.Error(codes.Internal, "could not update block")
+	}
+
+	return blockRequest, nil
+	*/
 	return nil, status.Errorf(codes.Unimplemented, "not implemented")
 }
 
@@ -76,8 +100,11 @@ func (srv *blocksRepository) DeleteBlock(ctx context.Context, blockId string) er
 	txn := srv.db.DB.Txn(true)
 	defer txn.Abort()
 
-	err := txn.Delete("block", buildBlockQuery(blockId))
+	err := txn.Delete("block", models.Block{ID: blockId})
 
+	if err == memdb.ErrNotFound {
+		srv.logger.Error("unable to find block", zap.Error(err))
+	}
 	if err != nil {
 		srv.logger.Error("delete block db query failed", zap.Error(err))
 		return status.Error(codes.Internal, "could not delete block")
@@ -90,7 +117,8 @@ func (srv *blocksRepository) DeleteBlocks(ctx context.Context, noteId string) er
 	txn := srv.db.DB.Txn(true)
 	defer txn.Abort()
 
-	err := txn.Delete("block", models.Block{NoteId: noteId})
+	//err := txn.Delete("block", models.Block{NoteId: noteId})
+	_, err := txn.DeleteAll("block", "note_id", noteId)
 
 	if err != nil {
 		srv.logger.Error("delete blocks db query failed", zap.Error(err))
@@ -98,20 +126,4 @@ func (srv *blocksRepository) DeleteBlocks(ctx context.Context, noteId string) er
 	}
 	txn.Commit()
 	return nil
-}
-
-func buildBlockQuery(blockId string) bson.M {
-	query := bson.M{}
-	if blockId != "" {
-		query["_id"] = blockId
-	}
-	return query
-}
-
-func buildBlocksQuery(noteId string) bson.M {
-	query := bson.M{}
-	if noteId != "" {
-		query["noteId"] = noteId
-	}
-	return query
 }

@@ -6,6 +6,7 @@ import (
 	"notes-service/models"
 
 	"github.com/google/uuid"
+	"github.com/hashicorp/go-memdb"
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -27,6 +28,10 @@ func (srv *notesRepository) Create(ctx context.Context, noteRequest *models.Note
 	txn := srv.db.DB.Txn(true)
 	id, err := uuid.NewRandom()
 
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, err.Error())
+	}
+
 	if noteRequest == nil {
 		srv.logger.Error("NoteRequest is nil")
 		return nil, status.Errorf(codes.Internal, "could not create account")
@@ -34,7 +39,7 @@ func (srv *notesRepository) Create(ctx context.Context, noteRequest *models.Note
 
 	note := models.Note{ID: id.String(), AuthorId: noteRequest.AuthorId, Title: noteRequest.Title}
 
-	err = txn.Insert("note", note)
+	err = txn.Insert("note", &note)
 	if err != nil {
 		srv.logger.Error("mongo insert note failed", zap.Error(err), zap.String("note name", note.AuthorId))
 		return nil, status.Errorf(codes.Internal, "could not create note")
@@ -46,6 +51,7 @@ func (srv *notesRepository) Create(ctx context.Context, noteRequest *models.Note
 
 func (srv *notesRepository) Get(ctx context.Context, noteId string) (*models.Note, error) {
 	txn := srv.db.DB.Txn(false)
+	defer txn.Abort()
 
 	raw, err := txn.First("note", "id", noteId)
 
@@ -56,13 +62,25 @@ func (srv *notesRepository) Get(ctx context.Context, noteId string) (*models.Not
 	if raw == nil {
 		return nil, status.Errorf(codes.NotFound, "note not found")
 	}
-	var note models.Note = raw.(models.Note)
 	txn.Commit()
-	return &note, nil
+	return raw.(*models.Note), nil
 }
 
 func (srv *notesRepository) Delete(ctx context.Context, noteId string) error {
-	return status.Errorf(codes.Unimplemented, "not implemented")
+	txn := srv.db.DB.Txn(true)
+	defer txn.Abort()
+
+	err := txn.Delete("note", models.Note{ID: noteId})
+
+	if err == memdb.ErrNotFound {
+		srv.logger.Error("unable to find note", zap.Error(err))
+	}
+	if err != nil {
+		srv.logger.Error("unable to delete note", zap.Error(err))
+		return err
+	}
+
+	return nil
 }
 
 func (srv *notesRepository) Update(ctx context.Context, noteId string, noteRequest *models.NotePayload) error {
@@ -79,6 +97,20 @@ func (srv *notesRepository) Update(ctx context.Context, noteId string, noteReque
 	return nil
 }
 
-func (srv *notesRepository) List(ctx context.Context, authorId string) (*[]models.Note, error) {
-	return nil, status.Errorf(codes.Unimplemented, "not implemented")
+func (srv *notesRepository) List(ctx context.Context, authorId string) ([]*models.Note, error) {
+	var notes []*models.Note
+
+	txn := srv.db.DB.Txn(false)
+
+	it, err := txn.Get("note", "author_id", authorId)
+	if err != nil {
+		srv.logger.Error("unable to list notes", zap.Error(err))
+		return nil, err
+	}
+
+	for obj := it.Next(); obj != nil; obj = it.Next() {
+		notes = append(notes, obj.(*models.Note))
+	}
+
+	return notes, nil
 }

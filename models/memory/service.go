@@ -28,7 +28,7 @@ func NewDatabase(ctx context.Context, logger *zap.Logger) (*Database, error) {
 					},
 					"author_id": {
 						Name:    "author_id",
-						Unique:  true,
+						Unique:  false,
 						Indexer: &memdb.StringFieldIndex{Field: "AuthorId"},
 					},
 					"title": {
@@ -53,12 +53,12 @@ func NewDatabase(ctx context.Context, logger *zap.Logger) (*Database, error) {
 					},
 					"note_id": {
 						Name:    "note_id",
-						Unique:  true,
+						Unique:  false,
 						Indexer: &memdb.StringFieldIndex{Field: "NoteId"},
 					},
 					"type": {
 						Name:    "type",
-						Unique:  true,
+						Unique:  false,
 						Indexer: &memdb.StringFieldIndex{Field: "Type"},
 					},
 					"index": {
