@@ -10,7 +10,6 @@ func headingBlockToMarkdown(b *notespb.Block) (string, error) {
 	heading := b.GetHeading()
 	typeName := b.Type.String()
 	typeNameSplitted := strings.Split(typeName, "_")
-	print(typeName, "\n")
 	importance, err := strconv.Atoi(typeNameSplitted[len(typeNameSplitted)-1])
 
 	if err != nil {

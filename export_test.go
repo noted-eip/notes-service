@@ -6,7 +6,6 @@ import (
 	"notes-service/models/memory"
 	notespb "notes-service/protorepo/noted/notes/v1"
 	"testing"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/suite"
@@ -130,10 +129,7 @@ func (s *ExportAPISuite) TestExportPdfShouldBeValid() {
 	s.Nil(err)
 	s.NotNil(res_note)
 
-	a := time.Now()
 	res, err := s.srv.ExportNote(ctx, &notespb.ExportNoteRequest{NoteId: res_note.Note.Id, ExportFormat: notespb.NoteExportFormat_NOTE_EXPORT_FORMAT_PDF})
-	b := time.Since(a)
-	print(b.Seconds())
 	s.Nil(err)
 	s.NotNil(res)
 	s.Greater(len(res.File), len("%PDF"))
