@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"sort"
 
 	"notes-service/auth"
 	"notes-service/models"
@@ -79,6 +80,8 @@ func (srv *notesService) GetNote(ctx context.Context, in *notespb.GetNoteRequest
 		srv.logger.Error("failed to get blocks", zap.Error(err))
 		return nil, status.Errorf(codes.NotFound, "invalid content provided for blocks form noteId : %s", note.ID)
 	}
+
+	sort.Sort(models.BlocksByIndex(blocksTmp))
 
 	//Convert []models.block to []notespb.Block
 	blocks := make([]*notespb.Block, len(blocksTmp))

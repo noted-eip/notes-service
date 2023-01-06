@@ -40,3 +40,10 @@ type BlocksRepository interface {
 
 	DeleteBlocks(ctx context.Context, noteId string) error
 }
+
+// To sort blocks by index
+type BlocksByIndex []*Block
+
+func (a BlocksByIndex) Len() int           { return len(a) }
+func (a BlocksByIndex) Less(i, j int) bool { return a[i].Index < a[j].Index }
+func (a BlocksByIndex) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
