@@ -26,6 +26,7 @@ func NewNotesRepository(db *Database, logger *zap.Logger) models.NotesRepository
 
 func (srv *notesRepository) Create(ctx context.Context, noteRequest *models.NotePayload) (*models.Note, error) {
 	txn := srv.db.DB.Txn(true)
+	defer txn.Abort()
 	id, err := uuid.NewRandom()
 
 	if err != nil {
@@ -51,7 +52,6 @@ func (srv *notesRepository) Create(ctx context.Context, noteRequest *models.Note
 
 func (srv *notesRepository) Get(ctx context.Context, noteId string) (*models.Note, error) {
 	txn := srv.db.DB.Txn(false)
-	defer txn.Abort()
 
 	raw, err := txn.First("note", "id", noteId)
 
@@ -79,7 +79,7 @@ func (srv *notesRepository) Delete(ctx context.Context, noteId string) error {
 		srv.logger.Error("unable to delete note", zap.Error(err))
 		return err
 	}
-
+	txn.Commit()
 	return nil
 }
 

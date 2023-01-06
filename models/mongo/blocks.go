@@ -89,6 +89,7 @@ func (srv *blocksRepository) Create(ctx context.Context, blockRequest *models.Bl
 }
 
 func (srv *blocksRepository) Update(ctx context.Context, blockId string, blockRequest *models.Block) (*models.Block, error) {
+	//index update ?
 	update, err := srv.db.Collection("blocks").UpdateOne(ctx, buildIdQuery(blockId), bson.D{{Key: "$set", Value: &blockRequest}})
 
 	if err != nil {
