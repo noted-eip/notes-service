@@ -131,16 +131,16 @@ func (s *NotesAPISuite) TestGetNoteShouldSortBlocks() {
 			AuthorId: generatedUuid.String(),
 			Title:    "ci-test",
 			Blocks: []*notespb.Block{
-				&notespb.Block{
+				{
 					Type: 1,
 					Data: &notespb.Block_Heading{
-						"Title",
+						Heading: "Title",
 					},
 				},
-				&notespb.Block{
+				{
 					Type: 4,
 					Data: &notespb.Block_Paragraph{
-						"Content",
+						Paragraph: "Content",
 					},
 				},
 			},
