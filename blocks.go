@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"notes-service/background"
 	"notes-service/models"
 	notespb "notes-service/protorepo/noted/notes/v1"
 	"notes-service/validators"
@@ -42,7 +41,7 @@ func (srv *notesService) InsertBlock(ctx context.Context, in *notespb.InsertBloc
 		return nil, status.Errorf(codes.Internal, "Internal error the block isn't created")
 	}
 	// launchBackGroundProcess
-	go background.LaunchSaveClock(in.NoteId)
+	//go background.LaunchSaveClock(in.NoteId)
 	// !launchBackGroundProcess
 	blockResponse := &notespb.Block{Id: *BlockId, Type: in.Block.Type, Data: in.Block.Data}
 	return &notespb.InsertBlockResponse{Block: blockResponse}, nil
@@ -80,7 +79,7 @@ func (srv *notesService) UpdateBlock(ctx context.Context, in *notespb.UpdateBloc
 		return nil, status.Errorf(codes.Internal, "Internal error the block isn't created")
 	}
 	// launchBackGroundProcess
-	go background.LaunchSaveClock(block.NoteId)
+	//go background.LaunchSaveClock(block.NoteId)
 	// !launchBackGroundProcess
 	return &notespb.UpdateBlockResponse{
 		Block: &notespb.Block{
@@ -116,13 +115,13 @@ func (srv *notesService) DeleteBlock(ctx context.Context, in *notespb.DeleteBloc
 		return nil, status.Errorf(codes.Internal, "could not delete block")
 	}
 
-	block, err := srv.repoBlock.GetBlock(ctx, in.Id)
+	_, err = srv.repoBlock.GetBlock(ctx, in.Id)
 	if err != nil {
 		srv.logger.Error("failed to get block", zap.Error(err))
 		return nil, status.Errorf(codes.NotFound, "Internal error, failed to get block in order to launch the backGroundProcess, block Id : %d", in.Id)
 	}
 	// launchBackGroundProcess
-	go background.LaunchSaveClock(block.NoteId)
+	//go background.LaunchSaveClock(block.NoteId)
 	// !launchBackGroundProcess
 
 	return nil, nil

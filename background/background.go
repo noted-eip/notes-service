@@ -1,7 +1,6 @@
 package background
 
 import (
-	"fmt"
 	"time"
 )
 
@@ -64,12 +63,13 @@ func (srv *backGroundProcesses) LaunchSaveClock(noteId string) {
 		case <-srv.AddProcess(noteId):
 			return
 		default:
+			return
 			//time.NewTimer(1)
-			clock += timePassed
+			/*clock += timePassed
 			if clock >= timeToWait {
 				fmt.Println("Save for note " + noteId)
 				return
-			}
+			}*/
 		}
 	}
 }
