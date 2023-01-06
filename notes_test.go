@@ -58,7 +58,6 @@ func (s *NotesAPISuite) TestCreateNoteValidator() {
 	s.Require().Error(err)
 	s.Equal(codes.InvalidArgument, status.Code(err))
 	s.Nil(res)
-
 }
 
 func (s *NotesAPISuite) TestCreateNoteReturnNote() {
@@ -75,7 +74,6 @@ func (s *NotesAPISuite) TestCreateNoteReturnNote() {
 	})
 	s.Require().NoError(err)
 	s.NotNil(res)
-
 }
 
 func (s *NotesAPISuite) TestGetNoteNoAuth() {
@@ -111,7 +109,6 @@ func (s *NotesAPISuite) TestGetNoteShouldReturnNote() {
 		},
 	})
 	s.Require().NoError(err)
-	//il faut implem les memory de blocks.go si on veux bien get la note
 	res, err := s.srv.GetNote(ctx, &notespb.GetNoteRequest{
 		Id: resExpected.Note.Id,
 	})
@@ -121,7 +118,45 @@ func (s *NotesAPISuite) TestGetNoteShouldReturnNote() {
 	s.Equal(res.Note.Id, resExpected.Note.Id)
 	s.Equal(res.Note.AuthorId, resExpected.Note.AuthorId)
 	s.Equal(res.Note.Title, resExpected.Note.Title)
+}
 
+func (s *NotesAPISuite) TestGetNoteShouldSortBlocks() {
+	generatedUuid, err := uuid.NewRandom()
+	s.Require().NoError(err)
+	ctx, err := s.auth.ContextWithToken(context.TODO(), &auth.Token{UserID: generatedUuid})
+	s.Require().NoError(err)
+
+	resExpected, err := s.srv.CreateNote(ctx, &notespb.CreateNoteRequest{
+		Note: &notespb.Note{
+			AuthorId: generatedUuid.String(),
+			Title:    "ci-test",
+			Blocks: []*notespb.Block{
+				&notespb.Block{
+					Type: 1,
+					Data: &notespb.Block_Heading{
+						"Title",
+					},
+				},
+				&notespb.Block{
+					Type: 4,
+					Data: &notespb.Block_Paragraph{
+						"Content",
+					},
+				},
+			},
+		},
+	})
+
+	s.Require().NoError(err)
+	res, err := s.srv.GetNote(ctx, &notespb.GetNoteRequest{
+		Id: resExpected.Note.Id,
+	})
+
+	s.NotNil(res)
+	s.Require().NoError(err)
+	s.Equal(res.Note.Id, resExpected.Note.Id)
+	s.Equal(res.Note.AuthorId, resExpected.Note.AuthorId)
+	s.Equal(res.Note.Title, resExpected.Note.Title)
 }
 
 func (s *NotesAPISuite) TestUpdateNoteNoAuth() {
@@ -140,7 +175,6 @@ func (s *NotesAPISuite) TestUpdateNoteValidator() {
 	s.Require().Error(err)
 	s.Equal(codes.InvalidArgument, status.Code(err))
 	s.Nil(res)
-
 }
 
 /*
@@ -195,7 +229,6 @@ func (s *NotesAPISuite) TestDeleteNoteValidator() {
 	s.Require().Error(err)
 	s.Equal(codes.InvalidArgument, status.Code(err))
 	s.Nil(res)
-
 }
 
 func (s *NotesAPISuite) TestDeleteNoteShouldReturnNoError() {
@@ -218,7 +251,6 @@ func (s *NotesAPISuite) TestDeleteNoteShouldReturnNoError() {
 	})
 	s.Require().NoError(err)
 	s.Nil(res)
-
 }
 
 func (s *NotesAPISuite) TestListNotesNoAuth() {
@@ -237,7 +269,6 @@ func (s *NotesAPISuite) TestListNotesValidator() {
 	s.Require().Error(err)
 	s.Equal(codes.InvalidArgument, status.Code(err))
 	s.Nil(res)
-
 }
 
 func (s *NotesAPISuite) TestListNotesReturnNotes() {
@@ -248,9 +279,6 @@ func (s *NotesAPISuite) TestListNotesReturnNotes() {
 
 	authorId := generatedUuid.String()
 	noteName := "ci-test-"
-
-	//get all notes
-	//delete all notes
 
 	_, err = s.srv.CreateNote(ctx, &notespb.CreateNoteRequest{
 		Note: &notespb.Note{AuthorId: authorId, Title: (noteName + "1"), Blocks: nil},
@@ -274,7 +302,6 @@ func (s *NotesAPISuite) TestListNotesReturnNotes() {
 	s.Require().NoError(err)
 	s.NotNil(res)
 	s.Equal(3, len(res.Notes))
-
 }
 
 func newDatabaseOrFail(t *testing.T, logger *zap.Logger) *memory.Database {
