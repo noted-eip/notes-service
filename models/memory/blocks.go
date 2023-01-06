@@ -24,43 +24,6 @@ func NewBlocksRepository(db *Database, logger *zap.Logger) models.BlocksReposito
 	}
 }
 
-func NewBlockDatabaseSchema() *memdb.DBSchema {
-	return &memdb.DBSchema{
-		Tables: map[string]*memdb.TableSchema{
-			"block": {
-				Name: "block",
-				Indexes: map[string]*memdb.IndexSchema{
-					"id": {
-						Name:    "id",
-						Unique:  true,
-						Indexer: &memdb.StringFieldIndex{Field: "ID"},
-					},
-					"note_id": {
-						Name:    "note_id",
-						Unique:  false,
-						Indexer: &memdb.StringFieldIndex{Field: "NoteId"},
-					},
-					"type": {
-						Name:    "type",
-						Unique:  false,
-						Indexer: &memdb.StringFieldIndex{Field: "Type"},
-					},
-					"index": {
-						Name:    "index",
-						Unique:  false,
-						Indexer: &memdb.StringFieldIndex{Field: "Index"},
-					},
-					"content": {
-						Name:    "content",
-						Unique:  false,
-						Indexer: &memdb.StringFieldIndex{Field: "Content"},
-					},
-				},
-			},
-		},
-	}
-}
-
 func (srv *blocksRepository) GetBlock(ctx context.Context, blockId string) (*models.Block, error) {
 	txn := srv.db.DB.Txn(false)
 	defer txn.Abort()
@@ -145,6 +108,7 @@ func (srv *blocksRepository) DeleteBlock(ctx context.Context, blockId string) er
 		srv.logger.Error("delete block db query failed", zap.Error(err))
 		return status.Error(codes.Internal, "could not delete block")
 	}
+	txn.Commit()
 	return nil
 }
 
@@ -159,5 +123,6 @@ func (srv *blocksRepository) DeleteBlocks(ctx context.Context, noteId string) er
 		srv.logger.Error("delete blocks db query failed", zap.Error(err))
 		return status.Error(codes.Internal, "could not delete blocks")
 	}
+	txn.Commit()
 	return nil
 }

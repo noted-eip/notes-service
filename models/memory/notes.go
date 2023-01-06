@@ -24,42 +24,13 @@ func NewNotesRepository(db *Database, logger *zap.Logger) models.NotesRepository
 	}
 }
 
-func NewNotesDatabaseSchema() *memdb.DBSchema {
-	return &memdb.DBSchema{
-		Tables: map[string]*memdb.TableSchema{
-			"note": {
-				Name: "note",
-				Indexes: map[string]*memdb.IndexSchema{
-					"id": {
-						Name:    "id",
-						Unique:  true,
-						Indexer: &memdb.StringFieldIndex{Field: "ID"},
-					},
-					"author_id": {
-						Name:    "author_id",
-						Unique:  false,
-						Indexer: &memdb.StringFieldIndex{Field: "AuthorId"},
-					},
-					"title": {
-						Name:    "title",
-						Unique:  false,
-						Indexer: &memdb.StringFieldIndex{Field: "Title"},
-					},
-					"blocks": {
-						Name:    "blocks",
-						Unique:  false,
-						Indexer: &memdb.StringFieldIndex{Field: "Blocks"},
-					},
-				},
-			},
-		},
-	}
-}
-
 func (srv *notesRepository) Create(ctx context.Context, noteRequest *models.NotePayload) (*models.Note, error) {
 	txn := srv.db.DB.Txn(true)
 	id, err := uuid.NewRandom()
-	defer txn.Abort()
+
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, err.Error())
+	}
 
 	if noteRequest == nil {
 		srv.logger.Error("NoteRequest is nil")
@@ -80,7 +51,6 @@ func (srv *notesRepository) Create(ctx context.Context, noteRequest *models.Note
 
 func (srv *notesRepository) Get(ctx context.Context, noteId string) (*models.Note, error) {
 	txn := srv.db.DB.Txn(false)
-	defer txn.Abort()
 
 	raw, err := txn.First("note", "id", noteId)
 
@@ -107,7 +77,7 @@ func (srv *notesRepository) Delete(ctx context.Context, noteId string) error {
 		srv.logger.Error("unable to delete note", zap.Error(err))
 		return err
 	}
-
+	txn.Commit()
 	return nil
 }
 

@@ -2,14 +2,13 @@ package main
 
 import (
 	"context"
+	"notes-service/auth"
 	"notes-service/models"
-	"notes-service/models/memory"
 	notespb "notes-service/protorepo/noted/notes/v1"
 	"testing"
 
-	"github.com/stretchr/testify/require"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/suite"
-	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -27,24 +26,27 @@ func (s *NotesAPISuite) TestInsertBlockNoAuth() {
 }
 
 func (s *NotesAPISuite) TestCreateBlockValidator() {
-	saveAuthPackage := s.srv.auth
-	s.srv.auth = NewMockService()
-	res, err := s.srv.InsertBlock(context.TODO(), &notespb.InsertBlockRequest{})
+	generatedUuid, err := uuid.NewRandom()
+	s.Require().NoError(err)
+	ctx, err := s.auth.ContextWithToken(context.TODO(), &auth.Token{UserID: generatedUuid})
+	s.Require().NoError(err)
+	res, err := s.srv.InsertBlock(ctx, &notespb.InsertBlockRequest{})
 	s.Require().Error(err)
 	s.Equal(status.Code(err), codes.InvalidArgument)
 	s.Nil(res)
-	s.srv.auth = saveAuthPackage
 }
 
 func (s *NotesAPISuite) TestInsertBlockShouldReturnBlock() {
-	saveAuthPackage := s.srv.auth
-	s.srv.auth = NewMockService()
-	//get userId
-	token, err := s.srv.auth.TokenFromContext(context.TODO())
+	generatedUuid, err := uuid.NewRandom()
+	s.Require().NoError(err)
+	ctx, err := s.auth.ContextWithToken(context.TODO(), &auth.Token{UserID: generatedUuid})
+	s.Require().NoError(err)
+
+	token, err := s.srv.auth.TokenFromContext(ctx)
 	s.Require().NoError(err)
 	userId := token.UserID.String()
 
-	resCreateNote, err := s.srv.CreateNote(context.TODO(), &notespb.CreateNoteRequest{
+	resCreateNote, err := s.srv.CreateNote(ctx, &notespb.CreateNoteRequest{
 		Note: &notespb.Note{
 			AuthorId: userId,
 			Title:    "ci-test",
@@ -55,7 +57,7 @@ func (s *NotesAPISuite) TestInsertBlockShouldReturnBlock() {
 
 	blokcContent := "c-test-content"
 	blockType := notespb.Block_TYPE_PARAGRAPH
-	res, err := s.srv.InsertBlock(context.TODO(), &notespb.InsertBlockRequest{
+	res, err := s.srv.InsertBlock(ctx, &notespb.InsertBlockRequest{
 		Block: &notespb.Block{
 			Type: blockType,
 			Data: &notespb.Block_Paragraph{
@@ -72,7 +74,6 @@ func (s *NotesAPISuite) TestInsertBlockShouldReturnBlock() {
 	convertApiBlockToModelBlock(&actualBlock, res.Block)
 	s.Equal(blokcContent, actualBlock.Content)
 	s.Equal(blockType, res.Block.Type)
-	s.srv.auth = saveAuthPackage
 }
 
 func (s *NotesAPISuite) TestUpdateBlockNoAuth() {
@@ -83,13 +84,14 @@ func (s *NotesAPISuite) TestUpdateBlockNoAuth() {
 }
 
 func (s *NotesAPISuite) TestUpdateBlockValidator() {
-	saveAuthPackage := s.srv.auth
-	s.srv.auth = NewMockService()
-	res, err := s.srv.UpdateBlock(context.TODO(), &notespb.UpdateBlockRequest{})
+	generatedUuid, err := uuid.NewRandom()
+	s.Require().NoError(err)
+	ctx, err := s.auth.ContextWithToken(context.TODO(), &auth.Token{UserID: generatedUuid})
+	s.Require().NoError(err)
+	res, err := s.srv.UpdateBlock(ctx, &notespb.UpdateBlockRequest{})
 	s.Require().Error(err)
 	s.Equal(status.Code(err), codes.InvalidArgument)
 	s.Nil(res)
-	s.srv.auth = saveAuthPackage
 }
 
 /*
@@ -138,7 +140,6 @@ func (s *NotesAPISuite) TestUpdateBlockShouldReturnNoError() {
 	convertApiBlockToModelBlock(&actualBlock, res.Block)
 	s.Equal("c-test-content-updated", actualBlock.Content)
 	s.Equal(notespb.Block_TYPE_PARAGRAPH, res.Block.Type)//switch le type aussi peu être
-	s.srv.auth = saveAuthPackage
 }*/
 
 func (s *NotesAPISuite) TestDeleteBlockNoAuth() {
@@ -149,33 +150,33 @@ func (s *NotesAPISuite) TestDeleteBlockNoAuth() {
 }
 
 func (s *NotesAPISuite) TestDeleteBlockValidator() {
-	saveAuthPackage := s.srv.auth
-	s.srv.auth = NewMockService()
-	res, err := s.srv.DeleteBlock(context.TODO(), &notespb.DeleteBlockRequest{})
+	generatedUuid, err := uuid.NewRandom()
+	s.Require().NoError(err)
+	ctx, err := s.auth.ContextWithToken(context.TODO(), &auth.Token{UserID: generatedUuid})
+	s.Require().NoError(err)
+	res, err := s.srv.DeleteBlock(ctx, &notespb.DeleteBlockRequest{})
 	s.Require().Error(err)
 	s.Equal(status.Code(err), codes.InvalidArgument)
 	s.Nil(res)
-	s.srv.auth = saveAuthPackage
 }
 
 func (s *NotesAPISuite) TestDeleteBlockShouldReturnNoError() {
-	saveAuthPackage := s.srv.auth
-	s.srv.auth = NewMockService()
-	//get userId
-	token, err := s.srv.auth.TokenFromContext(context.TODO())
+	generatedUuid, err := uuid.NewRandom()
 	s.Require().NoError(err)
-	userId := token.UserID.String()
+	ctx, err := s.auth.ContextWithToken(context.TODO(), &auth.Token{UserID: generatedUuid})
+	s.Require().NoError(err)
+	//get userId
 
-	resCreateNote, err := s.srv.CreateNote(context.TODO(), &notespb.CreateNoteRequest{
+	resCreateNote, err := s.srv.CreateNote(ctx, &notespb.CreateNoteRequest{
 		Note: &notespb.Note{
-			AuthorId: userId,
+			AuthorId: generatedUuid.String(),
 			Title:    "ci-test",
 			Blocks:   nil,
 		},
 	})
 	s.Require().NoError(err)
 
-	resInsertBlock, err := s.srv.InsertBlock(context.TODO(), &notespb.InsertBlockRequest{
+	resInsertBlock, err := s.srv.InsertBlock(ctx, &notespb.InsertBlockRequest{
 		Block: &notespb.Block{
 			Type: notespb.Block_TYPE_PARAGRAPH,
 			Data: &notespb.Block_Paragraph{
@@ -187,16 +188,9 @@ func (s *NotesAPISuite) TestDeleteBlockShouldReturnNoError() {
 	})
 	s.Require().NoError(err)
 
-	res, err := s.srv.DeleteBlock(context.TODO(), &notespb.DeleteBlockRequest{
+	res, err := s.srv.DeleteBlock(ctx, &notespb.DeleteBlockRequest{
 		Id: resInsertBlock.Block.Id,
 	})
 	s.Require().NoError(err)
 	s.Nil(res)
-	s.srv.auth = saveAuthPackage
-}
-
-func newBlocksDatabaseOrFail(t *testing.T, logger *zap.Logger) *memory.Database {
-	db, err := memory.NewDatabase(context.Background(), memory.NewBlockDatabaseSchema(), logger)
-	require.NoError(t, err, "could not instantiate in-memory database")
-	return db
 }

@@ -36,6 +36,10 @@ func (srv *notesService) InsertBlock(ctx context.Context, in *notespb.InsertBloc
 		return nil, status.Errorf(codes.Internal, "invalid data content provided for block index : %d", in.Index)
 	}
 	BlockId, err := srv.repoBlock.Create(ctx, &models.Block{NoteId: in.NoteId, Type: uint32(in.Block.Type), Index: in.Index, Content: block.Content})
+
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "couldn't create block id : %s", *BlockId)
+	}
 	blockResponse := &notespb.Block{Id: *BlockId, Type: in.Block.Type, Data: in.Block.Data}
 	return &notespb.InsertBlockResponse{Block: blockResponse}, nil
 }
