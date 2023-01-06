@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"notes-service/models"
 	notespb "notes-service/protorepo/noted/notes/v1"
 
@@ -9,7 +8,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func (srv *notesService) generateNoteTags(ctx context.Context, note *models.Note) error {
+func (srv *notesService) generateNoteTagsToModelNote(note *models.Note) error {
 	var fullNote string
 
 	for _, block := range note.Blocks {
