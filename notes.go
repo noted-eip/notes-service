@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"sort"
 
 	"notes-service/auth"
 	"notes-service/models"
@@ -80,16 +81,18 @@ func (srv *notesService) GetNote(ctx context.Context, in *notespb.GetNoteRequest
 		return nil, status.Errorf(codes.NotFound, "invalid content provided for blocks form noteId : %s", note.ID)
 	}
 
+	sort.Sort(models.BlocksByIndex(blocksTmp))
+
 	//Convert []models.block to []notespb.Block
 	blocks := make([]*notespb.Block, len(blocksTmp))
-	for _, block := range blocksTmp {
-		blocks[block.Index-1] = &notespb.Block{}
-		err := convertModelBlockToApiBlock(block, blocks[block.Index-1])
+	for index, block := range blocksTmp {
+		blocks[index] = &notespb.Block{}
+		err := convertModelBlockToApiBlock(block, blocks[index])
 		if err != nil {
 			srv.logger.Error("failed to the content of a block", zap.Error(err))
 			return nil, status.Errorf(codes.Internal, "fail to get content from block Id : %s", block.ID)
 		}
-		blocks[block.Index-1] = &notespb.Block{Id: block.ID, Type: notespb.Block_Type(block.Type), Data: blocks[block.Index-1].Data} // NOTE: If we change block index to start at 0 we need to remove the -1 here
+		blocks[index] = &notespb.Block{Id: block.ID, Type: notespb.Block_Type(block.Type), Data: blocks[index].Data}
 	}
 	noteResponse := notespb.Note{Id: note.ID, AuthorId: note.AuthorId, Title: note.Title, Blocks: blocks, CreatedAt: timestamppb.New(note.CreationDate), ModifiedAt: timestamppb.New(note.ModificationDate)}
 	return &notespb.GetNoteResponse{Note: &noteResponse}, nil
