@@ -62,6 +62,7 @@ func (srv *notesRepository) Get(ctx context.Context, noteId string) (*models.Not
 	if raw == nil {
 		return nil, status.Errorf(codes.NotFound, "note not found")
 	}
+	txn.Commit()
 	return raw.(*models.Note), nil
 }
 

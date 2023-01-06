@@ -23,6 +23,17 @@ require (
 )
 
 require (
+	github.com/ReneKroon/ttlcache/v2 v2.4.0 // indirect
+	github.com/alecthomas/chroma v0.8.2 // indirect
+	github.com/danwakefield/fnmatch v0.0.0-20160403171240-cbb64ac3d964 // indirect
+	github.com/dlclark/regexp2 v1.2.0 // indirect
+	github.com/go-swiss/fonts v0.0.0-20210417170609-5d357d615b8f // indirect
+	github.com/phpdave11/gofpdf v1.4.2 // indirect
+	github.com/stephenafamo/goldmark-pdf v0.1.0
+	github.com/yuin/goldmark v1.5.3
+)
+
+require (
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
 	github.com/alecthomas/units v0.0.0-20211218093645-b94a6e3cc137 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
@@ -44,6 +55,6 @@ require (
 	golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4 // indirect
 	golang.org/x/sys v0.0.0-20220722155257-8c9f86f7a55f // indirect
 	golang.org/x/text v0.4.0 // indirect
-	google.golang.org/genproto v0.0.0-20200526211855-cb27e3aa2013 // indirect
+	google.golang.org/genproto v0.0.0-20210402141018-6c239bbf2bb1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

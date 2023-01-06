@@ -74,6 +74,7 @@ func (s *NotesAPISuite) TestCreateNoteReturnNote() {
 	})
 	s.Require().NoError(err)
 	s.NotNil(res)
+
 }
 
 func (s *NotesAPISuite) TestGetNoteNoAuth() {
@@ -109,7 +110,8 @@ func (s *NotesAPISuite) TestGetNoteShouldReturnNote() {
 		},
 	})
 	s.Require().NoError(err)
-	res, err := s.srv.GetNote(ctx, &notespb.GetNoteRequest{
+
+res, err := s.srv.GetNote(ctx, &notespb.GetNoteRequest{
 		Id: resExpected.Note.Id,
 	})
 
@@ -118,6 +120,7 @@ func (s *NotesAPISuite) TestGetNoteShouldReturnNote() {
 	s.Equal(res.Note.Id, resExpected.Note.Id)
 	s.Equal(res.Note.AuthorId, resExpected.Note.AuthorId)
 	s.Equal(res.Note.Title, resExpected.Note.Title)
+
 }
 
 func (s *NotesAPISuite) TestUpdateNoteNoAuth() {
