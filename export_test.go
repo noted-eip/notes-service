@@ -45,7 +45,7 @@ func (s *ExportAPISuite) TestExportWrongNoteIDShouldReturnAnError() {
 
 	generatedUuid, err = uuid.NewRandom()
 	s.Require().NoError(err)
-	res, err := s.srv.ExportNote(ctx, &notespb.ExportNoteRequest{NoteId: generatedUuid.String(), ExportFormat: notespb.NoteExportFormat_NOTE_EXPORT_FORMAT_INVALID})
+	res, err := s.srv.ExportNote(ctx, &notespb.ExportNoteRequest{NoteId: generatedUuid.String(), ExportFormat: notespb.NoteExportFormat_NOTE_EXPORT_FORMAT_MARKDOWN})
 	s.Require().Error(err)
 	s.Equal(status.Code(err), codes.NotFound)
 	s.Nil(res)
@@ -73,7 +73,7 @@ func (s *ExportAPISuite) TestExportInvalidFormatShouldReturnAnError() {
 	res, err := s.srv.ExportNote(ctx, &notespb.ExportNoteRequest{NoteId: res_note.Note.Id, ExportFormat: notespb.NoteExportFormat_NOTE_EXPORT_FORMAT_INVALID})
 
 	s.Require().Error(err)
-	s.Equal(status.Code(err), codes.Internal)
+	s.Equal(status.Code(err), codes.InvalidArgument)
 	s.Nil(res)
 }
 

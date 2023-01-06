@@ -7,9 +7,8 @@ import (
 )
 
 func ValidateExportNoteRequest(in *notespb.ExportNoteRequest) error {
-	err := validation.ValidateStruct(in,
+	return validation.ValidateStruct(in,
 		validation.Field(&in.NoteId, validation.Required),
 		validation.Field(&in.ExportFormat, validation.Required),
 	)
-	return err
 }
