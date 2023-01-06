@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"strconv"
 
 	"notes-service/auth"
 	"notes-service/models"
@@ -26,7 +27,7 @@ type notesService struct {
 var _ notespb.NotesAPIServer = &notesService{}
 
 func (srv *notesService) CreateNote(ctx context.Context, in *notespb.CreateNoteRequest) (*notespb.CreateNoteResponse, error) {
-	_, err := srv.authenticate(ctx)
+	token, err := srv.authenticate(ctx)
 	if err != nil {
 		return nil, status.Error(codes.Unauthenticated, err.Error())
 	}
@@ -35,7 +36,8 @@ func (srv *notesService) CreateNote(ctx context.Context, in *notespb.CreateNoteR
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	note, err := srv.repoNote.Create(ctx, &models.NotePayload{AuthorId: in.Note.AuthorId, Title: in.Note.Title})
+	//celui qui créer la note est l'auteur : AuthorId: token.UserID.String()
+	note, err := srv.repoNote.Create(ctx, &models.NotePayload{AuthorId: token.UserID.String(), Title: in.Note.Title})
 
 	if err != nil {
 		srv.logger.Error("failed to create note", zap.Error(err))
@@ -50,7 +52,12 @@ func (srv *notesService) CreateNote(ctx context.Context, in *notespb.CreateNoteR
 			srv.logger.Error("failed to create note", zap.Error(err))
 			return nil, status.Errorf(codes.Internal, "invalid content provided for block index : %d", index)
 		}
-		srv.repoBlock.Create(ctx, &models.Block{NoteId: note.ID, Type: uint32(in.Note.Blocks[index].Type), Index: uint32(index + 1), Content: blocks[index].Content})
+		blockId, err := srv.repoBlock.Create(ctx, &models.Block{NoteId: note.ID, Type: uint32(in.Note.Blocks[index].Type), Index: uint32(index + 1), Content: blocks[index].Content})
+		if err != nil {
+			srv.logger.Error("failed to create block index : "+strconv.Itoa(index), zap.Error(err))
+			return nil, status.Errorf(codes.Internal, "failed to create block index : %d", index)
+		}
+		in.Note.Blocks[index].Id = *blockId
 	}
 	noteResponse := notespb.Note{Id: note.ID, AuthorId: note.AuthorId, Title: note.Title, Blocks: in.Note.Blocks, CreatedAt: timestamppb.New(note.CreationDate), ModifiedAt: timestamppb.New(note.ModificationDate)}
 	return &notespb.CreateNoteResponse{Note: &noteResponse}, nil

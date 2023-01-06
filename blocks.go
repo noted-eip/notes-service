@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"notes-service/background"
 	"notes-service/models"
 	notespb "notes-service/protorepo/noted/notes/v1"
 	"notes-service/validators"
@@ -36,6 +37,13 @@ func (srv *notesService) InsertBlock(ctx context.Context, in *notespb.InsertBloc
 		return nil, status.Errorf(codes.Internal, "invalid data content provided for block index : %d", in.Index)
 	}
 	BlockId, err := srv.repoBlock.Create(ctx, &models.Block{NoteId: in.NoteId, Type: uint32(in.Block.Type), Index: in.Index, Content: block.Content})
+	if err != nil {
+		srv.logger.Error("failed to create block", zap.Error(err))
+		return nil, status.Errorf(codes.Internal, "Internal error the block isn't created")
+	}
+	// launchBackGroundProcess
+	go background.LaunchSaveClock(in.NoteId)
+	// !launchBackGroundProcess
 	blockResponse := &notespb.Block{Id: *BlockId, Type: in.Block.Type, Data: in.Block.Data}
 	return &notespb.InsertBlockResponse{Block: blockResponse}, nil
 }
@@ -59,14 +67,21 @@ func (srv *notesService) UpdateBlock(ctx context.Context, in *notespb.UpdateBloc
 		return nil, status.Error(codes.PermissionDenied, "This author has not the rights to update this note")
 	}
 
-	var block = models.Block{}
-	err = convertApiBlockToModelBlock(&block, in.Block)
+	var block = &models.Block{}
+	err = convertApiBlockToModelBlock(block, in.Block)
 	if err != nil {
 		srv.logger.Error("failed to update block", zap.Error(err))
 		return nil, status.Errorf(codes.Internal, "invalid content provided for block id : %s", in.Id)
 	}
 
-	srv.repoBlock.Update(ctx, in.Id, &models.Block{ID: in.Id, Type: uint32(in.Block.Type), Index: in.Index, Content: block.Content})
+	block, err = srv.repoBlock.Update(ctx, in.Id, &models.Block{ID: in.Id, Type: uint32(in.Block.Type), Index: in.Index, Content: block.Content})
+	if err != nil {
+		srv.logger.Error("failed to create block", zap.Error(err))
+		return nil, status.Errorf(codes.Internal, "Internal error the block isn't created")
+	}
+	// launchBackGroundProcess
+	go background.LaunchSaveClock(block.NoteId)
+	// !launchBackGroundProcess
 	return &notespb.UpdateBlockResponse{
 		Block: &notespb.Block{
 			Id:   in.Id,
@@ -100,6 +115,15 @@ func (srv *notesService) DeleteBlock(ctx context.Context, in *notespb.DeleteBloc
 		srv.logger.Error("block was not deleted : ", zap.Error(err))
 		return nil, status.Errorf(codes.Internal, "could not delete block")
 	}
+
+	block, err := srv.repoBlock.GetBlock(ctx, in.Id)
+	if err != nil {
+		srv.logger.Error("failed to get block", zap.Error(err))
+		return nil, status.Errorf(codes.NotFound, "Internal error, failed to get block in order to launch the backGroundProcess, block Id : %d", in.Id)
+	}
+	// launchBackGroundProcess
+	go background.LaunchSaveClock(block.NoteId)
+	// !launchBackGroundProcess
 
 	return nil, nil
 }

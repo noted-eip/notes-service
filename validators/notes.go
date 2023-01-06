@@ -11,11 +11,11 @@ func ValidateCreateNoteRequest(in *notespb.CreateNoteRequest) error {
 	err := validation.ValidateStruct(in, validation.Field(&in.Note, validation.NotNil))
 	if err != nil {
 		return err
-	}
-	err = validation.ValidateStruct(in.Note, validation.Field(&in.Note.AuthorId, validation.Required))
-	if err != nil {
-		return err
-	}
+	} /*
+		err = validation.ValidateStruct(in.Note, validation.Field(&in.Note.AuthorId, validation.Required))
+		if err != nil {
+			return err
+		}*/
 	return nil
 }
 
