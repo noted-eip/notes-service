@@ -8,6 +8,8 @@ import (
 	notespb "notes-service/protorepo/noted/notes/v1"
 	"notes-service/validators"
 
+	"notes-service/language"
+
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -18,6 +20,7 @@ type notesService struct {
 	notespb.UnimplementedNotesAPIServer
 
 	auth      auth.Service
+	language  language.Service
 	logger    *zap.Logger
 	repoNote  models.NotesRepository
 	repoBlock models.BlocksRepository

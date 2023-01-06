@@ -7,7 +7,7 @@ import (
 
 	glang "cloud.google.com/go/language/apiv1"
 	"cloud.google.com/go/language/apiv1/languagepb"
-	goption "google.golang.org/api/option"
+	"google.golang.org/api/option"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -28,19 +28,28 @@ var protobufEnumToKeywordType = map[languagepb.Entity_Type]models.KeywordType{
 	languagepb.Entity_PRICE:         models.Price,
 }
 
-func (s *Service) GetKeywordsFromGoogleNaturalApi(ctx *context.Context, input string) (*models.Keywords, error) {
+type NaturalAPIService struct {
+	Service
+	client *glang.Client
+}
+
+func (s *NaturalAPIService) Init() error {
 	// NOTE: Temporary while we get fixed on what we use as auth
 	apiKey := os.Getenv("GOOGLE_API_KEY")
 
 	if apiKey == "" {
-		return nil, status.Error(codes.InvalidArgument, "Please set GOOGLE_API_KEY env variable")
+		return status.Error(codes.InvalidArgument, "Please set GOOGLE_API_KEY env variable")
 	}
 
-	client, err := glang.NewClient(*ctx, goption.WithAPIKey(apiKey))
+	client, err := glang.NewClient(context.Background(), option.WithAPIKey(apiKey))
 	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
+		return err
 	}
+	s.client = client
+	return nil
+}
 
+func (s *NaturalAPIService) GetKeywordsFromTextInput(input string) (*models.Keywords, error) {
 	req := &languagepb.AnalyzeEntitiesRequest{
 		Document: &languagepb.Document{
 			Type:     languagepb.Document_PLAIN_TEXT,
@@ -48,7 +57,7 @@ func (s *Service) GetKeywordsFromGoogleNaturalApi(ctx *context.Context, input st
 			Language: "fr", // Pass as a parameter ?
 		}}
 
-	res, err := client.AnalyzeEntities(*ctx, req)
+	res, err := s.client.AnalyzeEntities(context.Background(), req)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
 	}
