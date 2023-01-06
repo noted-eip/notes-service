@@ -26,6 +26,7 @@ func NewNotesRepository(db *Database, logger *zap.Logger) models.NotesRepository
 
 func (srv *notesRepository) Create(ctx context.Context, noteRequest *models.NotePayload) (*models.Note, error) {
 	txn := srv.db.DB.Txn(true)
+	defer txn.Abort()
 	id, err := uuid.NewRandom()
 
 	if err != nil {
