@@ -55,6 +55,7 @@ func (srv *blocksRepository) GetBlocks(ctx context.Context, noteId string) ([]*m
 		blocks = append(blocks, obj.(*models.Block))
 	}
 
+	txn.Commit()
 	return blocks, nil
 }
 

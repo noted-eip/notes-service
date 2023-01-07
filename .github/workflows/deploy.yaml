@@ -1,0 +1,29 @@
+name: Deploy to Koyeb
+on:
+  push:
+    branches:
+      - "main"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: true
+      - name: Docker build
+        run: docker build --rm=false -t ghcr.io/noted-eip/notes-service:latest .
+      - name: Login to GitHub Package Registry
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GHCR_TOKEN }}
+      - name: Docker push
+        run: docker push ghcr.io/noted-eip/notes-service:latest
+      - name: Install and configure the Koyeb CLI
+        uses: koyeb-community/install-koyeb-cli@v2
+        with:
+          api_token: "${{ secrets.KOYEB_TOKEN }}"
+      - name: Deploy to Koyeb
+        run: koyeb service redeploy noted/notes

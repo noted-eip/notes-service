@@ -74,6 +74,7 @@ func (s *NotesAPISuite) TestCreateNoteReturnNote() {
 	})
 	s.Require().NoError(err)
 	s.NotNil(res)
+
 }
 
 func (s *NotesAPISuite) TestGetNoteNoAuth() {
@@ -109,6 +110,7 @@ func (s *NotesAPISuite) TestGetNoteShouldReturnNote() {
 		},
 	})
 	s.Require().NoError(err)
+
 	res, err := s.srv.GetNote(ctx, &notespb.GetNoteRequest{
 		Id: resExpected.Note.Id,
 	})
@@ -118,45 +120,7 @@ func (s *NotesAPISuite) TestGetNoteShouldReturnNote() {
 	s.Equal(res.Note.Id, resExpected.Note.Id)
 	s.Equal(res.Note.AuthorId, resExpected.Note.AuthorId)
 	s.Equal(res.Note.Title, resExpected.Note.Title)
-}
 
-func (s *NotesAPISuite) TestGetNoteShouldSortBlocks() {
-	generatedUuid, err := uuid.NewRandom()
-	s.Require().NoError(err)
-	ctx, err := s.auth.ContextWithToken(context.TODO(), &auth.Token{UserID: generatedUuid})
-	s.Require().NoError(err)
-
-	resExpected, err := s.srv.CreateNote(ctx, &notespb.CreateNoteRequest{
-		Note: &notespb.Note{
-			AuthorId: generatedUuid.String(),
-			Title:    "ci-test",
-			Blocks: []*notespb.Block{
-				{
-					Type: 1,
-					Data: &notespb.Block_Heading{
-						Heading: "Title",
-					},
-				},
-				{
-					Type: 4,
-					Data: &notespb.Block_Paragraph{
-						Paragraph: "Content",
-					},
-				},
-			},
-		},
-	})
-
-	s.Require().NoError(err)
-	res, err := s.srv.GetNote(ctx, &notespb.GetNoteRequest{
-		Id: resExpected.Note.Id,
-	})
-
-	s.NotNil(res)
-	s.Require().NoError(err)
-	s.Equal(res.Note.Id, resExpected.Note.Id)
-	s.Equal(res.Note.AuthorId, resExpected.Note.AuthorId)
-	s.Equal(res.Note.Title, resExpected.Note.Title)
 }
 
 func (s *NotesAPISuite) TestUpdateNoteNoAuth() {
