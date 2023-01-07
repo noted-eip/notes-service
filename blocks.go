@@ -41,7 +41,7 @@ func (srv *notesService) InsertBlock(ctx context.Context, in *notespb.InsertBloc
 		return nil, status.Errorf(codes.Internal, "Internal error the block isn't created")
 	}
 	// launchBackGroundProcess
-	//go background.LaunchSaveClock(in.NoteId)
+	//srv.background.AddProcess(in.NoteId)
 	// !launchBackGroundProcess
 	blockResponse := &notespb.Block{Id: *BlockId, Type: in.Block.Type, Data: in.Block.Data}
 	return &notespb.InsertBlockResponse{Block: blockResponse}, nil
@@ -79,7 +79,7 @@ func (srv *notesService) UpdateBlock(ctx context.Context, in *notespb.UpdateBloc
 		return nil, status.Errorf(codes.Internal, "Internal error the block isn't created")
 	}
 	// launchBackGroundProcess
-	//go background.LaunchSaveClock(block.NoteId)
+	//srv.background.AddProcess(block.NoteId)
 	// !launchBackGroundProcess
 	return &notespb.UpdateBlockResponse{
 		Block: &notespb.Block{
@@ -116,12 +116,13 @@ func (srv *notesService) DeleteBlock(ctx context.Context, in *notespb.DeleteBloc
 	}
 
 	_, err = srv.repoBlock.GetBlock(ctx, in.Id)
+	//block, err := srv.repoBlock.GetBlock(ctx, in.Id)
 	if err != nil {
 		srv.logger.Error("failed to get block", zap.Error(err))
 		return nil, status.Errorf(codes.NotFound, "Internal error, failed to get block in order to launch the backGroundProcess, block Id : %d", in.Id)
 	}
 	// launchBackGroundProcess
-	//go background.LaunchSaveClock(block.NoteId)
+	//srv.background.AddProcess(block.NoteId)
 	// !launchBackGroundProcess
 
 	return nil, nil

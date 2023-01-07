@@ -4,6 +4,7 @@ import (
 	"crypto/ed25519"
 	"encoding/base64"
 	"notes-service/auth"
+	"notes-service/background"
 
 	"context"
 	"errors"
@@ -27,7 +28,8 @@ type server struct {
 	logger  *zap.Logger
 	slogger *zap.SugaredLogger
 
-	authService auth.Service
+	authService       auth.Service
+	backgroundService background.Service
 
 	mongoDB *mongoServices.Database
 
@@ -44,6 +46,7 @@ func (s *server) Init(opt ...grpc.ServerOption) {
 	s.initAuthService()
 	s.initRepositories()
 	s.initNotesService()
+	s.initBackgroundService()
 	s.initgrpcServer(opt...)
 }
 
@@ -112,12 +115,23 @@ func (s *server) initAuthService() {
 	s.authService = auth.NewService(pubKey)
 }
 
-func (s *server) initNotesService() {
-	s.notesService = &notesService{
-		auth:      s.authService,
+func (s *server) initBackgroundService() {
+	s.backgroundService = background.NewService(s.logger, s.notesRepository, s.blocksRepository)
+	/*s.backgroundService = background.Service{
 		logger:    s.logger,
 		repoNote:  s.notesRepository,
 		repoBlock: s.blocksRepository,
+		processes: nil,
+	}*/
+}
+
+func (s *server) initNotesService() {
+	s.notesService = &notesService{
+		auth:       s.authService,
+		logger:     s.logger,
+		repoNote:   s.notesRepository,
+		repoBlock:  s.blocksRepository,
+		background: s.backgroundService,
 	}
 }
 

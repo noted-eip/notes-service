@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"notes-service/auth"
+	"notes-service/background"
 	"notes-service/models"
 	notespb "notes-service/protorepo/noted/notes/v1"
 	"notes-service/validators"
@@ -18,10 +19,11 @@ import (
 type notesService struct {
 	notespb.UnimplementedNotesAPIServer
 
-	auth      auth.Service
-	logger    *zap.Logger
-	repoNote  models.NotesRepository
-	repoBlock models.BlocksRepository
+	auth       auth.Service
+	background background.Service
+	logger     *zap.Logger
+	repoNote   models.NotesRepository
+	repoBlock  models.BlocksRepository
 }
 
 var _ notespb.NotesAPIServer = &notesService{}
