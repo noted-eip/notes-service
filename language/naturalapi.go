@@ -34,14 +34,14 @@ type NaturalAPIService struct {
 }
 
 func (s *NaturalAPIService) Init() error {
-	// NOTE: Temporary while we get fixed on what we use as auth
-	apiKey := os.Getenv("GOOGLE_API_KEY")
+	jsonCredential := os.Getenv("JSON_GOOGLE_CREDS")
 
-	if apiKey == "" {
-		return status.Error(codes.InvalidArgument, "Please set GOOGLE_API_KEY env variable")
+	if jsonCredential == "" {
+		s.client = nil
+		return nil
 	}
 
-	client, err := glang.NewClient(context.Background(), option.WithAPIKey(apiKey))
+	client, err := glang.NewClient(context.Background(), option.WithCredentialsJSON([]byte(jsonCredential)))
 	if err != nil {
 		return err
 	}
@@ -50,6 +50,10 @@ func (s *NaturalAPIService) Init() error {
 }
 
 func (s *NaturalAPIService) GetKeywordsFromTextInput(input string) (*models.Keywords, error) {
+	if s.client == nil {
+		return nil, status.Error(codes.Unavailable, "no credentials for natural api")
+	}
+
 	req := &languagepb.AnalyzeEntitiesRequest{
 		Document: &languagepb.Document{
 			Type:     languagepb.Document_PLAIN_TEXT,

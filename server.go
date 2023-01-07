@@ -29,7 +29,7 @@ type server struct {
 	slogger *zap.SugaredLogger
 
 	authService     auth.Service
-	languageService language.Service
+	languageService language.Service // NOTE: Could put directly service typed as NaturalAPIService, remove Init() from interface and just put it in NaturalAPIService
 
 	mongoDB *mongoServices.Database
 

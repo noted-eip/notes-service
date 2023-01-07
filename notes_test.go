@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"notes-service/auth"
+	"notes-service/language"
 	"notes-service/models/memory"
 	notespb "notes-service/protorepo/noted/notes/v1"
 	"testing"
@@ -35,9 +36,11 @@ func (s *NotesAPISuite) SetupSuite() {
 	s.srv = &notesService{
 		auth:      &s.auth,
 		logger:    logger,
+		language:  &language.NaturalAPIService{},
 		repoNote:  memory.NewNotesRepository(dbNote, logger),
 		repoBlock: memory.NewBlocksRepository(dbBlock, logger),
 	}
+	s.Require().NoError(s.srv.language.Init())
 }
 
 func (s *NotesAPISuite) TestCreateNoteNoAuth() {
