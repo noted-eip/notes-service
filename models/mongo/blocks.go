@@ -16,19 +16,21 @@ import (
 type blocksRepository struct {
 	logger *zap.Logger
 	db     *mongo.Database
+	coll   *mongo.Collection
 }
 
 func NewBlocksRepository(db *mongo.Database, logger *zap.Logger) models.BlocksRepository {
 	return &blocksRepository{
 		logger: logger,
 		db:     db,
+		coll:   db.Collection("blocks"),
 	}
 }
 
 func (srv *blocksRepository) GetBlock(ctx context.Context, blockId string) (*models.Block, error) {
 	var block models.Block
 
-	err := srv.db.Collection("blocks").FindOne(ctx, buildIdQuery(blockId)).Decode(&block)
+	err := srv.coll.FindOne(ctx, buildIdQuery(blockId)).Decode(&block)
 
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
@@ -42,7 +44,7 @@ func (srv *blocksRepository) GetBlock(ctx context.Context, blockId string) (*mod
 }
 
 func (srv *blocksRepository) GetBlocks(ctx context.Context, noteId string) ([]*models.Block, error) {
-	blockCursor, err := srv.db.Collection("blocks").Find(ctx, buildNoteIdQuery(noteId))
+	blockCursor, err := srv.coll.Find(ctx, buildNoteIdQuery(noteId))
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
 			return nil, status.Errorf(codes.NotFound, "blocks not found")
@@ -80,7 +82,7 @@ func (srv *blocksRepository) Create(ctx context.Context, blockRequest *models.Bl
 	blockId := id.String()
 	block := models.Block{ID: id.String(), NoteId: blockRequest.NoteId, Type: blockRequest.Type, Index: blockRequest.Index, Content: blockRequest.Content}
 
-	_, err = srv.db.Collection("blocks").InsertOne(ctx, block)
+	_, err = srv.coll.InsertOne(ctx, block)
 	if err != nil {
 		srv.logger.Error("mongo insert block failed", zap.Error(err), zap.String("note id : ", blockRequest.NoteId))
 		return nil, status.Error(codes.Internal, "could not insert block")
@@ -89,7 +91,7 @@ func (srv *blocksRepository) Create(ctx context.Context, blockRequest *models.Bl
 }
 
 func (srv *blocksRepository) Update(ctx context.Context, blockId string, blockRequest *models.Block) (*models.Block, error) {
-	update, err := srv.db.Collection("blocks").UpdateOne(ctx, buildIdQuery(blockId), bson.D{{Key: "$set", Value: &blockRequest}})
+	update, err := srv.coll.UpdateOne(ctx, buildIdQuery(blockId), bson.D{{Key: "$set", Value: &blockRequest}})
 
 	if err != nil {
 		srv.logger.Error("failed to convert object id from hex", zap.Error(err))
@@ -104,7 +106,7 @@ func (srv *blocksRepository) Update(ctx context.Context, blockId string, blockRe
 }
 
 func (srv *blocksRepository) DeleteBlock(ctx context.Context, blockId string) error {
-	delete, err := srv.db.Collection("blocks").DeleteOne(ctx, buildIdQuery(blockId))
+	delete, err := srv.coll.DeleteOne(ctx, buildIdQuery(blockId))
 
 	if err != nil {
 		srv.logger.Error("delete block db query failed", zap.Error(err))
@@ -118,7 +120,7 @@ func (srv *blocksRepository) DeleteBlock(ctx context.Context, blockId string) er
 }
 
 func (srv *blocksRepository) DeleteBlocks(ctx context.Context, noteId string) error {
-	delete, err := srv.db.Collection("blocks").DeleteMany(ctx, buildNoteIdQuery(noteId))
+	delete, err := srv.coll.DeleteMany(ctx, buildNoteIdQuery(noteId))
 
 	if err != nil {
 		srv.logger.Error("delete blocks db query failed", zap.Error(err))

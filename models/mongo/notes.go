@@ -19,12 +19,14 @@ import (
 type notesRepository struct {
 	logger *zap.Logger
 	db     *mongo.Database
+	coll   *mongo.Collection
 }
 
 func NewNotesRepository(db *mongo.Database, logger *zap.Logger) models.NotesRepository {
 	return &notesRepository{
 		logger: logger,
 		db:     db,
+		coll:   db.Collection("notes"),
 	}
 }
 
@@ -38,7 +40,7 @@ func (srv *notesRepository) Create(ctx context.Context, noteRequest *models.Note
 
 	note := models.Note{ID: id.String(), AuthorId: noteRequest.AuthorId, Title: noteRequest.Title, Blocks: noteRequest.Blocks, CreationDate: time.Now().UTC(), ModificationDate: time.Now().UTC()}
 
-	_, err = srv.db.Collection("notes").InsertOne(ctx, note)
+	_, err = srv.coll.InsertOne(ctx, note)
 	if err != nil {
 		srv.logger.Error("mongo insert note failed", zap.Error(err), zap.String("note name", note.AuthorId))
 		return nil, status.Error(codes.Internal, "could not create note")
@@ -49,7 +51,7 @@ func (srv *notesRepository) Create(ctx context.Context, noteRequest *models.Note
 func (srv *notesRepository) Get(ctx context.Context, noteId string) (*models.Note, error) {
 	var note models.Note
 
-	err := srv.db.Collection("notes").FindOne(ctx, buildIdQuery(noteId)).Decode(&note)
+	err := srv.coll.FindOne(ctx, buildIdQuery(noteId)).Decode(&note)
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
 			return nil, status.Errorf(codes.NotFound, "note not found")
@@ -66,7 +68,7 @@ func (srv *notesRepository) Get(ctx context.Context, noteId string) (*models.Not
 }
 
 func (srv *notesRepository) Delete(ctx context.Context, noteId string) error {
-	delete, err := srv.db.Collection("notes").DeleteOne(ctx, buildIdQuery(noteId))
+	delete, err := srv.coll.DeleteOne(ctx, buildIdQuery(noteId))
 
 	if err != nil {
 		srv.logger.Error("delete note db query failed", zap.Error(err))
@@ -88,7 +90,7 @@ func (srv *notesRepository) Update(ctx context.Context, noteId string, noteReque
 	}
 	note.ModificationDate = time.Now().UTC()
 
-	update, err := srv.db.Collection("notes").UpdateOne(ctx, buildIdQuery(noteId), bson.D{{Key: "$set", Value: &note}})
+	update, err := srv.coll.UpdateOne(ctx, buildIdQuery(noteId), bson.D{{Key: "$set", Value: &note}})
 	if err != nil {
 		srv.logger.Error("failed to convert object id from hex", zap.Error(err))
 		return status.Error(codes.InvalidArgument, err.Error())
@@ -101,7 +103,7 @@ func (srv *notesRepository) Update(ctx context.Context, noteId string, noteReque
 }
 
 func (srv *notesRepository) List(ctx context.Context, authorId string) (*[]models.Note, error) {
-	cursor, err := srv.db.Collection("notes").Find(ctx, buildAuthodIdQuery(authorId))
+	cursor, err := srv.coll.Find(ctx, buildAuthodIdQuery(authorId))
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
 			return nil, status.Errorf(codes.NotFound, "note not found")
