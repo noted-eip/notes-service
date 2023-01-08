@@ -228,9 +228,8 @@ func convertApiBlockToModelBlock(block *models.Block, blockRequest *notespb.Bloc
 	case *notespb.Block_Code_:
 		block.Code.Lang = op.Code.Lang
 		block.Code.Snippet = op.Code.Snippet
-
 	default:
-		return status.Error(codes.Internal, "no data in this block")
+		return status.Error(codes.Internal, "block data type not known")
 	}
 	return nil
 }
