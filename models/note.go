@@ -32,21 +32,24 @@ type Keyword struct {
 	URL     string      `json:"url" bson:"url,omitempty"`
 }
 
+type Keywords []Keyword
+
 type Note struct {
 	ID               string    `json:"id" bson:"_id,omitempty"`
 	AuthorId         string    `json:"authorId" bson:"authorId,omitempty"`
 	Title            string    `json:"title" bson:"title,omitempty"`
 	Blocks           []Block   `json:"blocks" bson:"blocks,omitempty"`
-	Keywords         []Keyword `json:"keywords" bson:"keywords,omitempty"`
+	Keywords         Keywords  `json:"keywords" bson:"keywords,omitempty"`
 	CreationDate     time.Time `json:"creationDate" bson:"creationDate,omitempty"`
 	ModificationDate time.Time `json:"modificationDate" bson:"modificationDate,omitempty"`
 }
 
 type NotePayload struct {
-	ID       string  `json:"id" bson:"_id,omitempty"`
-	AuthorId string  `json:"authorId" bson:"authorId,omitempty"`
-	Title    string  `json:"title" bson:"title,omitempty"`
-	Blocks   []Block `json:"blocks" bson:"blocks,omitempty"`
+	ID       string   `json:"id" bson:"_id,omitempty"`
+	AuthorId string   `json:"authorId" bson:"authorId,omitempty"`
+	Title    string   `json:"title" bson:"title,omitempty"`
+	Blocks   []Block  `json:"blocks" bson:"blocks,omitempty"`
+	Keywords Keywords `json:"keywords" bson:"keywords,omitempty"`
 }
 
 // NotesRepository is safe for use in multiple goroutines.
@@ -59,5 +62,5 @@ type NotesRepository interface {
 
 	Update(ctx context.Context, noteId string, noteRequest *NotePayload) error
 
-	List(ctx context.Context, authorId string) (*[]Note, error)
+	List(ctx context.Context, authorId string) ([]*Note, error)
 }

@@ -1,127 +1,109 @@
 package background
 
 import (
-	"fmt"
+	"context"
 	"notes-service/models"
+	notespb "notes-service/protorepo/noted/notes/v1"
 	"time"
 
 	"github.com/bep/debounce"
 	"go.uber.org/zap"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
-func NewService(logger *zap.Logger, repoNote models.NotesRepository) Service {
-	println("Init Background Service...")
-	return Service{
-		logger:   logger,
-		repoNote: repoNote,
-	}
-}
-
-func (srv *Service) Save(noteId string, process process) {
-	fmt.Println("Save for note " + noteId)
-	//gen & save les keyWords
-	process.Quit <- true
-}
-
 func (srv *Service) AddProcess(noteId string) error {
-	for _, currentProcess := range <-srv.processManager.processes {
+
+	for _, currentProcess := range srv.processManager.processes {
 		//currentProcess = <- make(chan process)
 		if currentProcess.NoteId == noteId {
-			//cancel the currentProcess
-			currentProcess.Quit <- true
-			println("Stop task with notedId = " + currentProcess.NoteId)
+			// suprimmer l'ancienne goroutine
+			// en relancer une autre
+			// suprimer le process[idx]
+			println("Process already exist / NotedId = " + currentProcess.NoteId)
 			return nil
 		}
 	}
+
 	println("Save new process / NoteId = " + noteId)
 	lastIndex := len(srv.processManager.processes)
 	newSize := lastIndex + 1
-	srv.processManager.processes = make(chan []process, newSize)
-	actualProcess := <-srv.processManager.processes
+	srv.processManager.processes = make([]process, newSize)
+	actualProcess := srv.processManager.processes
+
 	actualProcess[lastIndex].NoteId = noteId
-	actualProcess[lastIndex].debounced = debounce.New(10000000 * time.Millisecond)
+	actualProcess[lastIndex].debounced = debounce.New(TimeToSave * time.Second)
 	actualProcess[lastIndex].callBackFct = func() {
-		println("Note saved id : " + noteId)
+
+		err := srv.UpdateKeywordsByNoteId(noteId)
+		if err != nil {
+			println("Failed to save new keywords / NoteId : " + noteId)
+			return
+		}
+		println("Save new keywords / NoteId : " + noteId)
+		//process.Quit <- true
 	}
 
 	println("Launch process / NoteId = " + noteId)
-	actualProcess[lastIndex].debounced(actualProcess[lastIndex].callBackFct)
+	go actualProcess[lastIndex].debounced(actualProcess[lastIndex].callBackFct)
 
 	return nil
 }
 
-func (srv *Service) Run() {
-	//println("Running Background Service")
-	/*for true {
-		//println("-----------loop------------")
-		//println("process array size = " + strconv.Itoa(len(srv.processManager.processes)))
-		for _, process := range <-srv.processManager.processes {
-			select {
-			//non ca va add en boucle, pas comme ca
-			case <-process.Quit:
-				return
-			default:
+func (srv *Service) UpdateKeywordsByNoteId(noteId string) error {
+	//get la note & les blocks
+	note, err := srv.repoNote.Get(context.TODO(), noteId)
+	if err != nil {
+		srv.logger.Error("failed to get note", zap.Error(err))
+		return status.Error(codes.NotFound, "could not get note.")
+	}
+	blocks, err := srv.repoBlock.GetBlocks(context.TODO(), note.ID)
+	if err != nil {
+		srv.logger.Error("failed to get blocks", zap.Error(err))
+		return status.Errorf(codes.NotFound, "invalid content provided for blocks form noteId : %s", note.ID)
+	}
+	for index, block := range blocks {
+		newSize := len(note.Blocks) + 1
+		note.Blocks = make([]models.Block, newSize)
+		note.Blocks[index] = *block
+	}
+	//gen les keywords
+	err = srv.generateNoteTagsToModelNote(note)
+	if err != nil {
+		srv.logger.Error("failed to gen keywords", zap.Error(err))
+		return status.Errorf(codes.Internal, "failed to gen keywords for noteId : %s", note.ID)
+	}
 
-				start := time.Now()
-				timeElapsed := time.Since(start)
+	//update la note
+	newNote := models.NotePayload{ID: note.ID, AuthorId: note.AuthorId, Title: note.Title, Blocks: note.Blocks, Keywords: note.Keywords}
+	err = srv.repoNote.Update(context.TODO(), noteId, &newNote)
+	if err != nil {
+		srv.logger.Error("failed upate note with keywords", zap.Error(err))
+		return status.Errorf(codes.Internal, "failed upate note with keywords for noteId : %s", note.ID)
+	}
 
-				process.Clock += timeElapsed
-				if process.Clock >= TimeToSave {
-					go srv.Save(process.NoteId, process)
-					return
-				}
-			}
-		}
+	/*note, err = srv.repoNote.Get(context.TODO(), noteId)
+	if err != nil {
+		srv.logger.Error("failed to get note", zap.Error(err))
+		return status.Error(codes.NotFound, "could not get note.")
 	}*/
-
-}
-
-/*
-func (srv *Service) AddProcess(noteId string) error {
-	for _, currentProcess := range <-srv.processManager.processes {
-		//currentProcess = <- make(chan process)
-		if currentProcess.NoteId == noteId {
-			//cancel the currentProcess
-			currentProcess.Quit <- true
-			print("Stop task " + strconv.Itoa(int(currentProcess.Task)))
-			return nil
-		}
-	}
-
-	lastIndex := len(srv.processManager.processes)
-	newSize := lastIndex + 1
-
-	srv.processManager.processes = make(chan []process, newSize)
-	actualProcess := <-srv.processManager.processes
-	actualProcess[lastIndex].NoteId = noteId
-	actualProcess[lastIndex].Task = int32(lastIndex)
-	println("Add process " + strconv.Itoa(int(actualProcess[lastIndex].Task)))
 	return nil
 }
 
-func (srv *Service) Run() {
-	println("Running Background Service")
-	for true {
-		//println("-----------loop------------")
-		//println("process array size = " + strconv.Itoa(len(srv.processManager.processes)))
-		for _, process := range <-srv.processManager.processes {
-			select {
-			//non ca va add en boucle, pas comme ca
-			case <-process.Quit:
-				return
-			default:
-				println("process " + strconv.Itoa(int(process.Task)) + " running")
+func (srv *Service) generateNoteTagsToModelNote(note *models.Note) error {
+	var fullNote string
 
-				start := time.Now()
-				timeElapsed := time.Since(start)
-
-				process.Clock += timeElapsed
-				if process.Clock >= TimeToSave {
-					go srv.Save(process.NoteId, process)
-					return
-				}
-			}
+	for _, block := range note.Blocks {
+		if block.Type != uint32(notespb.Block_TYPE_CODE) && block.Type != uint32(notespb.Block_TYPE_IMAGE) {
+			fullNote += block.Content + "\n"
 		}
 	}
+
+	keywords, err := srv.language.GetKeywordsFromTextInput(fullNote)
+	if err != nil {
+		return status.Error(codes.Internal, err.Error())
+	}
+
+	note.Keywords = *keywords
+	return nil
 }
-*/

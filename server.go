@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"notes-service/auth"
 	"notes-service/background"
+	"notes-service/language"
 
 	"context"
 	"errors"
@@ -30,6 +31,7 @@ type server struct {
 
 	authService       auth.Service
 	backgroundService background.Service
+	languageService   language.Service // NOTE: Could put directly service typed as NaturalAPIService, remove Init() from interface and just put it in NaturalAPIService
 
 	mongoDB *mongoServices.Database
 
@@ -45,8 +47,9 @@ func (s *server) Init(opt ...grpc.ServerOption) {
 	s.initLogger()
 	s.initAuthService()
 	s.initRepositories()
-	s.initNotesService()
+	s.initLanguageService()
 	s.initBackgroundService()
+	s.initNotesService()
 	s.initgrpcServer(opt...)
 }
 
@@ -107,6 +110,13 @@ func (s *server) initLogger() {
 	s.slogger = s.logger.Sugar()
 }
 
+func (s *server) initLanguageService() {
+	s.languageService = &language.NaturalAPIService{}
+	err := s.languageService.Init()
+
+	must(err, "unable to instantiate language service")
+}
+
 func (s *server) initAuthService() {
 	rawKey, err := base64.StdEncoding.DecodeString(*jwtPrivateKey)
 	must(err, "could not decode jwt private key")
@@ -116,7 +126,11 @@ func (s *server) initAuthService() {
 }
 
 func (s *server) initBackgroundService() {
-	s.backgroundService = background.NewService(s.logger, s.notesRepository)
+	s.backgroundService = background.NewService(
+		s.logger,
+		s.notesRepository,
+		s.blocksRepository,
+		s.languageService)
 }
 
 func (s *server) initNotesService() {
@@ -125,6 +139,7 @@ func (s *server) initNotesService() {
 		logger:     s.logger,
 		repoNote:   s.notesRepository,
 		repoBlock:  s.blocksRepository,
+		language:   s.languageService,
 		background: s.backgroundService,
 	}
 }
