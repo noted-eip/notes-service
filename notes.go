@@ -64,6 +64,9 @@ func (srv *notesService) CreateNote(ctx context.Context, in *notespb.CreateNoteR
 		}
 		in.Note.Blocks[index].Id = *blockId
 	}
+	//launch process to generate keywords in 15minutes after the last modification
+	srv.background.AddProcess(note.ID)
+
 	noteResponse := notespb.Note{Id: note.ID, AuthorId: note.AuthorId, Title: note.Title, Blocks: in.Note.Blocks, CreatedAt: timestamppb.New(note.CreationDate), ModifiedAt: timestamppb.New(note.ModificationDate)}
 	return &notespb.CreateNoteResponse{Note: &noteResponse}, nil
 }
@@ -152,6 +155,9 @@ func (srv *notesService) UpdateNote(ctx context.Context, in *notespb.UpdateNoteR
 		}
 		srv.repoBlock.Create(ctx, &models.Block{NoteId: in.Id, Type: uint32(in.Note.Blocks[index].Type), Index: uint32(index + 1), Content: blocks[index].Content})
 	}
+
+	//launch process to generate keywords in 15minutes after the last modification
+	srv.background.AddProcess(note.ID)
 
 	return nil, nil
 }

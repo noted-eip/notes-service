@@ -38,7 +38,8 @@ type server struct {
 	notesRepository  models.NotesRepository
 	blocksRepository models.BlocksRepository
 
-	notesService notespb.NotesAPIServer
+	notesService           notespb.NotesAPIServer
+	recommendationsService notespb.RecommendationsAPIServer
 
 	grpcServer *grpc.Server
 }
@@ -50,6 +51,7 @@ func (s *server) Init(opt ...grpc.ServerOption) {
 	s.initLanguageService()
 	s.initBackgroundService()
 	s.initNotesService()
+	s.initRecommendationsService()
 	s.initgrpcServer(opt...)
 }
 
@@ -133,6 +135,14 @@ func (s *server) initBackgroundService() {
 		s.languageService)
 }
 
+func (s *server) initRecommendationsService() {
+	s.recommendationsService = &recommendationsService{
+		auth:     s.authService,
+		logger:   s.logger,
+		repoNote: s.notesRepository,
+	}
+}
+
 func (s *server) initNotesService() {
 	s.notesService = &notesService{
 		auth:       s.authService,
@@ -147,6 +157,7 @@ func (s *server) initNotesService() {
 func (s *server) initgrpcServer(opt ...grpc.ServerOption) {
 	s.grpcServer = grpc.NewServer(opt...)
 	notespb.RegisterNotesAPIServer(s.grpcServer, s.notesService)
+	notespb.RegisterRecommendationsAPIServer(s.grpcServer, s.recommendationsService)
 }
 
 func (s *server) initRepositories() {

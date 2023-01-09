@@ -81,7 +81,7 @@ func (srv *Service) UpdateKeywordsByNoteId(noteId string) error {
 		srv.logger.Error("failed upate note with keywords", zap.Error(err))
 		return status.Errorf(codes.Internal, "failed upate note with keywords for noteId : %s", note.ID)
 	}
-
+	//test gen get gen keywords
 	/*note, err = srv.repoNote.Get(context.TODO(), noteId)
 	if err != nil {
 		srv.logger.Error("failed to get note", zap.Error(err))

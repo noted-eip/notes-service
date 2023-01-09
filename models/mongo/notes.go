@@ -43,6 +43,7 @@ func (srv *notesRepository) Create(ctx context.Context, noteRequest *models.Note
 		srv.logger.Error("mongo insert note failed", zap.Error(err), zap.String("note name", note.AuthorId))
 		return nil, status.Error(codes.Internal, "could not create note")
 	}
+
 	return &note, nil
 }
 
