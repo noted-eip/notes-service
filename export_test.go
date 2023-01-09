@@ -25,14 +25,13 @@ func TestExport(t *testing.T) {
 
 func (s *ExportAPISuite) SetupSuite() {
 	logger := newLoggerOrFail(s.T())
-	dbNote := newDatabaseOrFail(s.T(), logger)
-	dbBlock := newDatabaseOrFail(s.T(), logger)
+	db := newDatabaseOrFail(s.T(), logger)
 
 	s.srv = &notesService{
 		auth:      &s.auth,
 		logger:    logger,
-		repoNote:  memory.NewNotesRepository(dbNote, logger),
-		repoBlock: memory.NewBlocksRepository(dbBlock, logger),
+		repoNote:  memory.NewNotesRepository(db, logger),
+		repoBlock: memory.NewBlocksRepository(db, logger),
 	}
 }
 
