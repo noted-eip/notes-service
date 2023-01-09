@@ -116,13 +116,7 @@ func (s *server) initAuthService() {
 }
 
 func (s *server) initBackgroundService() {
-	s.backgroundService = background.NewService(s.logger, s.notesRepository, s.blocksRepository)
-	/*s.backgroundService = background.Service{
-		logger:    s.logger,
-		repoNote:  s.notesRepository,
-		repoBlock: s.blocksRepository,
-		processes: nil,
-	}*/
+	s.backgroundService = background.NewService(s.logger, s.notesRepository)
 }
 
 func (s *server) initNotesService() {

@@ -14,7 +14,10 @@ require (
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
 )
 
-require github.com/asaskevich/govalidator v0.0.0-20200108200545-475eaeb16496 // indirect
+require (
+	github.com/asaskevich/govalidator v0.0.0-20200108200545-475eaeb16496 // indirect
+	github.com/bep/debounce v1.2.1 // indirect
+)
 
 require (
 	github.com/hashicorp/go-immutable-radix v1.3.0 // indirect

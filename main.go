@@ -29,7 +29,7 @@ func main() {
 	kingpin.MustParse(app.Parse(os.Args[1:]))
 	s := &server{}
 	s.Init(grpc.ChainUnaryInterceptor(s.LoggerUnaryInterceptor, auth.ForwardAuthMetadatathUnaryInterceptor))
-	go s.backgroundService.Run()
+	//go s.backgroundService.Run()
 	s.Run()
 	defer s.Close()
 }
