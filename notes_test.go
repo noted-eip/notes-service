@@ -4,15 +4,15 @@ import (
 	"context"
 	"notes-service/auth"
 	"notes-service/language"
-	"notes-service/models/memory"
+	"notes-service/models/mongo"
 	notespb "notes-service/protorepo/noted/notes/v1"
+	"os"
 	"testing"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -23,23 +23,28 @@ type NotesAPISuite struct {
 	srv  *notesService
 }
 
-func TestNotesService(t *testing.T) {
+func TestNotesAPI(t *testing.T) {
+	if os.Getenv("NOTES_SERVICE_TEST_MONGODB_URI") == "" {
+		t.Skipf("Skipping NotesAPI suite, missing NOTES_SERVICE_TEST_MONGODB_URI environment variable.")
+		return
+	}
+
 	suite.Run(t, new(NotesAPISuite))
 }
 
 func (s *NotesAPISuite) SetupSuite() {
-	logger := newLoggerOrFail(s.T())
-	db := newDatabaseOrFail(s.T(), logger)
+	db := newDatabaseOrFail(s.T())
 
 	s.auth = auth.TestService{}
 	s.srv = &notesService{
 		auth:      &s.auth,
-		logger:    logger,
+		logger:    zap.NewNop(),
 		language:  &language.NaturalAPIService{},
-		repoNote:  memory.NewNotesRepository(db, logger),
-		repoBlock: memory.NewBlocksRepository(db, logger),
+		repoNote:  mongo.NewNotesRepository(db.DB, zap.NewNop()),
+		repoBlock: mongo.NewBlocksRepository(db.DB, zap.NewNop()),
 	}
 	s.Require().NoError(s.srv.language.Init())
+	db.Disconnect(context.TODO())
 }
 
 func (s *NotesAPISuite) TestCreateNoteNoAuth() {
@@ -143,42 +148,6 @@ func (s *NotesAPISuite) TestUpdateNoteValidator() {
 	s.Nil(res)
 }
 
-/*
-func (s *NotesAPISuite) TestUpdateNoteShouldReturnNoError() {
-	saveAuthPackage := s.srv.auth
-	s.srv.auth = NewMockService()
-	//get userId
-	token, err := s.srv.auth.TokenFromContext(context.TODO())
-	s.Require().NoError(err)
-	userId := token.UserID.String()
-
-	resCreateNote, err := s.srv.CreateNote(context.TODO(), &notespb.CreateNoteRequest{
-		Note: &notespb.Note{
-			AuthorId: userId,
-			Title:    "ci-test",
-			Blocks:   nil,
-		},
-	})
-
-	_, err := s.srv.UpdateNote(context.TODO(), &notespb.UpdateNoteRequest{
-		Id: resCreateNote.Note.Id,
-		Note: &notespb.Note{
-			AuthorId: userId,
-			Title:    "ci-test-uptated",
-			Blocks:   nil,
-		},
-	})
-
-	res, err := s.srv.GetNote(context.TODO(), &notespb.GetNoteRequest{
-		Id: resCreateNote.Note.Id,
-	})
-	s.Require().NoError(err)
-
-	s.Nil(res)
-	s.Equal(res.Note.Title, "CI-TEST-UPDATED")
-
-}*/
-
 func (s *NotesAPISuite) TestDeleteNoteNoAuth() {
 	res, err := s.srv.DeleteNote(context.TODO(), &notespb.DeleteNoteRequest{})
 	s.Require().Error(err)
@@ -270,14 +239,8 @@ func (s *NotesAPISuite) TestListNotesReturnNotes() {
 	s.Equal(3, len(res.Notes))
 }
 
-func newDatabaseOrFail(t *testing.T, logger *zap.Logger) *memory.Database {
-	db, err := memory.NewDatabase(context.Background(), logger)
-	require.NoError(t, err, "could not instantiate in-memory database")
+func newDatabaseOrFail(t *testing.T) *mongo.Database {
+	db, err := mongo.NewDatabase(context.TODO(), os.Getenv("NOTES_SERVICE_TEST_MONGODB_URI"), "notes-service-test", zap.NewNop())
+	require.NoError(t, err, "could not instantiate mongo database")
 	return db
-}
-
-func newLoggerOrFail(t *testing.T) *zap.Logger {
-	logger, err := zap.NewDevelopment(zap.AddStacktrace(zapcore.FatalLevel), zap.WithCaller(false))
-	require.NoError(t, err, "could not instantiate zap logger")
-	return logger
 }

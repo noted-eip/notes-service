@@ -5,6 +5,7 @@ import (
 	"notes-service/auth"
 	"notes-service/models"
 	notespb "notes-service/protorepo/noted/notes/v1"
+	"os"
 	"testing"
 
 	"github.com/google/uuid"
@@ -13,7 +14,12 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func TestBlocksService(t *testing.T) {
+func TestBlocksAPI(t *testing.T) {
+	if os.Getenv("NOTES_SERVICE_TEST_MONGODB_URI") == "" {
+		t.Skipf("Skipping NotesAPI suite, missing NOTES_SERVICE_TEST_MONGODB_URI environment variable.")
+		return
+	}
+
 	suite.Run(t, &NotesAPISuite{})
 }
 

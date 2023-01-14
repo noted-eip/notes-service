@@ -3,12 +3,14 @@ package main
 import (
 	"context"
 	"notes-service/auth"
-	"notes-service/models/memory"
+	"notes-service/models/mongo"
 	notespb "notes-service/protorepo/noted/notes/v1"
+	"os"
 	"testing"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/suite"
+	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -19,19 +21,23 @@ type ExportAPISuite struct {
 	srv  *notesService
 }
 
-func TestExport(t *testing.T) {
+func TestExportAPI(t *testing.T) {
+	if os.Getenv("NOTES_SERVICE_TEST_MONGODB_URI") == "" {
+		t.Skipf("Skipping NotesAPI suite, missing NOTES_SERVICE_TEST_MONGODB_URI environment variable.")
+		return
+	}
+
 	suite.Run(t, &ExportAPISuite{})
 }
 
 func (s *ExportAPISuite) SetupSuite() {
-	logger := newLoggerOrFail(s.T())
-	db := newDatabaseOrFail(s.T(), logger)
+	db := newDatabaseOrFail(s.T())
 
 	s.srv = &notesService{
 		auth:      &s.auth,
-		logger:    logger,
-		repoNote:  memory.NewNotesRepository(db, logger),
-		repoBlock: memory.NewBlocksRepository(db, logger),
+		logger:    zap.NewNop(),
+		repoNote:  mongo.NewNotesRepository(db.DB, zap.NewNop()),
+		repoBlock: mongo.NewBlocksRepository(db.DB, zap.NewNop()),
 	}
 }
 
