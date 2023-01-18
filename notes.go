@@ -33,16 +33,16 @@ type notesService struct {
 var _ notespb.NotesAPIServer = &notesService{}
 
 func (srv *notesService) CreateNote(ctx context.Context, in *notespb.CreateNoteRequest) (*notespb.CreateNoteResponse, error) {
-	token, err := Authenticate(srv, ctx)
+	/*token, err := Authenticate(srv, ctx)
 	if err != nil {
 		return nil, status.Error(codes.Unauthenticated, err.Error())
-	}
-	err = validators.ValidateCreateNoteRequest(in)
+	}*/
+	err := validators.ValidateCreateNoteRequest(in)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 	//The user who create the note is the owner, no in.Note.AuthorId
-	note, err := srv.repoNote.Create(ctx, &models.NotePayload{AuthorId: token.UserID.String(), Title: in.Note.Title})
+	note, err := srv.repoNote.Create(ctx, &models.NotePayload{AuthorId: "Test-User" /*token.UserID.String()*/, Title: in.Note.Title})
 
 	if err != nil {
 		srv.logger.Error("failed to create note", zap.Error(err))
@@ -158,7 +158,13 @@ func (srv *notesService) UpdateNote(ctx context.Context, in *notespb.UpdateNoteR
 	}
 
 	//launch process to generate keywords in 15minutes after the last modification
-	srv.background.AddProcess(note.ID)
+	//srv.background.AddProcess(note.ID)
+	srv.background.AddProcess(
+		func(
+			UpdateKeywordsByNoteId(noteId)
+			return
+		)
+	)
 
 	return nil, nil
 }
@@ -194,6 +200,8 @@ func (srv *notesService) DeleteNote(ctx context.Context, in *notespb.DeleteNoteR
 		return nil, status.Error(codes.Internal, "could not delete note")
 	}
 
+	// TODO : notify the background process that the noteId have been deleted, and cancel the associeted task
+
 	return nil, nil
 }
 
@@ -220,6 +228,67 @@ func (srv *notesService) ListNotes(ctx context.Context, in *notespb.ListNotesReq
 		notesResponse[index] = &notespb.Note{Id: note.ID, AuthorId: note.AuthorId, Title: note.Title, CreatedAt: timestamppb.New(note.CreationDate), ModifiedAt: timestamppb.New(note.ModificationDate)}
 	}
 	return &notespb.ListNotesResponse{Notes: notesResponse}, nil
+}
+
+func (srv *server) UpdateKeywordsByNoteId(noteId string) error {
+	//get la note & les blocks
+	note, err := srv.notesRepository.Get(context.TODO(), noteId)
+	if err != nil {
+		srv.logger.Error("failed to get note", zap.Error(err))
+		return status.Error(codes.NotFound, "could not get note.")
+	}
+	blocks, err := srv.blocksRepository.GetBlocks(context.TODO(), note.ID)
+	if err != nil {
+		srv.logger.Error("failed to get blocks", zap.Error(err))
+		return status.Errorf(codes.NotFound, "invalid content provided for blocks form noteId : %s", note.ID)
+	}
+	for index, block := range blocks {
+		newSize := len(note.Blocks) + 1
+		note.Blocks = make([]models.Block, newSize)
+		note.Blocks[index] = *block
+	}
+	//gen les keywords
+	err = generateNoteTagsToModelNote(srv.languageService, note)
+	if err != nil {
+		srv.logger.Error("failed to gen keywords", zap.Error(err))
+		return status.Errorf(codes.Internal, "failed to gen keywords for noteId : %s", note.ID)
+	}
+
+	//update la note
+	newNote := models.NotePayload{ID: note.ID, AuthorId: note.AuthorId, Title: note.Title, Blocks: note.Blocks, Keywords: note.Keywords}
+	err = srv.notesRepository.Update(context.TODO(), noteId, &newNote)
+	if err != nil {
+		srv.logger.Error("failed upate note with keywords", zap.Error(err))
+		return status.Errorf(codes.Internal, "failed upate note with keywords for noteId : %s", note.ID)
+	}
+	println("MODELS --- Save keywords")
+
+	// test purpose
+	note, err = srv.notesRepository.Get(context.TODO(), noteId)
+	if err != nil {
+		srv.logger.Error("failed to get note", zap.Error(err))
+		return status.Error(codes.NotFound, "could not get note.")
+	}
+	//
+	return nil
+}
+
+func generateNoteTagsToModelNote(languageService language.Service, note *models.Note) error {
+	var fullNote string
+
+	for _, block := range note.Blocks {
+		if block.Type != uint32(notespb.Block_TYPE_CODE) && block.Type != uint32(notespb.Block_TYPE_IMAGE) {
+			fullNote += block.Content + "\n"
+		}
+	}
+
+	keywords, err := languageService.GetKeywordsFromTextInput(fullNote)
+	if err != nil {
+		return status.Error(codes.Internal, err.Error())
+	}
+
+	note.Keywords = *keywords
+	return nil
 }
 
 func convertApiBlockToModelBlock(block *models.Block, blockRequest *notespb.Block) error {

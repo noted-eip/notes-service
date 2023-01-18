@@ -12,22 +12,22 @@ import (
 )
 
 func (srv *notesService) InsertBlock(ctx context.Context, in *notespb.InsertBlockRequest) (*notespb.InsertBlockResponse, error) {
-	token, err := Authenticate(srv, ctx)
+	/*token, err := Authenticate(srv, ctx)
 	if err != nil {
 		return nil, status.Error(codes.Unauthenticated, err.Error())
-	}
-	err = validators.ValidateInsertBlockRequest(in)
+	}*/
+	err := validators.ValidateInsertBlockRequest(in)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 	//Check if the user own the note
-	note, err := srv.repoNote.Get(ctx, in.NoteId)
+	/*note, err := srv.repoNote.Get(ctx, in.NoteId)
 	if err != nil {
 		return nil, status.Error(codes.NotFound, "could not get block")
 	}
 	if token.UserID.String() != note.AuthorId {
 		return nil, status.Error(codes.PermissionDenied, "This author has not the rights to create a block")
-	}
+	}*/
 
 	var block = models.Block{}
 	err = convertApiBlockToModelBlock(&block, in.Block)
