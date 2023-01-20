@@ -83,7 +83,6 @@ func (s *NotesAPISuite) TestCreateNoteReturnNote() {
 	})
 	s.Require().NoError(err)
 	s.NotNil(res)
-
 }
 
 func (s *NotesAPISuite) TestGetNoteNoAuth() {

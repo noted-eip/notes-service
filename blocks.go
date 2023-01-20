@@ -143,13 +143,6 @@ func (srv *notesService) DeleteBlock(ctx context.Context, in *notespb.DeleteBloc
 		srv.logger.Error("block was not deleted : ", zap.Error(err))
 		return nil, status.Errorf(codes.Internal, "could not delete block")
 	}
-
-	_, err = srv.repoBlock.GetBlock(ctx, in.Id)
-	//block, err := srv.repoBlock.GetBlock(ctx, in.Id)
-	if err != nil {
-		srv.logger.Error("failed to get block", zap.Error(err))
-		return nil, status.Errorf(codes.NotFound, "Internal error, failed to get block in order to launch the backGroundProcess, block Id : %s", in.Id)
-	}
 	//launch process to generate keywords in 15minutes after the last modification
 	go srv.background.AddProcess(
 		func() error {
