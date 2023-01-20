@@ -1,55 +1,34 @@
 package background
 
 import (
+	"notes-service/models"
+	"strconv"
 	"time"
 
 	"github.com/bep/debounce"
 	"go.uber.org/zap"
 )
 
-//Faire un ProcessNote "heritant" de Process
-
-//mettre une interface dans Process (mettre potentiellment un isTheSame() qui fait la fct du dessous dans l'interface))
-//dans ProcessNote mettre un string NoteId
-
-/*
-CheckProcessIdentifier(arg interface{ LambdaArg() }, processArg) {
-	switch (arg.lambda()) {
-		case (ProcessNote):
-			if (arg == processArg) {
-				return true
-			} else {
-				return false
-			}
-	}
-} return un bool
-*/
-
 // TODO : What if the note is deleted before debounced for UpdateKeyword
-func (srv *service) AddProcess(lambda func() error, arg interface{ LambdaArg() }) error {
+func (srv *service) AddProcess(lambdaFct func() error, identifier interface{}) error {
 
 	for index := range srv.processes {
-		// Prohibits the process launched before with the same noteId to execute his callback fct
-		//if GetProcessIdentifier(arg, srv.processes[index]) == true { cancel la task }
-		if srv.processes[index].NoteId == getNoteId(arg) { // GetProcessIdentifier() {dwitch(type) => ProcessNote {NoteID} }
+		if srv.processes[index].Identifier == identifier {
 			// TODO cancel the goroutine by srv.processes.task
-			go srv.processes[index].debounced(func() { return })
+			go srv.processes[index].Debounced(func() { return })
 			srv.processes = remove(srv.processes, index)
 		}
 	}
 
 	// Add a process to the list launch the debounce fct
 	lastIndex := len(srv.processes)
-	newProcess := Process{
-		NoteId:    noteId,
-		debounced: debounce.New(TimeToSave * time.Second),
-		callBackFct: func() {
-			// lambda
-			err := lambda()
-			//err := srv.UpdateKeywordsByNoteId(noteId)
-			// ! lambda
+	newProcess := models.Process{
+		Identifier: identifier,
+		Debounced:  debounce.New(models.TimeToSave * time.Second),
+		CallBackFct: func() {
+			err := lambdaFct()
 			if err != nil {
-				srv.logger.Error("failed update keywords on noteId : "+noteId, zap.Error(err))
+				srv.logger.Error("Error in Lambda function in backgroundProcess for task : "+strconv.Itoa(int(srv.processes[lastIndex].Task)), zap.Error(err))
 				return
 			}
 			srv.processes = remove(srv.processes, lastIndex)
@@ -57,14 +36,10 @@ func (srv *service) AddProcess(lambda func() error, arg interface{ LambdaArg() }
 	}
 
 	srv.processes = append(srv.processes, newProcess)
-	go srv.processes[lastIndex].debounced(srv.processes[lastIndex].callBackFct)
+	go srv.processes[lastIndex].Debounced(srv.processes[lastIndex].CallBackFct)
 	return nil
 }
 
-func getNoteId(arg struct{ LambdaArg string }) string {
-	return arg.LambdaArg
-}
-
-func remove(slice []Process, idx int) []Process {
+func remove(slice []models.Process, idx int) []models.Process {
 	return append(slice[:idx], slice[idx+1:]...)
 }

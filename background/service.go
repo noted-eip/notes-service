@@ -8,7 +8,7 @@ import (
 )
 
 type Service interface {
-	AddProcess(noteId string) error
+	AddProcess(lambda func() error, arg interface{}) error
 }
 
 type service struct {
@@ -16,7 +16,7 @@ type service struct {
 	repoNote  models.NotesRepository
 	repoBlock models.BlocksRepository
 	language  language.Service
-	processes []Process
+	processes models.BackGroundProcesses
 }
 
 func NewService(logger *zap.Logger, repoNote models.NotesRepository, repoBlock models.BlocksRepository, language language.Service) Service {

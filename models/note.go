@@ -52,6 +52,11 @@ type NotePayload struct {
 	Keywords Keywords `json:"keywords" bson:"keywords,omitempty"`
 }
 
+type NoteIdentifier struct {
+	NoteId     string
+	ActionType Action
+}
+
 // NotesRepository is safe for use in multiple goroutines.
 type NotesRepository interface {
 	Create(ctx context.Context, noteRequest *NotePayload) (*Note, error)
