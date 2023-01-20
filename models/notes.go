@@ -102,20 +102,31 @@ type UpdateBlockPayload struct {
 	Code        *CodeBlock
 }
 
+type UpdateNotePayload struct {
+	Title *string
+}
+
+type NoteUUID struct {
+	GroupID string
+	NoteID  string
+}
+
+type NoteBlockUUID struct {
+	GroupID string
+	NoteID  string
+	BlockID string
+}
+
 type NotesRepository interface {
+	// Notes
 	CreateNote(ctx context.Context, note *CreateNotePayload) (*Note, error)
-
-	GetNote(ctx context.Context, noteID string) (*Note, error)
-
-	UpdateNote(ctx context.Context, noteID string) (*Note, error)
-
-	DeleteNote(ctx context.Context, noteID string) (*Note, error)
-
+	GetNote(ctx context.Context, noteUUID *NoteUUID) (*Note, error)
+	UpdateNote(ctx context.Context, noteUUID *NoteUUID, note *UpdateNotePayload) (*Note, error)
+	DeleteNote(ctx context.Context, noteUUID *NoteUUID) (*Note, error)
 	ListNotes(ctx context.Context, filter *ManyNotesFilter, opts *ListOptions) ([]*Note, error)
 
-	InsertBlock(ctx context.Context, noteID string, block *CreateNoteBlockPayload) (*Block, error)
-
-	UpdateBlock(ctx context.Context, noteID string, blockID string, block *UpdateBlockPayload) (*Block, error)
-
-	DeleteBlock(ctx context.Context, noteID string, blockID string) error
+	// Blocks
+	InsertBlock(ctx context.Context, noteID string, block *CreateNoteBlockPayload) (*NoteBlock, error)
+	UpdateBlock(ctx context.Context, blockUUID *NoteBlockUUID, block *UpdateBlockPayload) (*NoteBlock, error)
+	DeleteBlock(ctx context.Context, blockUUID *NoteBlockUUID) error
 }
