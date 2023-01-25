@@ -33,16 +33,16 @@ type notesService struct {
 var _ notespb.NotesAPIServer = &notesService{}
 
 func (srv *notesService) CreateNote(ctx context.Context, in *notespb.CreateNoteRequest) (*notespb.CreateNoteResponse, error) {
-	token, err := Authenticate(srv, ctx)
+	/*token, err := Authenticate(srv, ctx)
 	if err != nil {
 		return nil, status.Error(codes.Unauthenticated, err.Error())
 	}
 	err = validators.ValidateCreateNoteRequest(in)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
-	}
+	}*/
 	//The user who create the note is the owner, no in.Note.AuthorId
-	note, err := srv.repoNote.Create(ctx, &models.NotePayload{AuthorId: token.UserID.String(), Title: in.Note.Title})
+	note, err := srv.repoNote.Create(ctx, &models.NotePayload{AuthorId: "testAuthor" /*token.UserID.String()*/, Title: in.Note.Title})
 
 	if err != nil {
 		srv.logger.Error("failed to create note", zap.Error(err))
@@ -65,16 +65,19 @@ func (srv *notesService) CreateNote(ctx context.Context, in *notespb.CreateNoteR
 		in.Note.Blocks[index].Id = *blockId
 	}
 
-	//launch process to generate keywords in 15minutes after the last modification
-	srv.background.AddProcess(
-		func() error {
+	srv.background.AddProcess(&background.ProcessPlayLoad{
+		Identifier: models.NoteIdentifier{
+			NoteId:     note.ID,
+			ActionType: models.NoteUpdateKeyword,
+		},
+		CallBackFct: func() error {
 			err := srv.UpdateKeywordsByNoteId(note.ID)
 			return err
 		},
-		models.NoteIdentifier{
-			NoteId:     note.ID,
-			ActionType: models.NoteUpdateKeyword,
-		})
+		SecondsToDebounce:             900,
+		CancelProcessOnSameIdentifier: true,
+		//RepeatProcess: false,
+	})
 
 	noteResponse := notespb.Note{Id: note.ID, AuthorId: note.AuthorId, Title: note.Title, Blocks: in.Note.Blocks, CreatedAt: timestamppb.New(note.CreationDate), ModifiedAt: timestamppb.New(note.ModificationDate)}
 	return &notespb.CreateNoteResponse{Note: &noteResponse}, nil
@@ -166,16 +169,19 @@ func (srv *notesService) UpdateNote(ctx context.Context, in *notespb.UpdateNoteR
 	}
 
 	//launch process to generate keywords in 15minutes after the last modification
-	srv.background.AddProcess(
-		func() error {
-			err := srv.UpdateKeywordsByNoteId(note.ID)
-			return err
-		},
-		models.NoteIdentifier{
+	srv.background.AddProcess(&background.ProcessPlayLoad{
+		Identifier: models.NoteIdentifier{
 			NoteId:     note.ID,
 			ActionType: models.NoteUpdateKeyword,
 		},
-	)
+		CallBackFct: func() error {
+			err := srv.UpdateKeywordsByNoteId(note.ID)
+			return err
+		},
+		SecondsToDebounce:             900,
+		CancelProcessOnSameIdentifier: true,
+		//RepeatProcess: false,
+	})
 
 	return nil, nil
 }
@@ -276,11 +282,11 @@ func (srv *notesService) UpdateKeywordsByNoteId(noteId string) error {
 	println("MODELS --- Save keywords")
 
 	// test purpose
-	note, err = srv.repoNote.Get(context.TODO(), noteId)
+	/*note, err = srv.repoNote.Get(context.TODO(), noteId)
 	if err != nil {
 		srv.logger.Error("failed to get note", zap.Error(err))
 		return status.Error(codes.NotFound, "could not get note.")
-	}
+	}*/
 	//
 	return nil
 }

@@ -37,7 +37,7 @@ func (s *NotesAPISuite) SetupSuite() {
 	repoBlock := memory.NewBlocksRepository(dbBlock, logger)
 	language := &language.NaturalAPIService{}
 	language.Init()
-	background := background.NewService(logger, repoNote, repoBlock, language)
+	background := background.NewService(logger)
 	s.srv = &notesService{
 		auth:       &s.auth,
 		logger:     logger,

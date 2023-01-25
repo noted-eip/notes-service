@@ -7,6 +7,19 @@ import (
 	"time"
 )
 
+type Action uint
+
+type NoteIdentifier struct {
+	NoteId     string
+	ActionType Action
+}
+
+const (
+	NoteUpdateKeyword Action = 1
+	// Put in enum the other type of actions
+	//...
+)
+
 type KeywordType string
 
 // Note: Enum just to be sure that there won't be any other strings used in the `Type` field, dk if it's useful
@@ -50,11 +63,6 @@ type NotePayload struct {
 	Title    string   `json:"title" bson:"title,omitempty"`
 	Blocks   []Block  `json:"blocks" bson:"blocks,omitempty"`
 	Keywords Keywords `json:"keywords" bson:"keywords,omitempty"`
-}
-
-type NoteIdentifier struct {
-	NoteId     string
-	ActionType Action
 }
 
 // NotesRepository is safe for use in multiple goroutines.

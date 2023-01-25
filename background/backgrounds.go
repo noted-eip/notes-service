@@ -1,7 +1,6 @@
 package background
 
 import (
-	"notes-service/models"
 	"strconv"
 	"time"
 
@@ -9,37 +8,52 @@ import (
 	"go.uber.org/zap"
 )
 
-// TODO : What if the note is deleted before debounced for UpdateKeyword
-func (srv *service) AddProcess(lambdaFct func() error, identifier interface{}) error {
+func (srv *service) AddProcess(process *ProcessPlayLoad) error {
 
-	for index := range srv.processes {
-		if srv.processes[index].Identifier == identifier {
-			// TODO cancel the goroutine by srv.processes.task
-			go srv.processes[index].Debounced(func() { return })
-			srv.processes = remove(srv.processes, index)
+	if process.CancelProcessOnSameIdentifier {
+		err := srv.cancelProcessOnSameIdentifier(process)
+		if err != nil {
+			return err
 		}
 	}
 
-	// Add a process to the list launch the debounce fct
+	// Add a process to the list & launch the debounce fct
 	lastIndex := len(srv.processes)
-	newProcess := models.Process{
-		Identifier: identifier,
-		Debounced:  debounce.New(models.TimeToSave * time.Second),
-		CallBackFct: func() {
-			err := lambdaFct()
+	newProcess := Process{
+		identifier: process.Identifier,
+		debounced:  debounce.New(time.Duration(process.SecondsToDebounce) * time.Second),
+		callBackFct: func() {
+			err := process.CallBackFct()
 			if err != nil {
-				srv.logger.Error("Error in Lambda function in backgroundProcess for task : "+strconv.Itoa(int(srv.processes[lastIndex].Task)), zap.Error(err))
+				srv.logger.Error("Error in Lambda function in backgroundProcess for task : "+strconv.Itoa(int(srv.processes[lastIndex].task)), zap.Error(err))
 				return
 			}
 			srv.processes = remove(srv.processes, lastIndex)
 		},
+		secondsToDebounce:             process.SecondsToDebounce,
+		cancelProcessOnSameIdentifier: process.CancelProcessOnSameIdentifier,
 	}
 
 	srv.processes = append(srv.processes, newProcess)
-	go srv.processes[lastIndex].Debounced(srv.processes[lastIndex].CallBackFct)
+	go srv.processes[lastIndex].debounced(srv.processes[lastIndex].callBackFct)
 	return nil
 }
 
-func remove(slice []models.Process, idx int) []models.Process {
+func (srv *service) cancelProcessOnSameIdentifier(process *ProcessPlayLoad) error {
+	for index := range srv.processes {
+		if !srv.processes[index].cancelProcessOnSameIdentifier {
+			continue
+		}
+		//c pas le meme type si ?
+		if srv.processes[index].identifier == process.Identifier {
+			// TODO cancel the goroutine by srv.processes.task
+			go srv.processes[index].debounced(func() { return })
+			srv.processes = remove(srv.processes, index)
+		}
+	}
+	return nil
+}
+
+func remove(slice []Process, idx int) []Process {
 	return append(slice[:idx], slice[idx+1:]...)
 }
