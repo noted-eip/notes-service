@@ -6,7 +6,7 @@ import (
 	"notes-service/auth"
 	"notes-service/exports"
 	"notes-service/models"
-	notespb "notes-service/protorepo/noted/notes/v1"
+	notesv1 "notes-service/protorepo/noted/notes/v1"
 
 	"notes-service/language"
 
@@ -15,43 +15,46 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-type notesService struct {
-	notespb.UnimplementedNotesAPIServer
+type notesAPI struct {
+	notesv1.UnimplementedNotesAPIServer
 
-	logger   *zap.Logger
+	logger *zap.Logger
+
 	auth     auth.Service
 	language language.Service
-	repoNote models.NotesRepository
+
+	notes  models.NotesRepository
+	groups models.GroupsRepository
 }
 
-var _ notespb.NotesAPIServer = &notesService{}
+var _ notesv1.NotesAPIServer = &notesAPI{}
 
-func (srv *notesService) CreateNote(ctx context.Context, in *notespb.CreateNoteRequest) (*notespb.CreateNoteResponse, error) {
+func (srv *notesAPI) CreateNote(ctx context.Context, in *notesv1.CreateNoteRequest) (*notesv1.CreateNoteResponse, error) {
 
 	return nil, status.Error(codes.Unimplemented, "unimplemented")
 }
 
-func (srv *notesService) GetNote(ctx context.Context, in *notespb.GetNoteRequest) (*notespb.GetNoteResponse, error) {
+func (srv *notesAPI) GetNote(ctx context.Context, in *notesv1.GetNoteRequest) (*notesv1.GetNoteResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "unimplemented")
 }
 
-func (srv *notesService) UpdateNote(ctx context.Context, in *notespb.UpdateNoteRequest) (*notespb.UpdateNoteResponse, error) {
+func (srv *notesAPI) UpdateNote(ctx context.Context, in *notesv1.UpdateNoteRequest) (*notesv1.UpdateNoteResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "unimplemented")
 }
 
-func (srv *notesService) DeleteNote(ctx context.Context, in *notespb.DeleteNoteRequest) (*notespb.DeleteNoteResponse, error) {
+func (srv *notesAPI) DeleteNote(ctx context.Context, in *notesv1.DeleteNoteRequest) (*notesv1.DeleteNoteResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "unimplemented")
 }
 
-func (srv *notesService) ListNotes(ctx context.Context, in *notespb.ListNotesRequest) (*notespb.ListNotesResponse, error) {
+func (srv *notesAPI) ListNotes(ctx context.Context, in *notesv1.ListNotesRequest) (*notesv1.ListNotesResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "unimplemented")
 }
 
-var protobufFormatToFormatter = map[notespb.NoteExportFormat]func(*notespb.Note) ([]byte, error){
-	notespb.NoteExportFormat_NOTE_EXPORT_FORMAT_MARKDOWN: exports.NoteToMarkdown,
-	notespb.NoteExportFormat_NOTE_EXPORT_FORMAT_PDF:      exports.NoteToPDF,
+var protobufFormatToFormatter = map[notesv1.NoteExportFormat]func(*notesv1.Note) ([]byte, error){
+	notesv1.NoteExportFormat_NOTE_EXPORT_FORMAT_MARKDOWN: exports.NoteToMarkdown,
+	notesv1.NoteExportFormat_NOTE_EXPORT_FORMAT_PDF:      exports.NoteToPDF,
 }
 
-func (srv *notesService) ExportNote(ctx context.Context, in *notespb.ExportNoteRequest) (*notespb.ExportNoteResponse, error) {
+func (srv *notesAPI) ExportNote(ctx context.Context, in *notesv1.ExportNoteRequest) (*notesv1.ExportNoteResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "unimplemented")
 }

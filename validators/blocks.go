@@ -6,26 +6,26 @@ import (
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 )
 
-func ValidateInsertBlockRequest(in *notespb.InsertBlockRequest) error {
-	return validation.ValidateStruct(in,
-		validation.Field(&in.GroupId, validation.Required),
-		validation.Field(&in.Block.Type, validation.Required),
+func ValidateInsertBlockRequest(req *notespb.InsertBlockRequest) error {
+	return validation.ValidateStruct(req,
+		validation.Field(&req.GroupId, validation.Required),
+		validation.Field(&req.Block.Type, validation.Required),
 	)
 }
 
-func ValidateUpdateBlockRequest(in *notespb.UpdateBlockRequest) error {
-	return validation.ValidateStruct(in,
-		validation.Field(&in.GroupId, validation.Required),
-		validation.Field(&in.NoteId, validation.Required),
-		validation.Field(&in.BlockId, validation.Required),
-		validation.Field(&in.Block.Type, validation.Required),
+func ValidateUpdateBlockRequest(req *notespb.UpdateBlockRequest) error {
+	return validation.ValidateStruct(req,
+		validation.Field(&req.GroupId, validation.Required),
+		validation.Field(&req.NoteId, validation.Required),
+		validation.Field(&req.BlockId, validation.Required),
+		validation.Field(&req.Block.Type, validation.Required),
 	)
 }
 
-func ValidateDeleteBlockRequest(in *notespb.DeleteBlockRequest) error {
-	return validation.ValidateStruct(in,
-		validation.Field(&in.GroupId, validation.Required),
-		validation.Field(&in.NoteId, validation.Required),
-		validation.Field(&in.BlockId, validation.Required),
+func ValidateDeleteBlockRequest(req *notespb.DeleteBlockRequest) error {
+	return validation.ValidateStruct(req,
+		validation.Field(&req.GroupId, validation.Required),
+		validation.Field(&req.NoteId, validation.Required),
+		validation.Field(&req.BlockId, validation.Required),
 	)
 }

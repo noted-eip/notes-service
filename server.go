@@ -29,14 +29,15 @@ type server struct {
 	slogger *zap.SugaredLogger
 
 	authService     auth.Service
-	languageService language.Service // NOTE: Could put directly service typed as NaturalAPIService, remove Init() from interface and just put it in NaturalAPIService
+	languageService language.Service
 
 	mongoDB *mongo.Database
 
 	notesRepository  models.NotesRepository
 	groupsRepository models.GroupsRepository
 
-	notesService notesv1.NotesAPIServer
+	notesAPI  notesv1.NotesAPIServer
+	groupsAPI notesv1.GroupsAPIServer
 
 	grpcServer *grpc.Server
 }
@@ -45,7 +46,8 @@ func (s *server) Init(opt ...grpc.ServerOption) {
 	s.initLogger()
 	s.initAuthService()
 	s.initRepositories()
-	s.initNotesService()
+	s.initGroupsAPI()
+	s.initNotesAPI()
 	s.initLanguageService()
 	s.initgrpcServer(opt...)
 }
@@ -121,18 +123,29 @@ func (s *server) initAuthService() {
 	s.authService = auth.NewService(pubKey)
 }
 
-func (s *server) initNotesService() {
-	s.notesService = &notesService{
+func (s *server) initGroupsAPI() {
+	s.groupsAPI = &groupsAPI{
+		auth:   s.authService,
+		logger: s.logger,
+		notes:  s.notesRepository,
+		groups: s.groupsRepository,
+	}
+}
+
+func (s *server) initNotesAPI() {
+	s.notesAPI = &notesAPI{
 		language: s.languageService,
 		auth:     s.authService,
 		logger:   s.logger,
-		repoNote: s.notesRepository,
+		notes:    s.notesRepository,
+		groups:   s.groupsRepository,
 	}
 }
 
 func (s *server) initgrpcServer(opt ...grpc.ServerOption) {
 	s.grpcServer = grpc.NewServer(opt...)
-	notesv1.RegisterNotesAPIServer(s.grpcServer, s.notesService)
+	notesv1.RegisterNotesAPIServer(s.grpcServer, s.notesAPI)
+	notesv1.RegisterGroupsAPIServer(s.grpcServer, s.groupsAPI)
 }
 
 func (s *server) initRepositories() {
