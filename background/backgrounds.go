@@ -9,6 +9,7 @@ import (
 	"go.uber.org/zap"
 )
 
+// Add a process to the queue which is going to exec a function in X time
 func (srv *service) AddProcess(process *Process) error {
 	// Check for illegal processes
 	if process.Identifier == nil && process.RepeatProcess == true {
@@ -30,6 +31,7 @@ func (srv *service) AddProcess(process *Process) error {
 	return nil
 }
 
+// Cancel a process by his identifier
 func (srv *service) CancelProcess(process *Process) error {
 	if process.Identifier == nil {
 		srv.logger.Error("Cannot cancel background process if the identifier is nil")
