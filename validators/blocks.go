@@ -7,28 +7,25 @@ import (
 )
 
 func ValidateInsertBlockRequest(in *notespb.InsertBlockRequest) error {
-	err := validation.ValidateStruct(in,
-		validation.Field(&in.NoteId, validation.Required),
-		validation.Field(&in.Index, validation.Required),
-		validation.Field(&in.Block, validation.NotNil),
-	)
-	if err != nil {
-		return err
-	}
-	err = validation.ValidateStruct(in.Block,
-		validation.Field(&in.Block.Data, validation.NotNil),
+	return validation.ValidateStruct(in,
+		validation.Field(&in.GroupId, validation.Required),
 		validation.Field(&in.Block.Type, validation.Required),
 	)
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 func ValidateUpdateBlockRequest(in *notespb.UpdateBlockRequest) error {
-	return validation.ValidateStruct(in, validation.Field(&in.Id, validation.Required))
+	return validation.ValidateStruct(in,
+		validation.Field(&in.GroupId, validation.Required),
+		validation.Field(&in.NoteId, validation.Required),
+		validation.Field(&in.BlockId, validation.Required),
+		validation.Field(&in.Block.Type, validation.Required),
+	)
 }
 
 func ValidateDeleteBlockRequest(in *notespb.DeleteBlockRequest) error {
-	return validation.ValidateStruct(in, validation.Field(&in.Id, validation.Required))
+	return validation.ValidateStruct(in,
+		validation.Field(&in.GroupId, validation.Required),
+		validation.Field(&in.NoteId, validation.Required),
+		validation.Field(&in.BlockId, validation.Required),
+	)
 }

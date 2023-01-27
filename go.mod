@@ -5,7 +5,6 @@ go 1.17
 require (
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/google/uuid v1.3.0
-	github.com/hashicorp/go-memdb v1.3.4
 	github.com/stretchr/testify v1.8.1
 	go.mongodb.org/mongo-driver v1.11.0
 	go.uber.org/zap v1.24.0
@@ -25,7 +24,6 @@ require (
 	cloud.google.com/go/compute/metadata v0.2.2 // indirect
 	github.com/ReneKroon/ttlcache/v2 v2.4.0 // indirect
 	github.com/alecthomas/chroma v0.8.2 // indirect
-	github.com/asaskevich/govalidator v0.0.0-20200108200545-475eaeb16496 // indirect
 	github.com/danwakefield/fnmatch v0.0.0-20160403171240-cbb64ac3d964 // indirect
 	github.com/dlclark/regexp2 v1.2.0 // indirect
 	github.com/go-swiss/fonts v0.0.0-20210417170609-5d357d615b8f // indirect
@@ -44,8 +42,6 @@ require (
 	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.2.0 // indirect
 	github.com/googleapis/gax-go/v2 v2.7.0 // indirect
-	github.com/hashicorp/go-immutable-radix v1.3.0 // indirect
-	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/klauspost/compress v1.13.6 // indirect
 	github.com/montanaflynn/stats v0.0.0-20171201202039-1bf9dbcd8cbe // indirect
 	github.com/pkg/errors v0.9.1 // indirect
@@ -68,4 +64,7 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-require github.com/go-ozzo/ozzo-validation/v4 v4.3.0
+require (
+	github.com/go-ozzo/ozzo-validation/v4 v4.3.0
+	github.com/jaevor/go-nanoid v1.3.0
+)

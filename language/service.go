@@ -6,5 +6,5 @@ import (
 
 type Service interface {
 	Init() error
-	GetKeywordsFromTextInput(input string) (*models.Keywords, error)
+	GetKeywordsFromTextInput(input string) ([]models.Keyword, error)
 }

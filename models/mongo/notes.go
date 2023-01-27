@@ -202,7 +202,7 @@ func updateBlockPayloadToDocument(payload *models.UpdateBlockPayload) bson.E {
 		return bson.E{Key: "heading", Value: payload.Heading}
 	case notesv1.Block_TYPE_BULLET_POINT.String():
 		return bson.E{Key: "bulletPoint", Value: payload.BulletPoint}
-	case notesv1.Block_TYPE_NUMBERED_POINT.String():
+	case notesv1.Block_TYPE_NUMBER_POINT.String():
 		return bson.E{Key: "numberPoint", Value: payload.NumberPoint}
 	case notesv1.Block_TYPE_PARAGRAPH.String():
 		return bson.E{Key: "paragraph", Value: payload.Paragraph}
