@@ -13,7 +13,7 @@ import (
 )
 
 func (srv *notesService) InsertBlock(ctx context.Context, in *notespb.InsertBlockRequest) (*notespb.InsertBlockResponse, error) {
-	/*token, err := Authenticate(srv, ctx)
+	token, err := Authenticate(srv, ctx)
 	if err != nil {
 		return nil, status.Error(codes.Unauthenticated, err.Error())
 	}
@@ -21,17 +21,17 @@ func (srv *notesService) InsertBlock(ctx context.Context, in *notespb.InsertBloc
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
-	//Check if the user own the note
+	// Check if the user own the note
 	note, err := srv.repoNote.Get(ctx, in.NoteId)
 	if err != nil {
 		return nil, status.Error(codes.NotFound, "could not get block")
 	}
 	if token.UserID.String() != note.AuthorId {
 		return nil, status.Error(codes.PermissionDenied, "This author has not the rights to create a block")
-	}*/
+	}
 
 	var block = models.Block{}
-	err := convertApiBlockToModelBlock(&block, in.Block)
+	err = convertApiBlockToModelBlock(&block, in.Block)
 	if err != nil {
 		srv.logger.Error("failed to create block", zap.Error(err))
 		return nil, status.Errorf(codes.Internal, "invalid data content provided for block index : %d", in.Index)
@@ -41,19 +41,16 @@ func (srv *notesService) InsertBlock(ctx context.Context, in *notespb.InsertBloc
 		return nil, status.Errorf(codes.Internal, "couldn't create block id : %s", *BlockId)
 	}
 
-	//launch process to generate keywords in 15minutes after the last modification
-	srv.background.AddProcess(&background.ProcessPlayLoad{
-		Identifier: models.NoteIdentifier{
-			NoteId:     block.NoteId,
-			ActionType: models.NoteUpdateKeyword,
-		},
+	// Launch process to generate keywords in 15minutes after the last modification
+	srv.background.AddProcess(&background.Process{
+		Identifier: models.NoteIdentifier{NoteId: block.NoteId, ActionType: models.NoteUpdateKeyword},
 		CallBackFct: func() error {
 			err := srv.UpdateKeywordsByNoteId(block.NoteId)
 			return err
 		},
-		SecondsToDebounce:             5,
+		SecondsToDebounce:             900,
 		CancelProcessOnSameIdentifier: true,
-		//RepeatProcess: false,
+		RepeatProcess:                 false,
 	})
 
 	blockResponse := &notespb.Block{Id: *BlockId, Type: in.Block.Type, Data: in.Block.Data}
@@ -69,13 +66,13 @@ func (srv *notesService) UpdateBlock(ctx context.Context, in *notespb.UpdateBloc
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
-	//check if the block exist
+	// Check if the block exist
 	block, err := srv.repoBlock.GetBlock(ctx, in.Id)
 	if err != nil {
 		srv.logger.Error("Block not found in database", zap.Error(err))
 		return nil, status.Error(codes.NotFound, "could not delete block")
 	}
-	//Check if the user own the note
+	// Check if the user own the note
 	note, err := srv.repoNote.Get(ctx, block.NoteId)
 	if err != nil {
 		srv.logger.Error("Note not found in database", zap.Error(err))
@@ -97,19 +94,16 @@ func (srv *notesService) UpdateBlock(ctx context.Context, in *notespb.UpdateBloc
 		srv.logger.Error("failed to create block", zap.Error(err))
 		return nil, status.Errorf(codes.Internal, "Internal error the block isn't created")
 	}
-	//launch process to generate keywords in 15minutes after the last modification
-	srv.background.AddProcess(&background.ProcessPlayLoad{
-		Identifier: models.NoteIdentifier{
-			NoteId:     block.NoteId,
-			ActionType: models.NoteUpdateKeyword,
-		},
+	// Launch process to generate keywords in 15minutes after the last modification
+	srv.background.AddProcess(&background.Process{
+		Identifier: models.NoteIdentifier{NoteId: block.NoteId, ActionType: models.NoteUpdateKeyword},
 		CallBackFct: func() error {
 			err := srv.UpdateKeywordsByNoteId(block.NoteId)
 			return err
 		},
 		SecondsToDebounce:             900,
 		CancelProcessOnSameIdentifier: true,
-		//RepeatProcess: false,
+		RepeatProcess:                 false,
 	})
 
 	return &notespb.UpdateBlockResponse{
@@ -130,13 +124,13 @@ func (srv *notesService) DeleteBlock(ctx context.Context, in *notespb.DeleteBloc
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
-	//check if the block exist
+	// Check if the block exist
 	block, err := srv.repoBlock.GetBlock(ctx, in.Id)
 	if err != nil {
 		srv.logger.Error("Block not found in database", zap.Error(err))
 		return nil, status.Error(codes.NotFound, "could not delete block")
 	}
-	//Check if the user own the note
+	// Check if the user own the note
 	note, err := srv.repoNote.Get(ctx, block.NoteId)
 	if err != nil {
 		srv.logger.Error("Note not found in database", zap.Error(err))
@@ -152,19 +146,16 @@ func (srv *notesService) DeleteBlock(ctx context.Context, in *notespb.DeleteBloc
 		return nil, status.Errorf(codes.Internal, "could not delete block")
 	}
 
-	//launch process to generate keywords in 15minutes after the last modification
-	srv.background.AddProcess(&background.ProcessPlayLoad{
-		Identifier: models.NoteIdentifier{
-			NoteId:     block.NoteId,
-			ActionType: models.NoteUpdateKeyword,
-		},
+	// Launch process to generate keywords in 15minutes after the last modification
+	srv.background.AddProcess(&background.Process{
+		Identifier: models.NoteIdentifier{NoteId: block.NoteId, ActionType: models.NoteUpdateKeyword},
 		CallBackFct: func() error {
 			err := srv.UpdateKeywordsByNoteId(block.NoteId)
 			return err
 		},
 		SecondsToDebounce:             900,
 		CancelProcessOnSameIdentifier: true,
-		//RepeatProcess: false,
+		RepeatProcess:                 false,
 	})
 
 	return nil, nil

@@ -1,27 +1,20 @@
 package background
 
 type Process struct {
-	task                          uint32
-	identifier                    interface{}
-	debounced                     func(func())
-	callBackFct                   func()
-	secondsToDebounce             uint32
-	cancelProcessOnSameIdentifier bool
-	//repeatProcess                 bool
+	// Goroutine id of the process
+	task uint32
+	// Object which describe the process (any object)
+	Identifier interface{}
+	// Storage of debounce from the pakcage debounce
+	debounced func(func())
+	// Function to call
+	CallBackFct func() error
+	// Seconds before the CallBackFct is called
+	SecondsToDebounce uint32
+	// Call AddProcess with the same identifier to restart the time until the callback is called
+	CancelProcessOnSameIdentifier bool
+	// Repeat the process each SecondsToDebounce
+	RepeatProcess bool
 }
 
 type BackGroundProcesses []Process
-
-type ProcessPlayLoad struct {
-	// Identifier of the process
-	Identifier interface{}
-	// Function called by the process
-	CallBackFct func() error
-	// Seconds to wait before the execution of callBackFct
-	SecondsToDebounce uint32
-	// If the same identifier is add in process list, the seconds to debounce are going to be reset
-	CancelProcessOnSameIdentifier bool
-	// TODO : implem
-	// If you want to shedule the reccurent execution of the process each SecondsToDebounce
-	//RepeatProcess bool
-}
