@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/golang-jwt/jwt"
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/metadata"
 )
@@ -17,18 +16,15 @@ func Test_service_TokenFromContext(t *testing.T) {
 	// Given
 	pub, priv := genKeyOrFail(t)
 	srv := auth.NewService(pub)
-	uid := uuid.New()
-	ctx := contextWithTokenOrFail(t, context.TODO(), &auth.Token{
-		UserID: uid,
-		Role:   auth.RoleAdmin,
-	}, priv)
+	aid := "123"
+	ctx := contextWithTokenOrFail(t, context.TODO(), &auth.Token{AccountID: aid}, priv)
 
 	// When
 	token, err := srv.TokenFromContext(ctx)
 
 	// Then
 	require.NoError(t, err)
-	require.Equal(t, token.UserID, uid, "the token should contain the user data")
+	require.Equal(t, token.AccountID, aid, "the token should contain the user data")
 }
 
 func genKeyOrFail(t *testing.T) (ed25519.PublicKey, ed25519.PrivateKey) {

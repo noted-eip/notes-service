@@ -29,24 +29,24 @@ type notesAPI struct {
 
 var _ notesv1.NotesAPIServer = &notesAPI{}
 
-func (srv *notesAPI) CreateNote(ctx context.Context, in *notesv1.CreateNoteRequest) (*notesv1.CreateNoteResponse, error) {
+func (srv *notesAPI) CreateNote(ctx context.Context, req *notesv1.CreateNoteRequest) (*notesv1.CreateNoteResponse, error) {
 
 	return nil, status.Error(codes.Unimplemented, "unimplemented")
 }
 
-func (srv *notesAPI) GetNote(ctx context.Context, in *notesv1.GetNoteRequest) (*notesv1.GetNoteResponse, error) {
+func (srv *notesAPI) GetNote(ctx context.Context, req *notesv1.GetNoteRequest) (*notesv1.GetNoteResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "unimplemented")
 }
 
-func (srv *notesAPI) UpdateNote(ctx context.Context, in *notesv1.UpdateNoteRequest) (*notesv1.UpdateNoteResponse, error) {
+func (srv *notesAPI) UpdateNote(ctx context.Context, req *notesv1.UpdateNoteRequest) (*notesv1.UpdateNoteResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "unimplemented")
 }
 
-func (srv *notesAPI) DeleteNote(ctx context.Context, in *notesv1.DeleteNoteRequest) (*notesv1.DeleteNoteResponse, error) {
+func (srv *notesAPI) DeleteNote(ctx context.Context, req *notesv1.DeleteNoteRequest) (*notesv1.DeleteNoteResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "unimplemented")
 }
 
-func (srv *notesAPI) ListNotes(ctx context.Context, in *notesv1.ListNotesRequest) (*notesv1.ListNotesResponse, error) {
+func (srv *notesAPI) ListNotes(ctx context.Context, req *notesv1.ListNotesRequest) (*notesv1.ListNotesResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "unimplemented")
 }
 
@@ -55,6 +55,15 @@ var protobufFormatToFormatter = map[notesv1.NoteExportFormat]func(*notesv1.Note)
 	notesv1.NoteExportFormat_NOTE_EXPORT_FORMAT_PDF:      exports.NoteToPDF,
 }
 
-func (srv *notesAPI) ExportNote(ctx context.Context, in *notesv1.ExportNoteRequest) (*notesv1.ExportNoteResponse, error) {
+func (srv *notesAPI) ExportNote(ctx context.Context, req *notesv1.ExportNoteRequest) (*notesv1.ExportNoteResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "unimplemented")
+}
+
+func (srv *notesAPI) authenticate(ctx context.Context) (*auth.Token, error) {
+	token, err := srv.auth.TokenFromContext(ctx)
+	if err != nil {
+		srv.logger.Debug("could not authenticate request", zap.Error(err))
+		return nil, status.Error(codes.Unauthenticated, "invalid token")
+	}
+	return token, nil
 }

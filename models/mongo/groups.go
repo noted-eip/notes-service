@@ -85,7 +85,10 @@ func (repo *groupsRepository) GetGroup(ctx context.Context, filter *models.OneGr
 
 	query := bson.D{
 		{Key: "_id", Value: filter.GroupID},
-		{Key: "members.accountId", Value: accountID},
+		{Key: "$or", Value: bson.A{
+			bson.D{{Key: "members.accountId", Value: accountID}},
+			bson.D{{Key: "workspaceAccountId", Value: accountID}},
+		}},
 	}
 
 	err := repo.findOne(ctx, query, group)
@@ -149,7 +152,10 @@ func (repo *groupsRepository) ListGroupsInternal(ctx context.Context, filter *mo
 
 	query := bson.D{}
 	if filter != nil && filter.AccountID != "" {
-		query = append(query, bson.E{Key: "members.accountId", Value: filter.AccountID})
+		query = append(query, bson.E{Key: "$or", Value: bson.A{
+			bson.D{{Key: "members.accountId", Value: filter.AccountID}},
+			bson.D{{Key: "workspaceAccountId", Value: filter.AccountID}},
+		}})
 	}
 
 	err := repo.find(ctx, query, &groups, lo)

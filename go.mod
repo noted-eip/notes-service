@@ -4,7 +4,6 @@ go 1.17
 
 require (
 	github.com/golang-jwt/jwt v3.2.2+incompatible
-	github.com/google/uuid v1.3.0
 	github.com/stretchr/testify v1.8.1
 	go.mongodb.org/mongo-driver v1.11.0
 	go.uber.org/zap v1.24.0

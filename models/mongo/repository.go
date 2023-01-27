@@ -61,14 +61,12 @@ func (repo *repository) find(ctx context.Context, query interface{}, results int
 
 	res, err := repo.coll.Find(ctx, query, opts...)
 	if err != nil {
-		return repo.mongoFindErrorToModelsError(query, err)
+		return repo.mongoFindErrorToModelsError(query, lo, err)
 	}
-
-	repo.logger.Error("debug", zap.Any("filter", query), zap.Int("remaining", res.RemainingBatchLength()))
 
 	err = res.All(ctx, results)
 	if err != nil {
-		return repo.mongoFindErrorToModelsError(query, err)
+		return repo.mongoFindErrorToModelsError(query, lo, err)
 	}
 
 	return nil
@@ -103,7 +101,7 @@ func (repo *repository) mongoFindOneAndUpdateErrorToModelsError(query interface{
 	return models.ErrUnknown
 }
 
-func (repo *repository) mongoFindErrorToModelsError(query interface{}, err error) error {
-	repo.logger.Error("find failed", zap.Any("query", query), zap.Error(err))
+func (repo *repository) mongoFindErrorToModelsError(query interface{}, lo *models.ListOptions, err error) error {
+	repo.logger.Error("find failed", zap.Any("query", query), zap.Int64("limit", lo.Limit), zap.Int64("offset", lo.Offset), zap.Error(err))
 	return models.ErrUnknown
 }
