@@ -30,21 +30,16 @@ func TestNotesService(t *testing.T) {
 
 func (s *NotesAPISuite) SetupSuite() {
 	logger := newLoggerOrFail(s.T())
+	db := newDatabaseOrFail(s.T(), logger)
+
 	s.auth = auth.TestService{}
-	dbNote := newDatabaseOrFail(s.T(), logger)
-	dbBlock := newDatabaseOrFail(s.T(), logger)
-	repoNote := memory.NewNotesRepository(dbNote, logger)
-	repoBlock := memory.NewBlocksRepository(dbBlock, logger)
-	language := &language.NaturalAPIService{}
-	language.Init()
-	background := background.NewService(logger)
 	s.srv = &notesService{
 		auth:       &s.auth,
 		logger:     logger,
-		language:   language,
-		repoNote:   repoNote,
-		repoBlock:  repoBlock,
-		background: background,
+		language:   &language.NaturalAPIService{},
+		repoNote:   memory.NewNotesRepository(db, logger),
+		repoBlock:  memory.NewBlocksRepository(db, logger),
+		background: background.NewService(logger),
 	}
 	s.Require().NoError(s.srv.language.Init())
 }
