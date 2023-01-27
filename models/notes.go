@@ -5,28 +5,28 @@ import (
 	"time"
 )
 
-type ImageBlock struct {
+type NoteBlockImage struct {
 	Url     string `json:"url" bson:"url"`
 	Caption string `json:"caption" bson:"caption"`
 }
 
-type CodeBlock struct {
+type NoteBlockCode struct {
 	Snippet string `json:"snippet" bson:"snippet"`
 	Caption string `json:"caption" bson:"caption"`
 }
 
-type NoteBlockType string
+type NoteBlockType = string
 
 type NoteBlock struct {
-	ID          string        `json:"id" bson:"_id"`
-	Type        NoteBlockType `json:"type" bson:"type"`
-	Heading     *string       `json:"heading,omitempty" bson:"heading,omitempty"`
-	Paragraph   *string       `json:"paragraph,omitempty" bson:"paragraph,omitempty"`
-	NumberPoint *string       `json:"numberPoint,omitempty" bson:"numberPoint,omitempty"`
-	BulletPoint *string       `json:"bulletPoint,omitempty" bson:"bulletPoint,omitempty"`
-	Math        *string       `json:"math,omitempty" bson:"math,omitempty"`
-	Image       *ImageBlock   `json:"image,omitempty" bson:"image,omitempty"`
-	Code        *CodeBlock    `json:"code,omitempty" bson:"code,omitempty"`
+	ID          string          `json:"id" bson:"_id"`
+	Type        NoteBlockType   `json:"type" bson:"type"`
+	Heading     *string         `json:"heading,omitempty" bson:"heading,omitempty"`
+	Paragraph   *string         `json:"paragraph,omitempty" bson:"paragraph,omitempty"`
+	NumberPoint *string         `json:"numberPoint,omitempty" bson:"numberPoint,omitempty"`
+	BulletPoint *string         `json:"bulletPoint,omitempty" bson:"bulletPoint,omitempty"`
+	Math        *string         `json:"math,omitempty" bson:"math,omitempty"`
+	Image       *NoteBlockImage `json:"image,omitempty" bson:"image,omitempty"`
+	Code        *NoteBlockCode  `json:"code,omitempty" bson:"code,omitempty"`
 }
 
 type KeywordType string
@@ -65,6 +65,26 @@ type Note struct {
 	Blocks          []NoteBlock `json:"blocks" bson:"blocks"`
 }
 
+func (note *Note) FindBlock(blockID string) *NoteBlock {
+	for i := 0; i < len(note.Blocks); i++ {
+		if note.Blocks[i].ID == blockID {
+			return &note.Blocks[i]
+		}
+	}
+	return nil
+}
+
+type BlockWithoutID struct {
+	Type        NoteBlockType   `json:"type" bson:"type"`
+	Heading     *string         `json:"heading,omitempty" bson:"heading,omitempty"`
+	Paragraph   *string         `json:"paragraph,omitempty" bson:"paragraph,omitempty"`
+	NumberPoint *string         `json:"numberPoint,omitempty" bson:"numberPoint,omitempty"`
+	BulletPoint *string         `json:"bulletPoint,omitempty" bson:"bulletPoint,omitempty"`
+	Math        *string         `json:"math,omitempty" bson:"math,omitempty"`
+	Image       *NoteBlockImage `json:"image,omitempty" bson:"image,omitempty"`
+	Code        *NoteBlockCode  `json:"code,omitempty" bson:"code,omitempty"`
+}
+
 type CreateNotePayload struct {
 	Title           string
 	AuthorAccountID string
@@ -74,14 +94,8 @@ type CreateNotePayload struct {
 }
 
 type CreateNoteBlockPayload struct {
-	Type        NoteBlockType
-	Heading     *string
-	Paragraph   *string
-	NumberPoint *string
-	BulletPoint *string
-	Math        *string
-	Image       *ImageBlock
-	Code        *CodeBlock
+	BlockWithoutID
+	Index uint
 }
 
 type ManyNotesFilter struct {
@@ -92,26 +106,19 @@ type ManyNotesFilter struct {
 }
 
 type UpdateBlockPayload struct {
-	Type        NoteBlockType
-	Heading     *string
-	Paragraph   *string
-	NumberPoint *string
-	BulletPoint *string
-	Math        *string
-	Image       *ImageBlock
-	Code        *CodeBlock
+	BlockWithoutID
 }
 
 type UpdateNotePayload struct {
-	Title *string
+	Title string `json:"title,omitempty" bson:"title,omitempty"`
 }
 
-type NoteUUID struct {
+type OneNoteFilter struct {
 	GroupID string
 	NoteID  string
 }
 
-type NoteBlockUUID struct {
+type OneBlockFilter struct {
 	GroupID string
 	NoteID  string
 	BlockID string
@@ -119,14 +126,14 @@ type NoteBlockUUID struct {
 
 type NotesRepository interface {
 	// Notes
-	CreateNote(ctx context.Context, note *CreateNotePayload) (*Note, error)
-	GetNote(ctx context.Context, noteUUID *NoteUUID) (*Note, error)
-	UpdateNote(ctx context.Context, noteUUID *NoteUUID, note *UpdateNotePayload) (*Note, error)
-	DeleteNote(ctx context.Context, noteUUID *NoteUUID) (*Note, error)
-	ListNotes(ctx context.Context, filter *ManyNotesFilter, opts *ListOptions) ([]*Note, error)
+	CreateNote(ctx context.Context, payload *CreateNotePayload, accountID string) (*Note, error)
+	GetNote(ctx context.Context, filter *OneNoteFilter, accountID string) (*Note, error)
+	UpdateNote(ctx context.Context, filter *OneNoteFilter, payload *UpdateNotePayload, accountID string) (*Note, error)
+	DeleteNote(ctx context.Context, filter *OneNoteFilter, accountID string) error
+	ListNotesInternal(ctx context.Context, filter *ManyNotesFilter, opts *ListOptions) ([]*Note, error)
 
 	// Blocks
-	InsertBlock(ctx context.Context, noteID string, block *CreateNoteBlockPayload) (*NoteBlock, error)
-	UpdateBlock(ctx context.Context, blockUUID *NoteBlockUUID, block *UpdateBlockPayload) (*NoteBlock, error)
-	DeleteBlock(ctx context.Context, blockUUID *NoteBlockUUID) error
+	InsertBlock(ctx context.Context, filter *OneNoteFilter, payload *CreateNoteBlockPayload, accountID string) (*NoteBlock, error)
+	UpdateBlock(ctx context.Context, filter *OneBlockFilter, payload *UpdateBlockPayload, accountID string) (*NoteBlock, error)
+	DeleteBlock(ctx context.Context, filter *OneBlockFilter, accountID string) error
 }
