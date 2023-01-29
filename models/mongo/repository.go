@@ -17,6 +17,7 @@ type repository struct {
 }
 
 func (repo *repository) findOneAndUpdate(ctx context.Context, query interface{}, update interface{}, result interface{}, opts ...*options.FindOneAndUpdateOptions) error {
+	repo.logger.Debug("find one and update", zap.Any("query", query), zap.Any("update", update))
 	opts = append(opts, options.FindOneAndUpdate().SetReturnDocument(options.After))
 	err := repo.coll.FindOneAndUpdate(ctx, query, update, opts...).Decode(result)
 	if err != nil {
@@ -26,6 +27,7 @@ func (repo *repository) findOneAndUpdate(ctx context.Context, query interface{},
 }
 
 func (repo *repository) deleteOne(ctx context.Context, query interface{}, opts ...*options.DeleteOptions) error {
+	repo.logger.Debug("delete one", zap.Any("query", query))
 	res, err := repo.coll.DeleteOne(ctx, query, opts...)
 	if err != nil {
 		return repo.mongoDeleteOneErrorToModelsError(query, err)
@@ -37,6 +39,7 @@ func (repo *repository) deleteOne(ctx context.Context, query interface{}, opts .
 }
 
 func (repo *repository) findOne(ctx context.Context, query interface{}, result interface{}, opts ...*options.FindOneOptions) error {
+	repo.logger.Debug("find one", zap.Any("query", query))
 	err := repo.coll.FindOne(ctx, query, opts...).Decode(result)
 	if err != nil {
 		return repo.mongoFindOneErrorToModelsError(query, err)
@@ -45,6 +48,7 @@ func (repo *repository) findOne(ctx context.Context, query interface{}, result i
 }
 
 func (repo *repository) insertOne(ctx context.Context, payload interface{}, opts ...*options.InsertOneOptions) error {
+	repo.logger.Debug("insert one", zap.Any("payload", payload))
 	_, err := repo.coll.InsertOne(ctx, payload, opts...)
 	if err != nil {
 		return repo.mongoInsertOneErrorToModelsError(payload, err)
@@ -53,6 +57,7 @@ func (repo *repository) insertOne(ctx context.Context, payload interface{}, opts
 }
 
 func (repo *repository) find(ctx context.Context, query interface{}, results interface{}, lo *models.ListOptions, opts ...*options.FindOptions) error {
+	repo.logger.Debug("find", zap.Any("query", query))
 	if lo == nil {
 		lo = &models.ListOptions{Limit: 20, Offset: 0}
 	}

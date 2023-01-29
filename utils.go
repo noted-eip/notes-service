@@ -47,9 +47,9 @@ type testUtils struct {
 }
 
 func newTestUtilsOrDie(t *testing.T) *testUtils {
-	// logger, err := zap.NewDevelopment()
-	// require.NoError(t, err)
-	logger := zap.NewNop()
+	logger, err := zap.NewDevelopment()
+	require.NoError(t, err)
+	// logger := zap.NewNop()
 	auth := &auth.TestService{}
 	ctx, cancel := context.WithTimeout(context.TODO(), time.Second)
 	defer cancel()
@@ -88,8 +88,39 @@ func newTestUtilsOrDie(t *testing.T) *testUtils {
 }
 
 type testAccount struct {
-	AccountID string
-	Context   context.Context
+	ID      string
+	Context context.Context
+}
+
+type testGroup struct {
+	ID string
+}
+
+type testNote struct {
+	ID     string
+	Group  *testGroup
+	Author *testAccount
+}
+
+type testBlock struct {
+	note *testNote
+	ID   string
+}
+
+func (note *testNote) InsertBlock(t *testing.T, tu *testUtils, block *notesv1.Block, index uint32) *testBlock {
+	res, err := tu.notes.InsertBlock(note.Author.Context, &notesv1.InsertBlockRequest{
+		GroupId: note.Group.ID,
+		NoteId:  note.ID,
+		Index:   index,
+		Block:   block,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, res)
+
+	return &testBlock{
+		note: note,
+		ID:   res.Block.Id,
+	}
 }
 
 func newTestAccount(t *testing.T, tu *testUtils) *testAccount {
@@ -97,13 +128,57 @@ func newTestAccount(t *testing.T, tu *testUtils) *testAccount {
 	ctx, err := tu.auth.ContextWithToken(context.TODO(), &auth.Token{AccountID: aid})
 	require.NoError(t, err)
 	return &testAccount{
-		AccountID: aid,
-		Context:   ctx,
+		ID:      aid,
+		Context: ctx,
+	}
+}
+
+func newTestGroup(t *testing.T, tu *testUtils, owner *testAccount, members ...*testAccount) *testGroup {
+	res, err := tu.groups.CreateGroup(owner.Context, &notesv1.CreateGroupRequest{
+		Name:        "Some Random Name",
+		Description: "Some Random Description",
+	})
+	require.NoError(t, err)
+	require.NotNil(t, res)
+
+	for i := range members {
+		sendInvite, err := tu.groups.SendInvite(owner.Context, &notesv1.SendInviteRequest{
+			GroupId:            res.Group.Id,
+			RecipientAccountId: members[i].ID,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, sendInvite)
+		acceptInvite, err := tu.groups.AcceptInvite(members[i].Context, &notesv1.AcceptInviteRequest{
+			GroupId:  res.Group.Id,
+			InviteId: sendInvite.Invite.Id,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, acceptInvite)
+	}
+
+	return &testGroup{
+		ID: res.Group.Id,
+	}
+}
+
+func newTestNote(t *testing.T, tu *testUtils, group *testGroup, author *testAccount, blocks []*notesv1.Block) *testNote {
+	res, err := tu.notes.CreateNote(author.Context, &notesv1.CreateNoteRequest{
+		GroupId: group.ID,
+		Title:   "Default Title",
+		Blocks:  blocks,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, res)
+
+	return &testNote{
+		ID:     res.Note.Id,
+		Author: author,
+		Group:  group,
 	}
 }
 
 func requireErrorHasGRPCCode(t *testing.T, code codes.Code, err error) {
 	s, ok := status.FromError(err)
-	require.True(t, ok, "expected grpc code %v", code)
-	require.Equal(t, code, s.Code(), "expected grpc code %v", code)
+	require.True(t, ok, "expected grpc code %v got non-grpc error code", code)
+	require.Equal(t, code, s.Code(), "expected grpc code %v got %v: %v", code, s.Code(), err)
 }

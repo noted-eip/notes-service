@@ -8,7 +8,7 @@ import (
 	"google.golang.org/grpc/codes"
 )
 
-func TestGroupSuite(t *testing.T) {
+func TestGroupsSuite(t *testing.T) {
 	tu := newTestUtilsOrDie(t)
 	jhon := newTestAccount(t, tu)
 	dave := newTestAccount(t, tu)
@@ -23,9 +23,13 @@ func TestGroupSuite(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, res)
 
+		require.Equal(t, "My Group Name", res.Group.Name)
+		require.Equal(t, "My Group Description", res.Group.Description)
+		require.NotEmpty(t, res.Group.Id)
+
 		// Check one admin member exists
 		require.Len(t, res.Group.Members, 1)
-		require.Equal(t, res.Group.Members[0].AccountId, jhon.AccountID)
+		require.Equal(t, res.Group.Members[0].AccountId, jhon.ID)
 		require.True(t, res.Group.Members[0].IsAdmin)
 
 		// Check one conversation exists
@@ -39,7 +43,7 @@ func TestGroupSuite(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, res)
 
-		require.Equal(t, res.Group.WorkspaceAccountId, dave.AccountID)
+		require.Equal(t, res.Group.WorkspaceAccountId, dave.ID)
 
 		// Workspace has no members, conversations or invites.
 		require.Nil(t, res.Group.Members)
@@ -122,7 +126,7 @@ func TestGroupSuite(t *testing.T) {
 	})
 
 	t.Run("list-one-group", func(t *testing.T) {
-		res, err := tu.groups.ListGroups(jhon.Context, &notesv1.ListGroupsRequest{AccountId: jhon.AccountID})
+		res, err := tu.groups.ListGroups(jhon.Context, &notesv1.ListGroupsRequest{AccountId: jhon.ID})
 		require.NoError(t, err)
 		require.NotNil(t, res)
 		require.Len(t, res.Groups, 1)
@@ -149,7 +153,7 @@ func TestGroupSuite(t *testing.T) {
 	})
 
 	t.Run("list-one-workspace", func(t *testing.T) {
-		res, err := tu.groups.ListGroups(dave.Context, &notesv1.ListGroupsRequest{AccountId: dave.AccountID})
+		res, err := tu.groups.ListGroups(dave.Context, &notesv1.ListGroupsRequest{AccountId: dave.ID})
 		require.NoError(t, err)
 		require.NotNil(t, res)
 		require.Len(t, res.Groups, 1)

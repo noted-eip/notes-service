@@ -173,12 +173,8 @@ func (repo *groupsRepository) SendInvite(ctx context.Context, filter *models.One
 		// Sender is member.
 		{Key: "members.accountId", Value: accountID},
 		// Recipient is not a member.
-		{Key: "members", Value: bson.D{
-			{Key: "$not", Value: bson.D{
-				{Key: "$elemMatch", Value: bson.D{
-					{Key: "accountId", Value: accountID},
-				}},
-			}},
+		{Key: "members.accountId", Value: bson.D{
+			{Key: "$ne", Value: filter.GroupID},
 		}},
 		// No duplicate invites.
 		{Key: "invites", Value: bson.D{
@@ -188,7 +184,8 @@ func (repo *groupsRepository) SendInvite(ctx context.Context, filter *models.One
 					{Key: "senderAccountId", Value: accountID},
 				}},
 			}},
-		}}}
+		}},
+	}
 	inviteID := repo.newUUID()
 	update := bson.D{
 		{Key: "$push", Value: bson.D{
@@ -209,7 +206,7 @@ func (repo *groupsRepository) SendInvite(ctx context.Context, filter *models.One
 	return group.FindInvite(inviteID), nil
 }
 
-func (repo *groupsRepository) AcceptInvite(ctx context.Context, filter *models.OneInviteFilter, accountID string) error {
+func (repo *groupsRepository) AcceptInvite(ctx context.Context, filter *models.OneInviteFilter, accountID string) (*models.GroupMember, error) {
 	group := &models.Group{}
 	query := bson.D{
 		{Key: "_id", Value: filter.GroupID},
@@ -237,10 +234,10 @@ func (repo *groupsRepository) AcceptInvite(ctx context.Context, filter *models.O
 
 	err := repo.findOneAndUpdate(ctx, query, update, group)
 	if err != nil {
-		return nil
+		return nil, err
 	}
 
-	return nil
+	return group.FindMember(accountID), nil
 }
 
 func (repo *groupsRepository) DenyInvite(ctx context.Context, filter *models.OneInviteFilter, accountID string) error {

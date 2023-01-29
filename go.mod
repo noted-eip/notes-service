@@ -14,7 +14,6 @@ require (
 
 require (
 	cloud.google.com/go/language v1.8.0
-	github.com/jinzhu/copier v0.3.5
 	google.golang.org/api v0.105.0
 )
 

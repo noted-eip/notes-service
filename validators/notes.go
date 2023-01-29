@@ -21,11 +21,14 @@ func ValidateGetNoteRequest(req *notespb.GetNoteRequest) error {
 }
 
 func ValidateUpdateNoteRequest(req *notespb.UpdateNoteRequest) error {
-	return validation.ValidateStruct(req,
+	err := validation.ValidateStruct(req,
 		validation.Field(&req.GroupId, validation.Required),
 		validation.Field(&req.NoteId, validation.Required),
-		validation.Field(&req.Note.Title, validation.Length(1, 64)),
 	)
+	if err != nil {
+		return err
+	}
+	return validation.Validate(req.Note.Title, validation.Length(0, 64))
 }
 
 func ValidateDeleteNoteRequest(req *notespb.DeleteNoteRequest) error {
@@ -37,7 +40,7 @@ func ValidateDeleteNoteRequest(req *notespb.DeleteNoteRequest) error {
 
 func ValidateListNoteRequest(req *notespb.ListNotesRequest) error {
 	return validation.ValidateStruct(req,
-		validation.Field(&req.AuthorId, validation.Required),
+		validation.Field(&req.AuthorAccountId, validation.Required),
 	)
 }
 

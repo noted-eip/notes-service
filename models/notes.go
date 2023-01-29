@@ -12,13 +12,13 @@ type NoteBlockImage struct {
 
 type NoteBlockCode struct {
 	Snippet string `json:"snippet" bson:"snippet"`
-	Caption string `json:"caption" bson:"caption"`
+	Lang    string `json:"lang" bson:"lang"`
 }
 
 type NoteBlockType = string
 
 type NoteBlock struct {
-	ID          string          `json:"id" bson:"_id"`
+	ID          string          `json:"id" bson:"id"`
 	Type        NoteBlockType   `json:"type" bson:"type"`
 	Heading     *string         `json:"heading,omitempty" bson:"heading,omitempty"`
 	Paragraph   *string         `json:"paragraph,omitempty" bson:"paragraph,omitempty"`
@@ -74,39 +74,28 @@ func (note *Note) FindBlock(blockID string) *NoteBlock {
 	return nil
 }
 
-type BlockWithoutID struct {
-	Type        NoteBlockType   `json:"type" bson:"type"`
-	Heading     *string         `json:"heading,omitempty" bson:"heading,omitempty"`
-	Paragraph   *string         `json:"paragraph,omitempty" bson:"paragraph,omitempty"`
-	NumberPoint *string         `json:"numberPoint,omitempty" bson:"numberPoint,omitempty"`
-	BulletPoint *string         `json:"bulletPoint,omitempty" bson:"bulletPoint,omitempty"`
-	Math        *string         `json:"math,omitempty" bson:"math,omitempty"`
-	Image       *NoteBlockImage `json:"image,omitempty" bson:"image,omitempty"`
-	Code        *NoteBlockCode  `json:"code,omitempty" bson:"code,omitempty"`
-}
-
 type CreateNotePayload struct {
 	Title           string
 	AuthorAccountID string
 	GroupID         string
 	FolderID        string
-	Blocks          []CreateNoteBlockPayload
+	Blocks          []NoteBlock
 }
 
-type CreateNoteBlockPayload struct {
-	BlockWithoutID
+type InsertNoteBlockPayload struct {
+	Block NoteBlock
 	Index uint
 }
 
 type ManyNotesFilter struct {
 	// (Optional) List notes belonging to group.
-	GroupID *string
+	GroupID string
 	// (Optional) List notes belonging to account.
-	AuthorAccountID *string
+	AuthorAccountID string
 }
 
 type UpdateBlockPayload struct {
-	BlockWithoutID
+	Block NoteBlock
 }
 
 type UpdateNotePayload struct {
@@ -133,7 +122,7 @@ type NotesRepository interface {
 	ListNotesInternal(ctx context.Context, filter *ManyNotesFilter, opts *ListOptions) ([]*Note, error)
 
 	// Blocks
-	InsertBlock(ctx context.Context, filter *OneNoteFilter, payload *CreateNoteBlockPayload, accountID string) (*NoteBlock, error)
+	InsertBlock(ctx context.Context, filter *OneNoteFilter, payload *InsertNoteBlockPayload, accountID string) (*NoteBlock, error)
 	UpdateBlock(ctx context.Context, filter *OneBlockFilter, payload *UpdateBlockPayload, accountID string) (*NoteBlock, error)
 	DeleteBlock(ctx context.Context, filter *OneBlockFilter, accountID string) error
 }

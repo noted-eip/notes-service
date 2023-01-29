@@ -8,7 +8,6 @@ import (
 	notesv1 "notes-service/protorepo/noted/notes/v1"
 
 	"github.com/jaevor/go-nanoid"
-	"github.com/jinzhu/copier"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.uber.org/zap"
@@ -34,6 +33,10 @@ func NewNotesRepository(db *mongo.Database, logger *zap.Logger) models.NotesRepo
 }
 
 func (repo *notesRepository) CreateNote(ctx context.Context, payload *models.CreateNotePayload, accountID string) (*models.Note, error) {
+	for i := range payload.Blocks {
+		payload.Blocks[i].ID = repo.newUUID()
+	}
+
 	note := &models.Note{
 		ID:              repo.newUUID(),
 		Title:           payload.Title,
@@ -43,7 +46,7 @@ func (repo *notesRepository) CreateNote(ctx context.Context, payload *models.Cre
 		ModifiedAt:      time.Now(),
 		AnalyzedAt:      time.Now(),
 		Keywords:        []models.Keyword{},
-		Blocks:          []models.NoteBlock{},
+		Blocks:          payload.Blocks,
 	}
 
 	err := repo.insertOne(ctx, note)
@@ -57,7 +60,7 @@ func (repo *notesRepository) GetNote(ctx context.Context, filter *models.OneNote
 	note := &models.Note{}
 	query := bson.D{
 		{Key: "_id", Value: filter.NoteID},
-		{Key: "group_id", Value: filter.GroupID},
+		{Key: "groupId", Value: filter.GroupID},
 	}
 
 	err := repo.findOne(ctx, query, note)
@@ -73,6 +76,7 @@ func (repo *notesRepository) UpdateNote(ctx context.Context, filter *models.OneN
 	query := bson.D{
 		{Key: "_id", Value: filter.NoteID},
 		{Key: "groupId", Value: filter.GroupID},
+		{Key: "authorAccountId", Value: accountID},
 	}
 	update := bson.D{
 		{Key: "$set", Value: payload},
@@ -92,6 +96,7 @@ func (repo *notesRepository) DeleteNote(ctx context.Context, filter *models.OneN
 	query := bson.D{
 		{Key: "_id", Value: filter.NoteID},
 		{Key: "groupId", Value: filter.GroupID},
+		{Key: "authorAccountId", Value: accountID},
 	}
 
 	return repo.deleteOne(ctx, query)
@@ -102,10 +107,10 @@ func (repo *notesRepository) ListNotesInternal(ctx context.Context, filter *mode
 
 	query := bson.D{}
 	if filter != nil {
-		if filter.AuthorAccountID != nil {
+		if filter.AuthorAccountID != "" {
 			query = append(query, bson.E{Key: "authorAccountId", Value: filter.AuthorAccountID})
 		}
-		if filter.GroupID != nil {
+		if filter.GroupID != "" {
 			query = append(query, bson.E{Key: "groupId", Value: filter.GroupID})
 		}
 	}
@@ -118,22 +123,19 @@ func (repo *notesRepository) ListNotesInternal(ctx context.Context, filter *mode
 	return notes, nil
 }
 
-func (repo *notesRepository) InsertBlock(ctx context.Context, filter *models.OneNoteFilter, payload *models.CreateNoteBlockPayload, accountID string) (*models.NoteBlock, error) {
+func (repo *notesRepository) InsertBlock(ctx context.Context, filter *models.OneNoteFilter, payload *models.InsertNoteBlockPayload, accountID string) (*models.NoteBlock, error) {
 	note := &models.Note{}
-	block := &models.NoteBlock{}
-	copier.Copy(block, payload)
-	block.ID = repo.newUUID()
+	payload.Block.ID = repo.newUUID()
 
 	query := bson.D{
 		{Key: "_id", Value: filter.NoteID},
 		{Key: "groupId", Value: filter.GroupID},
-		// Only the author can modify the note.
 		{Key: "authorAccountId", Value: accountID},
 	}
 	update := bson.D{
 		{Key: "$push", Value: bson.D{
 			{Key: "blocks", Value: bson.D{
-				{Key: "$each", Value: bson.A{block}},
+				{Key: "$each", Value: bson.A{payload.Block}},
 				{Key: "$position", Value: payload.Index},
 			}},
 		}},
@@ -144,7 +146,7 @@ func (repo *notesRepository) InsertBlock(ctx context.Context, filter *models.One
 		return nil, err
 	}
 
-	return note.FindBlock(block.ID), nil
+	return note.FindBlock(payload.Block.ID), nil
 }
 
 func (repo *notesRepository) UpdateBlock(ctx context.Context, filter *models.OneBlockFilter, payload *models.UpdateBlockPayload, accountID string) (*models.NoteBlock, error) {
@@ -154,12 +156,11 @@ func (repo *notesRepository) UpdateBlock(ctx context.Context, filter *models.One
 		{Key: "_id", Value: filter.NoteID},
 		{Key: "groupId", Value: filter.GroupID},
 		{Key: "blocks.id", Value: filter.BlockID},
-		// Only the author can modify the note.
 		{Key: "authorAccountId", Value: accountID},
 	}
 	update := bson.D{
 		{Key: "$set", Value: bson.D{
-			{Key: "blocks.$.type", Value: payload.Type},
+			{Key: "blocks.$.type", Value: payload.Block.Type},
 			updateBlockPayloadToDocument(payload),
 		}},
 	}
@@ -179,6 +180,7 @@ func (repo *notesRepository) DeleteBlock(ctx context.Context, filter *models.One
 		{Key: "_id", Value: filter.NoteID},
 		{Key: "groupId", Value: filter.GroupID},
 		{Key: "blocks.id", Value: filter.BlockID},
+		{Key: "authorAccountId", Value: accountID},
 	}
 	update := bson.D{
 		{Key: "$pull", Value: bson.D{
@@ -193,25 +195,25 @@ func (repo *notesRepository) DeleteBlock(ctx context.Context, filter *models.One
 }
 
 func updateBlockPayloadToDocument(payload *models.UpdateBlockPayload) bson.E {
-	switch payload.Type {
+	switch payload.Block.Type {
 	case notesv1.Block_TYPE_HEADING_1.String():
-		return bson.E{Key: "heading", Value: payload.Heading}
+		return bson.E{Key: "blocks.$.heading", Value: payload.Block.Heading}
 	case notesv1.Block_TYPE_HEADING_2.String():
-		return bson.E{Key: "heading", Value: payload.Heading}
+		return bson.E{Key: "blocks.$.heading", Value: payload.Block.Heading}
 	case notesv1.Block_TYPE_HEADING_3.String():
-		return bson.E{Key: "heading", Value: payload.Heading}
+		return bson.E{Key: "blocks.$.heading", Value: payload.Block.Heading}
 	case notesv1.Block_TYPE_BULLET_POINT.String():
-		return bson.E{Key: "bulletPoint", Value: payload.BulletPoint}
+		return bson.E{Key: "blocks.$.bulletPoint", Value: payload.Block.BulletPoint}
 	case notesv1.Block_TYPE_NUMBER_POINT.String():
-		return bson.E{Key: "numberPoint", Value: payload.NumberPoint}
+		return bson.E{Key: "blocks.$.numberPoint", Value: payload.Block.NumberPoint}
 	case notesv1.Block_TYPE_PARAGRAPH.String():
-		return bson.E{Key: "paragraph", Value: payload.Paragraph}
+		return bson.E{Key: "blocks.$.paragraph", Value: payload.Block.Paragraph}
 	case notesv1.Block_TYPE_MATH.String():
-		return bson.E{Key: "math", Value: payload.Math}
+		return bson.E{Key: "blocks.$.math", Value: payload.Block.Math}
 	case notesv1.Block_TYPE_IMAGE.String():
-		return bson.E{Key: "image", Value: payload.Image}
+		return bson.E{Key: "blocks.$.image", Value: payload.Block.Image}
 	case notesv1.Block_TYPE_CODE.String():
-		return bson.E{Key: "code", Value: payload.Code}
+		return bson.E{Key: "blocks.$.code", Value: payload.Block.Code}
 	}
 	return bson.E{Key: "", Value: nil}
 }

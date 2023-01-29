@@ -28,7 +28,7 @@ type GroupMember struct {
 }
 
 type GroupInvite struct {
-	ID                 string    `json:"id" bson:"_id"`
+	ID                 string    `json:"id" bson:"id"`
 	SenderAccountID    string    `json:"senderAccountId" bson:"senderAccountId"`
 	RecipientAccountID string    `json:"recipientAccountId" bson:"recipientAccountId"`
 	CreatedAt          time.Time `json:"createdAt" bson:"createdAt"`
@@ -244,7 +244,7 @@ type GroupsRepository interface {
 
 	// Invites
 	SendInvite(ctx context.Context, filter *OneGroupFilter, payload *SendInvitePayload, accountID string) (*GroupInvite, error)
-	AcceptInvite(ctx context.Context, filter *OneInviteFilter, accountID string) error
+	AcceptInvite(ctx context.Context, filter *OneInviteFilter, accountID string) (*GroupMember, error)
 	DenyInvite(ctx context.Context, filter *OneInviteFilter, accountID string) error
 	ListInvites(ctx context.Context, filter *ManyInvitesFilter, accountID string) ([]*ListInvitesResult, error)
 	RevokeGroupInvite(ctx context.Context, filter *OneInviteFilter, accountID string) error

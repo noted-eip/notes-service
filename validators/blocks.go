@@ -7,10 +7,13 @@ import (
 )
 
 func ValidateInsertBlockRequest(req *notespb.InsertBlockRequest) error {
-	return validation.ValidateStruct(req,
+	err := validation.ValidateStruct(req,
 		validation.Field(&req.GroupId, validation.Required),
-		validation.Field(&req.Block.Type, validation.Required),
 	)
+	if err != nil {
+		return err
+	}
+	return validation.Validate(req.Block, validation.Required)
 }
 
 func ValidateUpdateBlockRequest(req *notespb.UpdateBlockRequest) error {
@@ -18,7 +21,6 @@ func ValidateUpdateBlockRequest(req *notespb.UpdateBlockRequest) error {
 		validation.Field(&req.GroupId, validation.Required),
 		validation.Field(&req.NoteId, validation.Required),
 		validation.Field(&req.BlockId, validation.Required),
-		validation.Field(&req.Block.Type, validation.Required),
 	)
 }
 

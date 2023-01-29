@@ -35,7 +35,10 @@ func (srv *groupsAPI) CreateGroup(ctx context.Context, req *notesv1.CreateGroupR
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	group, err := srv.groups.CreateGroup(ctx, &models.CreateGroupPayload{}, token.AccountID)
+	group, err := srv.groups.CreateGroup(ctx, &models.CreateGroupPayload{
+		Name:        req.Name,
+		Description: req.Description,
+	}, token.AccountID)
 	if err != nil {
 		return nil, statusFromModelError(err)
 	}
