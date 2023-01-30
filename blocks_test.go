@@ -104,19 +104,19 @@ func TestBlocksSuite(t *testing.T) {
 
 	// The mongo repository DeleteBlock method is not working.
 	// It doesn't delete the block.
-	// t.Run("delete-block", func(t *testing.T) {
-	// 	res, err := tu.notes.DeleteBlock(maxime.Context, &notesv1.DeleteBlockRequest{
-	// 		GroupId: maximeNote.Group.ID,
-	// 		NoteId:  maximeNote.ID,
-	// 		BlockId: someBlock.ID,
-	// 	})
-	// 	require.NoError(t, err)
-	// 	require.NotNil(t, res)
+	t.Run("delete-block", func(t *testing.T) {
+		res, err := tu.notes.DeleteBlock(maxime.Context, &notesv1.DeleteBlockRequest{
+			GroupId: maximeNote.Group.ID,
+			NoteId:  maximeNote.ID,
+			BlockId: someBlock.ID,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, res)
 
-	// 	// Make sure the block is not foundable.
-	// 	note, err := tu.notesRepository.GetNote(context.TODO(),
-	// 		&models.OneNoteFilter{NoteID: maximeNote.ID, GroupID: maximeNote.Group.ID}, maxime.ID)
-	// 	require.NoError(t, err)
-	// 	require.Nil(t, note.FindBlock(someBlock.ID))
-	// })
+		// Make sure the block is not foundable.
+		note, err := tu.notesRepository.GetNote(context.TODO(),
+			&models.OneNoteFilter{NoteID: maximeNote.ID, GroupID: maximeNote.Group.ID}, maxime.ID)
+		require.NoError(t, err)
+		require.Nil(t, note.FindBlock(someBlock.ID))
+	})
 }

@@ -226,9 +226,7 @@ func (repo *groupsRepository) AcceptInvite(ctx context.Context, filter *models.O
 		}},
 		{Key: "$pull", Value: bson.D{
 			{Key: "invites", Value: bson.D{
-				{Key: "$elemMatch", Value: bson.D{
-					{Key: "recipientAccountId", Value: accountID},
-				}},
+				{Key: "recipientAccountId", Value: accountID},
 			}},
 		}}}
 

@@ -185,9 +185,7 @@ func (repo *notesRepository) DeleteBlock(ctx context.Context, filter *models.One
 	update := bson.D{
 		{Key: "$pull", Value: bson.D{
 			{Key: "blocks", Value: bson.D{
-				{Key: "$elemMatch", Value: bson.D{
-					{Key: "id", Value: filter.BlockID},
-				}},
+				{Key: "id", Value: filter.BlockID},
 			}},
 		}}}
 
