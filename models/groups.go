@@ -213,7 +213,7 @@ type UpdateGroupPayload struct {
 }
 
 type UpdateMemberPayload struct {
-	IsAdmin *bool `bson:"isAdmin,omitempty"`
+	IsAdmin *bool
 }
 
 type UpdateGroupConversationPayload struct {
@@ -261,7 +261,6 @@ type GroupsRepository interface {
 	ListConversationMessages(ctx context.Context, filter *OneConversationFilter, accountID string) ([]*ConversationMessage, error)
 
 	// Members
-	AddGroupMember(ctx context.Context, filter *OneGroupFilter, payload *AddMemberPayload, accountID string) (*GroupMember, error)
 	UpdateGroupMember(ctx context.Context, filter *OneMemberFilter, payload *UpdateMemberPayload, accountID string) (*GroupMember, error)
 	RemoveGroupMember(ctx context.Context, filter *OneMemberFilter, accountID string) error
 

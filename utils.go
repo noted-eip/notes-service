@@ -32,6 +32,9 @@ func statusFromModelError(err error) error {
 	if errors.Is(err, models.ErrUnknown) {
 		return status.Error(codes.Unknown, "unknown error")
 	}
+	if errors.Is(err, models.ErrForbidden) {
+		return status.Error(codes.PermissionDenied, "forbidden operation")
+	}
 	return status.Error(codes.Internal, "internal error")
 }
 

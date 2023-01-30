@@ -278,15 +278,86 @@ func (repo *groupsRepository) ListConversationMessages(ctx context.Context, filt
 	return nil, nil
 }
 
-func (repo *groupsRepository) AddGroupMember(ctx context.Context, filter *models.OneGroupFilter, payload *models.AddMemberPayload, accountID string) (*models.GroupMember, error) {
-	return nil, nil
-}
-
+// TODO: Improve the implementation of this method because it is not going to
+// work well if in the future we need to update fields other than `isAdmin`.
 func (repo *groupsRepository) UpdateGroupMember(ctx context.Context, filter *models.OneMemberFilter, payload *models.UpdateMemberPayload, accountID string) (*models.GroupMember, error) {
-	return nil, nil
+	group := &models.Group{}
+
+	// NOTE: There's something very weird about the ordering of these fields.
+	// Something about matching with '$' and array operators.
+	query := bson.D{
+		{Key: "_id", Value: filter.GroupID},
+		// Caller is admin.
+		{Key: "members", Value: bson.D{
+			{Key: "$elemMatch", Value: bson.D{
+				{Key: "accountId", Value: accountID},
+				{Key: "isAdmin", Value: true},
+			}},
+		}},
+		// Target is in group.
+		{Key: "members", Value: bson.D{
+			{Key: "$elemMatch", Value: bson.D{
+				{Key: "accountId", Value: filter.AccountID},
+				{Key: "isAdmin", Value: false},
+			}},
+		}},
+	}
+
+	// Forbidden operations, either results in no-op or demoting.
+	if payload == nil || payload.IsAdmin == nil || !*payload.IsAdmin {
+		return nil, models.ErrForbidden
+	}
+
+	update := bson.D{{Key: "$set", Value: bson.D{{Key: "members.$.isAdmin", Value: true}}}}
+
+	err := repo.findOneAndUpdate(ctx, query, update, group)
+	if err != nil {
+		return nil, err
+	}
+
+	return group.FindMember(filter.AccountID), nil
 }
 
 func (repo *groupsRepository) RemoveGroupMember(ctx context.Context, filter *models.OneMemberFilter, accountID string) error {
+	group := &models.Group{}
+	condition := bson.E{Key: "$and", Value: bson.A{
+		// Caller is admin.
+		bson.D{{Key: "members", Value: bson.D{
+			{Key: "$elemMatch", Value: bson.D{
+				{Key: "accountId", Value: accountID},
+				{Key: "isAdmin", Value: true},
+			}},
+		}}},
+		// Target is a regular member.
+		bson.D{{Key: "members", Value: bson.D{
+			{Key: "$elemMatch", Value: bson.D{
+				{Key: "accountId", Value: filter.AccountID},
+				{Key: "isAdmin", Value: false},
+			}},
+		}}},
+	}}
+
+	// Caller is trying to remove themselves from the group.
+	if filter.AccountID == accountID {
+		condition = bson.E{Key: "members.accountId", Value: accountID}
+	}
+
+	query := bson.D{
+		{Key: "_id", Value: filter.GroupID},
+		condition,
+	}
+	update := bson.D{
+		{Key: "$pull", Value: bson.D{
+			{Key: "members", Value: bson.D{
+				{Key: "accountId", Value: filter.AccountID},
+			}},
+		}}}
+
+	err := repo.findOneAndUpdate(ctx, query, update, group)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
