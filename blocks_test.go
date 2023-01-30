@@ -44,6 +44,124 @@ func TestBlocksSuite(t *testing.T) {
 		require.NotNil(t, note.FindBlock(res.Block.Id))
 	})
 
+	t.Run("insert-block-at-end-of-note", func(t *testing.T) {
+		res, err := tu.notes.InsertBlock(maxime.Context, &notesv1.InsertBlockRequest{
+			GroupId: maximeNote.Group.ID,
+			NoteId:  maximeNote.ID,
+			Index:   1,
+			Block: &notesv1.Block{
+				Type: notesv1.Block_TYPE_CODE,
+				Data: &notesv1.Block_Code_{
+					Code: &notesv1.Block_Code{
+						Snippet: "Sample Snippet",
+						Lang:    "Sample Lang",
+					},
+				},
+			},
+		})
+		require.NoError(t, err)
+		require.NotNil(t, res)
+		require.Equal(t, notesv1.Block_TYPE_CODE, res.Block.Type)
+		require.Equal(t, "Sample Lang", res.Block.GetCode().Lang)
+		require.Equal(t, "Sample Snippet", res.Block.GetCode().Snippet)
+		require.NotEmpty(t, res.Block.Id)
+
+		// Make sure the block is stored within the note at the right index.
+		note, err := tu.notesRepository.GetNote(context.TODO(),
+			&models.OneNoteFilter{NoteID: maximeNote.ID, GroupID: maximeNote.Group.ID}, maxime.ID)
+		require.NoError(t, err)
+		require.Len(t, note.Blocks, 2)
+		require.Equal(t, note.Blocks[0].Type, notesv1.Block_TYPE_HEADING_1.String())
+		require.Equal(t, note.Blocks[1].Type, notesv1.Block_TYPE_CODE.String())
+	})
+
+	t.Run("insert-block-at-begining-of-note", func(t *testing.T) {
+		res, err := tu.notes.InsertBlock(maxime.Context, &notesv1.InsertBlockRequest{
+			GroupId: maximeNote.Group.ID,
+			NoteId:  maximeNote.ID,
+			Index:   0,
+			Block: &notesv1.Block{
+				Type: notesv1.Block_TYPE_MATH,
+				Data: &notesv1.Block_Math{
+					Math: "Sample Math",
+				},
+			},
+		})
+		require.NoError(t, err)
+		require.NotNil(t, res)
+		require.Equal(t, notesv1.Block_TYPE_MATH, res.Block.Type)
+		require.Equal(t, "Sample Math", res.Block.GetMath())
+		require.NotEmpty(t, res.Block.Id)
+
+		// Make sure the block is stored within the note at the right index.
+		note, err := tu.notesRepository.GetNote(context.TODO(),
+			&models.OneNoteFilter{NoteID: maximeNote.ID, GroupID: maximeNote.Group.ID}, maxime.ID)
+		require.NoError(t, err)
+		require.Len(t, note.Blocks, 3)
+		require.Equal(t, note.Blocks[0].Type, notesv1.Block_TYPE_MATH.String())
+		require.Equal(t, note.Blocks[1].Type, notesv1.Block_TYPE_HEADING_1.String())
+		require.Equal(t, note.Blocks[2].Type, notesv1.Block_TYPE_CODE.String())
+	})
+
+	t.Run("insert-block-in-middle-of-note", func(t *testing.T) {
+		res, err := tu.notes.InsertBlock(maxime.Context, &notesv1.InsertBlockRequest{
+			GroupId: maximeNote.Group.ID,
+			NoteId:  maximeNote.ID,
+			Index:   1,
+			Block: &notesv1.Block{
+				Type: notesv1.Block_TYPE_HEADING_3,
+				Data: &notesv1.Block_Heading{
+					Heading: "Sample Heading",
+				},
+			},
+		})
+		require.NoError(t, err)
+		require.NotNil(t, res)
+		require.Equal(t, notesv1.Block_TYPE_HEADING_3, res.Block.Type)
+		require.Equal(t, "Sample Heading", res.Block.GetHeading())
+		require.NotEmpty(t, res.Block.Id)
+
+		// Make sure the block is stored within the note at the right index.
+		note, err := tu.notesRepository.GetNote(context.TODO(),
+			&models.OneNoteFilter{NoteID: maximeNote.ID, GroupID: maximeNote.Group.ID}, maxime.ID)
+		require.NoError(t, err)
+		require.Len(t, note.Blocks, 4)
+		require.Equal(t, note.Blocks[0].Type, notesv1.Block_TYPE_MATH.String())
+		require.Equal(t, note.Blocks[1].Type, notesv1.Block_TYPE_HEADING_3.String())
+		require.Equal(t, note.Blocks[2].Type, notesv1.Block_TYPE_HEADING_1.String())
+		require.Equal(t, note.Blocks[3].Type, notesv1.Block_TYPE_CODE.String())
+	})
+
+	t.Run("insert-block-out-of-bounds-should-succeed", func(t *testing.T) {
+		res, err := tu.notes.InsertBlock(maxime.Context, &notesv1.InsertBlockRequest{
+			GroupId: maximeNote.Group.ID,
+			NoteId:  maximeNote.ID,
+			Index:   1000,
+			Block: &notesv1.Block{
+				Type: notesv1.Block_TYPE_HEADING_2,
+				Data: &notesv1.Block_Heading{
+					Heading: "Sample Heading",
+				},
+			},
+		})
+		require.NoError(t, err)
+		require.NotNil(t, res)
+		require.Equal(t, notesv1.Block_TYPE_HEADING_2, res.Block.Type)
+		require.Equal(t, "Sample Heading", res.Block.GetHeading())
+		require.NotEmpty(t, res.Block.Id)
+
+		// Make sure the block is stored within the note at the right index.
+		note, err := tu.notesRepository.GetNote(context.TODO(),
+			&models.OneNoteFilter{NoteID: maximeNote.ID, GroupID: maximeNote.Group.ID}, maxime.ID)
+		require.NoError(t, err)
+		require.Len(t, note.Blocks, 5)
+		require.Equal(t, note.Blocks[0].Type, notesv1.Block_TYPE_MATH.String())
+		require.Equal(t, note.Blocks[1].Type, notesv1.Block_TYPE_HEADING_3.String())
+		require.Equal(t, note.Blocks[2].Type, notesv1.Block_TYPE_HEADING_1.String())
+		require.Equal(t, note.Blocks[3].Type, notesv1.Block_TYPE_CODE.String())
+		require.Equal(t, note.Blocks[4].Type, notesv1.Block_TYPE_HEADING_2.String())
+	})
+
 	t.Run("insert-block-stranger-cannot-insert", func(t *testing.T) {
 		res, err := tu.notes.InsertBlock(gabriel.Context, &notesv1.InsertBlockRequest{
 			GroupId: maximeNote.Group.ID,
@@ -102,8 +220,6 @@ func TestBlocksSuite(t *testing.T) {
 		require.Nil(t, res)
 	})
 
-	// The mongo repository DeleteBlock method is not working.
-	// It doesn't delete the block.
 	t.Run("delete-block", func(t *testing.T) {
 		res, err := tu.notes.DeleteBlock(maxime.Context, &notesv1.DeleteBlockRequest{
 			GroupId: maximeNote.Group.ID,

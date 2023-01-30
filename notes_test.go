@@ -291,4 +291,33 @@ func TestNotesSuite(t *testing.T) {
 		requireErrorHasGRPCCode(t, codes.NotFound, err)
 		require.Nil(t, res)
 	})
+
+	maximeNote := newTestNote(t, tu, edouardGroup, maxime, nil)
+
+	t.Run("delete-note-member-cannot-delete", func(t *testing.T) {
+		res, err := tu.notes.DeleteNote(edouard.Context, &notesv1.DeleteNoteRequest{
+			GroupId: maximeNote.Group.ID,
+			NoteId:  maximeNote.ID,
+		})
+		requireErrorHasGRPCCode(t, codes.NotFound, err)
+		require.Nil(t, res)
+	})
+
+	t.Run("delete-note-stranger-cannot-delete", func(t *testing.T) {
+		res, err := tu.notes.DeleteNote(gabriel.Context, &notesv1.DeleteNoteRequest{
+			GroupId: maximeNote.Group.ID,
+			NoteId:  maximeNote.ID,
+		})
+		requireErrorHasGRPCCode(t, codes.NotFound, err)
+		require.Nil(t, res)
+	})
+
+	t.Run("delete-note", func(t *testing.T) {
+		res, err := tu.notes.DeleteNote(maxime.Context, &notesv1.DeleteNoteRequest{
+			GroupId: maximeNote.Group.ID,
+			NoteId:  maximeNote.ID,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, res)
+	})
 }

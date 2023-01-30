@@ -47,9 +47,9 @@ type testUtils struct {
 }
 
 func newTestUtilsOrDie(t *testing.T) *testUtils {
-	logger, err := zap.NewDevelopment()
-	require.NoError(t, err)
-	// logger := zap.NewNop()
+	// logger, err := zap.NewDevelopment()
+	// require.NoError(t, err)
+	logger := zap.NewNop()
 	auth := &auth.TestService{}
 	ctx, cancel := context.WithTimeout(context.TODO(), time.Second)
 	defer cancel()
