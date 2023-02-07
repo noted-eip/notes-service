@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"notes-service/auth"
+	"notes-service/exports"
 	"notes-service/models"
 	notesv1 "notes-service/protorepo/noted/notes/v1"
 	"notes-service/validators"
@@ -146,7 +147,7 @@ func (srv *notesAPI) ListNotes(ctx context.Context, req *notesv1.ListNotesReques
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	// Check user is part of the group.
+	// Check user is part of the group
 	_, err = srv.groups.GetGroup(ctx, &models.OneGroupFilter{GroupID: req.GroupId}, token.AccountID)
 	if err != nil {
 		return nil, statusFromModelError(err)
@@ -165,13 +166,42 @@ func (srv *notesAPI) ListNotes(ctx context.Context, req *notesv1.ListNotesReques
 	return &notesv1.ListNotesResponse{Notes: protobufNotes}, nil
 }
 
-// var protobufFormatToFormatter = map[notesv1.NoteExportFormat]func(*notesv1.Note) ([]byte, error){
-// 	notesv1.NoteExportFormat_NOTE_EXPORT_FORMAT_MARKDOWN: exports.NoteToMarkdown,
-// 	notesv1.NoteExportFormat_NOTE_EXPORT_FORMAT_PDF:      exports.NoteToPDF,
-// }
-
 func (srv *notesAPI) ExportNote(ctx context.Context, req *notesv1.ExportNoteRequest) (*notesv1.ExportNoteResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "unimplemented")
+	token, err := srv.authenticate(ctx)
+	if err != nil {
+		return nil, status.Error(codes.Unauthenticated, err.Error())
+	}
+
+	err = validators.ValidateExportNoteRequest(req)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	note, err := srv.GetNote(ctx, &notesv1.GetNoteRequest{GroupId: req.GroupId, NoteId: req.NoteId})
+	if err != nil {
+		return nil, statusFromModelError(err)
+	}
+
+	// Check user is part of the group
+	_, err = srv.groups.GetGroup(ctx, &models.OneGroupFilter{GroupID: req.GroupId}, token.AccountID)
+	if err != nil {
+		return nil, statusFromModelError(err)
+	}
+
+	formatter, ok := protobufFormatToFormatter[req.ExportFormat]
+	if !ok {
+		srv.logger.Error("format not recognized", zap.Error(err))
+		return nil, status.Errorf(codes.Internal, "format not recognized : %s", req.ExportFormat.String())
+	}
+
+	fileBytes, err := formatter(note.Note)
+
+	if err != nil {
+		srv.logger.Error("failed to convert note", zap.Error(err))
+		return nil, status.Errorf(codes.Internal, "failed to convert note to: %s", req.ExportFormat.String())
+	}
+
+	return &notesv1.ExportNoteResponse{File: fileBytes}, nil
 }
 
 func (srv *notesAPI) authenticate(ctx context.Context) (*auth.Token, error) {
@@ -181,6 +211,11 @@ func (srv *notesAPI) authenticate(ctx context.Context) (*auth.Token, error) {
 		return nil, status.Error(codes.Unauthenticated, "invalid token")
 	}
 	return token, nil
+}
+
+var protobufFormatToFormatter = map[notesv1.NoteExportFormat]func(*notesv1.Note) ([]byte, error){
+	notesv1.NoteExportFormat_NOTE_EXPORT_FORMAT_MARKDOWN: exports.NoteToMarkdown,
+	notesv1.NoteExportFormat_NOTE_EXPORT_FORMAT_PDF:      exports.NoteToPDF,
 }
 
 func protobufBlocksToModelsBlocks(blocks []*notesv1.Block) []models.NoteBlock {
