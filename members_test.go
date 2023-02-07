@@ -101,20 +101,20 @@ func TestMembersSuite(t *testing.T) {
 		require.Nil(t, res)
 	})
 
-	// t.Run("update-member-admin-cannot-promote-itself", func(t *testing.T) {
-	// 	res, err := tu.groups.UpdateMember(balthi.Context, &v1.UpdateMemberRequest{
-	// 		GroupId:   balthiGroup.ID,
-	// 		AccountId: balthi.ID,
-	// 		Member: &v1.GroupMember{
-	// 			IsAdmin: true,
-	// 		},
-	// 		UpdateMask: &fieldmaskpb.FieldMask{
-	// 			Paths: []string{"is_admin"},
-	// 		},
-	// 	})
-	// 	requireErrorHasGRPCCode(t, codes.NotFound, err)
-	// 	require.Nil(t, res)
-	// })
+	t.Run("update-member-admin-cannot-promote-itself", func(t *testing.T) {
+		res, err := tu.groups.UpdateMember(balthi.Context, &v1.UpdateMemberRequest{
+			GroupId:   balthiGroup.ID,
+			AccountId: balthi.ID,
+			Member: &v1.GroupMember{
+				IsAdmin: true,
+			},
+			UpdateMask: &fieldmaskpb.FieldMask{
+				Paths: []string{"is_admin"},
+			},
+		})
+		requireErrorHasGRPCCode(t, codes.NotFound, err)
+		require.Nil(t, res)
+	})
 
 	t.Run("remove-member-admin-can-leave-group", func(t *testing.T) {
 		res, err := tu.groups.RemoveMember(balthi.Context, &v1.RemoveMemberRequest{
