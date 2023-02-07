@@ -136,7 +136,33 @@ func (srv *notesAPI) DeleteNote(ctx context.Context, req *notesv1.DeleteNoteRequ
 }
 
 func (srv *notesAPI) ListNotes(ctx context.Context, req *notesv1.ListNotesRequest) (*notesv1.ListNotesResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "unimplemented")
+	token, err := srv.authenticate(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	err = validators.ValidateListNoteRequest(req)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	// Check user is part of the group.
+	_, err = srv.groups.GetGroup(ctx, &models.OneGroupFilter{GroupID: req.GroupId}, token.AccountID)
+	if err != nil {
+		return nil, statusFromModelError(err)
+	}
+
+	notes, err := srv.notes.ListNotesInternal(ctx, &models.ManyNotesFilter{AuthorAccountID: req.AuthorAccountId}, &models.ListOptions{Limit: 20, Offset: 0})
+	if err != nil {
+		return nil, statusFromModelError(err)
+	}
+
+	protobufNotes := make([]*notesv1.Note, len(notes))
+	for i := range notes {
+		protobufNotes[i] = modelsNoteToProtobufNote(notes[i])
+	}
+
+	return &notesv1.ListNotesResponse{Notes: protobufNotes}, nil
 }
 
 // var protobufFormatToFormatter = map[notesv1.NoteExportFormat]func(*notesv1.Note) ([]byte, error){

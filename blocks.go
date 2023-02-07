@@ -21,6 +21,12 @@ func (srv *notesAPI) InsertBlock(ctx context.Context, req *notesv1.InsertBlockRe
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
+	// Check user is part of the group.
+	_, err = srv.groups.GetGroup(ctx, &models.OneGroupFilter{GroupID: req.GroupId}, token.AccountID)
+	if err != nil {
+		return nil, statusFromModelError(err)
+	}
+
 	block, err := srv.notes.InsertBlock(ctx,
 		&models.OneNoteFilter{GroupID: req.GroupId, NoteID: req.NoteId},
 		&models.InsertNoteBlockPayload{
@@ -46,6 +52,12 @@ func (srv *notesAPI) UpdateBlock(ctx context.Context, req *notesv1.UpdateBlockRe
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
+	// Check user is part of the group.
+	_, err = srv.groups.GetGroup(ctx, &models.OneGroupFilter{GroupID: req.GroupId}, token.AccountID)
+	if err != nil {
+		return nil, statusFromModelError(err)
+	}
+
 	block, err := srv.notes.UpdateBlock(ctx,
 		&models.OneBlockFilter{GroupID: req.GroupId, NoteID: req.NoteId, BlockID: req.BlockId},
 		&models.UpdateBlockPayload{
@@ -68,6 +80,12 @@ func (srv *notesAPI) DeleteBlock(ctx context.Context, req *notesv1.DeleteBlockRe
 	err = validators.ValidateDeleteBlockRequest(req)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	// Check user is part of the group.
+	_, err = srv.groups.GetGroup(ctx, &models.OneGroupFilter{GroupID: req.GroupId}, token.AccountID)
+	if err != nil {
+		return nil, statusFromModelError(err)
 	}
 
 	err = srv.notes.DeleteBlock(ctx,
