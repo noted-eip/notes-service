@@ -239,15 +239,128 @@ func (repo *groupsRepository) AcceptInvite(ctx context.Context, filter *models.O
 }
 
 func (repo *groupsRepository) DenyInvite(ctx context.Context, filter *models.OneInviteFilter, accountID string) error {
-	return nil
+	group := &models.Group{}
+	query := bson.D{
+		{Key: "_id", Value: filter.GroupID},
+		{Key: "invites", Value: bson.D{
+			{Key: "$elemMatch", Value: bson.D{
+				{Key: "id", Value: filter.InviteID},
+				{Key: "recipientAccountId", Value: accountID}, // idk better be sure u know
+			}},
+		}}}
+
+	update := bson.D{
+		{Key: "$pull", Value: bson.D{
+			{Key: "invites", Value: bson.D{
+				{Key: "id", Value: filter.InviteID},
+				{Key: "recipientAccountId", Value: accountID}, // idk better be sure u know
+			}},
+		}}}
+
+	return repo.findOneAndUpdate(ctx, query, update, group)
 }
 
+func (repo *groupsRepository) GetInvite(ctx context.Context, filter *models.OneInviteFilter, accountID string) (*models.GroupInvite, error) {
+	group := &models.Group{}
+
+	query := bson.D{
+		{Key: "_id", Value: filter.GroupID},
+		{Key: "invites", Value: bson.D{
+			{Key: "$elemMatch", Value: bson.D{
+				{Key: "id", Value: filter.InviteID},
+				{Key: "$or", Value: bson.D{
+					{Key: "recipientAccountId", Value: accountID},
+					{Key: "senderAccountId", Value: accountID}, // idk better be sure u know
+				}},
+			}},
+		}},
+	}
+
+	err := repo.findOne(ctx, query, group)
+	if err != nil {
+		return nil, err
+	}
+	if len(*group.Invites) == 0 {
+		return nil, models.ErrNotFound
+	}
+
+	invites := *group.Invites
+	return &invites[0], nil
+}
+
+// Should be ListInvitesInternal with lo ?
 func (repo *groupsRepository) ListInvites(ctx context.Context, filter *models.ManyInvitesFilter, accountID string) ([]*models.ListInvitesResult, error) {
-	return nil, nil
+	invites := make([]*models.ListInvitesResult, 0)
+
+	mongoFilter := bson.D{}
+	if filter != nil {
+		if *filter.SenderAccountID != "" {
+			mongoFilter = append(mongoFilter, bson.E{Key: "invites.senderAccountID", Value: filter.SenderAccountID})
+		}
+		if *filter.GroupID != "" {
+			mongoFilter = append(mongoFilter, bson.E{Key: "invites.recipientAccountID", Value: filter.RecipientAccountID})
+		}
+		if *filter.GroupID != "" {
+			mongoFilter = append(mongoFilter, bson.E{Key: "groupId", Value: filter.GroupID})
+		}
+	}
+
+	cur, err := repo.coll.Aggregate(ctx, bson.D{
+		{Key: "$match", Value: mongoFilter},
+		{Key: "$project", Value: bson.E{
+			Key: "invites", Value: bson.E{
+				Key: "$filter", Value: bson.D{
+					{Key: "input", Value: "$invites"},
+					{Key: "as", Value: "invite"},
+					{Key: "cond", Value: bson.E{Key: "$and", Value: mongoFilter}},
+				},
+			},
+		}},
+		{Key: "$unwind", Value: "$invites"},
+		{
+			Key: "$project",
+			Value: bson.D{
+				{Key: "recipientAccountId", Value: "$invites.recipientAccountId"},
+				{Key: "senderAccountId", Value: "$invites.senderAccountId"},
+				{Key: "groupId", Value: "$_id"},
+				{Key: "_id", Value: 0},
+			},
+		},
+	},
+	)
+	if err != nil {
+		return nil, repo.mongoFindErrorToModelsError(mongoFilter, &models.ListOptions{}, err)
+	}
+
+	err = cur.All(ctx, &invites)
+	if err != nil {
+		return nil, repo.mongoFindErrorToModelsError(mongoFilter, &models.ListOptions{}, err)
+	}
+
+	return invites, nil
+
 }
 
 func (repo *groupsRepository) RevokeGroupInvite(ctx context.Context, filter *models.OneInviteFilter, accountID string) error {
-	return nil
+	group := &models.Group{}
+	query := bson.D{
+		{Key: "_id", Value: filter.GroupID},
+		{Key: "invites", Value: bson.D{
+			{Key: "$elemMatch", Value: bson.D{
+				{Key: "id", Value: filter.InviteID},
+				{Key: "senderAccountId", Value: accountID}, // idk better be sure u know
+			}},
+		}}}
+
+	update := bson.D{
+		{Key: "$pull", Value: bson.D{
+			{Key: "invites", Value: bson.D{
+				{Key: "id", Value: filter.InviteID},
+				{Key: "senderAccountId", Value: accountID}, // idk better be sure u know
+			}},
+		}}}
+
+	return repo.findOneAndUpdate(ctx, query, update, group)
 }
 
 func (repo *groupsRepository) GetConversation(ctx context.Context, filter *models.OneConversationFilter, accountID string) (*models.GroupConversation, error) {
