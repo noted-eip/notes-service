@@ -52,17 +52,18 @@ require (
 	go.uber.org/atomic v1.7.0 // indirect
 	go.uber.org/multierr v1.6.0 // indirect
 	golang.org/x/crypto v0.0.0-20220622213112-05595931fe9d // indirect
-	golang.org/x/net v0.0.0-20221014081412-f15817d10f9b // indirect
-	golang.org/x/oauth2 v0.0.0-20221014153046-6fdb5e3db783 // indirect
+	golang.org/x/net v0.3.0 // indirect
+	golang.org/x/oauth2 v0.3.0 // indirect
 	golang.org/x/sync v0.1.0 // indirect
-	golang.org/x/sys v0.0.0-20220728004956-3c1f35247d10 // indirect
+	golang.org/x/sys v0.3.0 // indirect
 	golang.org/x/text v0.5.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
-	google.golang.org/genproto v0.0.0-20221206210731-b1a01be3a5f6 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
 require (
 	github.com/go-ozzo/ozzo-validation/v4 v4.3.0
+	github.com/grpc-ecosystem/grpc-gateway/v2 v2.15.0
 	github.com/jaevor/go-nanoid v1.3.0
+	google.golang.org/genproto v0.0.0-20221207170731-23e4bf6bdc37
 )
