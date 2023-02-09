@@ -247,7 +247,7 @@ type GroupsRepository interface {
 	AcceptInvite(ctx context.Context, filter *OneInviteFilter, accountID string) (*GroupMember, error)
 	DenyInvite(ctx context.Context, filter *OneInviteFilter, accountID string) error
 	GetInvite(ctx context.Context, filter *OneInviteFilter, accountID string) (*GroupInvite, error)
-	ListInvites(ctx context.Context, filter *ManyInvitesFilter, accountID string) ([]*ListInvitesResult, error)
+	ListInvites(ctx context.Context, filter *ManyInvitesFilter, lo *ListOptions) ([]*ListInvitesResult, error)
 	RevokeGroupInvite(ctx context.Context, filter *OneInviteFilter, accountID string) error
 
 	// Conversations
