@@ -41,10 +41,10 @@ func (srv *groupsAPI) GetInvite(ctx context.Context, req *notesv1.GetInviteReque
 		return nil, err
 	}
 
-	// err = validators.ValidateSendInviteRequest(req)
-	// if err != nil {
-	// 	return nil, status.Error(codes.InvalidArgument, err.Error())
-	// }
+	err = validators.ValidateGetInviteRequest(req)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
 
 	invite, err := srv.groups.GetInvite(ctx, &models.OneInviteFilter{GroupID: req.GroupId, InviteID: req.InviteId}, token.AccountID)
 	if err != nil {
@@ -79,10 +79,10 @@ func (srv *groupsAPI) DenyInvite(ctx context.Context, req *notesv1.DenyInviteReq
 		return nil, err
 	}
 
-	// err = validators.ValidateDenyInviteRequest(req)
-	// if err != nil {
-	// 	return nil, status.Error(codes.InvalidArgument, err.Error())
-	// }
+	err = validators.ValidateDenyInviteRequest(req)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
 
 	err = srv.groups.DenyInvite(ctx, &models.OneInviteFilter{GroupID: req.GroupId, InviteID: req.InviteId}, token.AccountID)
 	if err != nil {
@@ -98,10 +98,10 @@ func (srv *groupsAPI) RevokeInvite(ctx context.Context, req *notesv1.RevokeInvit
 		return nil, err
 	}
 
-	// err = validators.ValidateDenyInviteRequest(req)
-	// if err != nil {
-	// 	return nil, status.Error(codes.InvalidArgument, err.Error())
-	// }
+	err = validators.ValidateRevokeInviteRequest(req)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
 
 	err = srv.groups.RevokeGroupInvite(ctx, &models.OneInviteFilter{GroupID: req.GroupId, InviteID: req.InviteId}, token.AccountID)
 	if err != nil {
@@ -117,19 +117,31 @@ func (srv *groupsAPI) ListInvites(ctx context.Context, req *notesv1.ListInvitesR
 		return nil, err
 	}
 
-	// err = validators.ValidateDenyInviteRequest(req)
-	// if err != nil {
-	// 	return nil, status.Error(codes.InvalidArgument, err.Error())
-	// }
+	err = validators.ValidateListInviteRequest(req)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
 
-	// Check if token.AccountID is recipient/sender and if not, admin from the GroupID
+	if token.AccountID != req.RecipientAccountId && token.AccountID != req.SenderAccountId && req.GroupId != "" {
+		group, err := srv.groups.GetGroupInternal(ctx, &models.OneGroupFilter{GroupID: req.GroupId})
 
+		if err != nil {
+			return nil, err
+		}
+		member := group.FindMember(token.AccountID)
+		if !member.IsAdmin {
+			return nil, status.Error(codes.PermissionDenied, "forbidden operation")
+		}
+	} else {
+		return nil, status.Error(codes.PermissionDenied, "forbidden operation")
+	}
 	invites, err := srv.groups.ListInvites(ctx,
 		&models.ManyInvitesFilter{
 			SenderAccountID:    &req.SenderAccountId,
 			RecipientAccountID: &req.RecipientAccountId,
 			GroupID:            &req.GroupId,
-		}, &models.ListOptions{
+		},
+		&models.ListOptions{
 			Limit:  int64(req.Limit),
 			Offset: int64(req.Offset),
 		})
