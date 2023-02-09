@@ -122,19 +122,22 @@ func (srv *groupsAPI) ListInvites(ctx context.Context, req *notesv1.ListInvitesR
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	if token.AccountID != req.RecipientAccountId && token.AccountID != req.SenderAccountId && req.GroupId != "" {
-		group, err := srv.groups.GetGroupInternal(ctx, &models.OneGroupFilter{GroupID: req.GroupId})
+	if token.AccountID != req.RecipientAccountId && token.AccountID != req.SenderAccountId {
+		if req.GroupId != "" {
+			group, err := srv.groups.GetGroupInternal(ctx, &models.OneGroupFilter{GroupID: req.GroupId})
 
-		if err != nil {
-			return nil, err
-		}
-		member := group.FindMember(token.AccountID)
-		if member == nil || !member.IsAdmin {
+			if err != nil {
+				return nil, err
+			}
+			member := group.FindMember(token.AccountID)
+			if member == nil || !member.IsAdmin {
+				return nil, status.Error(codes.PermissionDenied, "forbidden operation")
+			}
+		} else {
 			return nil, status.Error(codes.PermissionDenied, "forbidden operation")
 		}
-	} else {
-		return nil, status.Error(codes.PermissionDenied, "forbidden operation")
 	}
+
 	invites, err := srv.groups.ListInvites(ctx,
 		&models.ManyInvitesFilter{
 			SenderAccountID:    &req.SenderAccountId,
@@ -150,7 +153,7 @@ func (srv *groupsAPI) ListInvites(ctx context.Context, req *notesv1.ListInvitesR
 		return nil, statusFromModelError(err)
 	}
 
-	return &notesv1.ListInvitesResponse{Invites: modelsInvitesToProtobufInvites(invites, req.GroupId)}, nil
+	return &notesv1.ListInvitesResponse{Invites: modelsListInviteResponseToProtobufInvites(invites)}, nil
 }
 
 func modelsInviteToProtobufInvite(invite *models.GroupInvite, groupID string) *notesv1.GroupInvite {
@@ -164,11 +167,11 @@ func modelsInviteToProtobufInvite(invite *models.GroupInvite, groupID string) *n
 	}
 }
 
-func modelsInvitesToProtobufInvites(invites []*models.GroupInvite, groupID string) []*notesv1.GroupInvite {
+func modelsListInviteResponseToProtobufInvites(invites []*models.ListInvitesResult) []*notesv1.GroupInvite {
 	protoInvites := make([]*notesv1.GroupInvite, len(invites))
 
 	for i := range invites {
-		protoInvites[i] = modelsInviteToProtobufInvite(invites[i], groupID)
+		protoInvites[i] = modelsInviteToProtobufInvite(&invites[i].GroupInvite, invites[i].GroupID)
 	}
 
 	return protoInvites

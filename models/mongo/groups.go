@@ -288,78 +288,87 @@ func (repo *groupsRepository) GetInvite(ctx context.Context, filter *models.OneI
 	return &invites[0], nil
 }
 
-func (repo *groupsRepository) ListInvites(ctx context.Context, filter *models.ManyInvitesFilter, lo *models.ListOptions) ([]*models.GroupInvite, error) {
-	invites := make([]*models.GroupInvite, 0)
+func (repo *groupsRepository) ListInvites(ctx context.Context, filter *models.ManyInvitesFilter, lo *models.ListOptions) ([]*models.ListInvitesResult, error) {
+	invites := make([]*models.ListInvitesResult, 0)
 
 	mongoDocumentMatch := bson.D{}
 
 	if filter != nil {
 		if *filter.SenderAccountID != "" {
-			mongoDocumentMatch = append(mongoDocumentMatch, bson.E{Key: "invites.senderAccountID", Value: filter.SenderAccountID})
+			mongoDocumentMatch = append(mongoDocumentMatch, bson.E{Key: "invites.senderAccountId", Value: *filter.SenderAccountID})
 		}
 		if *filter.RecipientAccountID != "" {
-			mongoDocumentMatch = append(mongoDocumentMatch, bson.E{Key: "invites.recipientAccountID", Value: filter.RecipientAccountID})
+			mongoDocumentMatch = append(mongoDocumentMatch, bson.E{Key: "invites.recipientAccountId", Value: *filter.RecipientAccountID})
 		}
 		if *filter.GroupID != "" {
-			mongoDocumentMatch = append(mongoDocumentMatch, bson.E{Key: "_id", Value: filter.GroupID})
+			mongoDocumentMatch = append(mongoDocumentMatch, bson.E{Key: "_id", Value: *filter.GroupID})
 		}
 	}
 
 	idToMongoCondition := func(id *string, varIdentifier string) interface{} {
 		if *id != "" {
-			return bson.M{"$eq": []interface{}{varIdentifier, id}}
+			return bson.D{{Key: "$eq", Value: []interface{}{varIdentifier, id}}}
 		}
 		return "true"
 	}
 
-	mongoFilter := bson.M{
-		"$and": []interface{}{
-			idToMongoCondition(filter.SenderAccountID, "$$invite.senderAccountId"),
-			idToMongoCondition(filter.RecipientAccountID, "$$invite.recipientAccountId"),
+	invitesArrayFilterCondition := bson.D{
+		{Key: "$and",
+			Value: bson.A{
+				idToMongoCondition(filter.SenderAccountID, "$$invite.senderAccountId"),
+				idToMongoCondition(filter.RecipientAccountID, "$$invite.recipientAccountId"),
+			},
 		},
 	}
 
-	aggregateQuery := bson.D{
-		// Match only the documents that match the invites filters
-		{Key: "$match", Value: mongoDocumentMatch},
-		// In those documents, filter the invites array to have only the invites that matches the filter
-		{Key: "$project", Value: bson.E{
-			Key: "invites", Value: bson.E{
-				Key: "$filter", Value: bson.D{
+	// Match only groups that matches the filter (which match the invites that were asked for)
+	matchQuery := bson.D{{Key: "$match", Value: mongoDocumentMatch}}
+
+	// In those documents, filter the invites array to have only the invites that matches the filter
+	filterQuery := bson.D{{
+		Key: "$project", Value: bson.D{
+			{Key: "invites", Value: bson.D{
+				{Key: "$filter", Value: bson.D{
 					{Key: "input", Value: "$invites"},
 					{Key: "as", Value: "invite"},
-					{Key: "cond", Value: mongoFilter},
-				},
+					{Key: "cond", Value: invitesArrayFilterCondition},
+				}},
 			},
-		}},
-		// Separate every invite in it's specific array element
-		{
-			Key:   "$unwind",
-			Value: "$invites",
-		},
-		// Offset and Limit
-		{
-			Key:   "$skip",
-			Value: lo.Offset,
-		},
-		{
-			Key:   "$limit",
-			Value: lo.Limit,
-		},
+			}}}}
 
-		// Reorder every variables to have a concise element
-		{
-			Key: "$project",
-			Value: bson.D{
-				{Key: "recipientAccountId", Value: "$invites.recipientAccountId"},
-				{Key: "senderAccountId", Value: "$invites.senderAccountId"},
-				{Key: "groupId", Value: "$_id"},
-				{Key: "_id", Value: 0},
-			},
-		},
+	// Separate every invite in it's specific array element
+	unwindQuery := bson.D{{
+		Key:   "$unwind",
+		Value: "$invites",
+	}}
+
+	// Offset and Limit
+	if lo.Limit == 0 { // NOTE: Don't know if I should put this in the endpoint code
+		lo.Limit = 20
 	}
 
-	cur, err := repo.coll.Aggregate(ctx, aggregateQuery)
+	paginationSkip := bson.D{{
+		Key:   "$skip",
+		Value: lo.Offset,
+	}}
+	paginationLimit := bson.D{{
+		Key:   "$limit",
+		Value: lo.Limit,
+	}}
+
+	// Reorder every variables to have a concise a pertinent element
+	projectionQuery := bson.D{{
+		Key: "$project",
+		Value: bson.D{
+			{Key: "recipientAccountId", Value: "$invites.recipientAccountId"},
+			{Key: "senderAccountId", Value: "$invites.senderAccountId"},
+			{Key: "id", Value: "$invites.id"},
+			{Key: "groupId", Value: "$_id"},
+			{Key: "_id", Value: 0},
+		},
+	}}
+
+	cur, err := repo.coll.Aggregate(ctx, mongo.Pipeline{matchQuery, filterQuery, unwindQuery, paginationSkip, paginationLimit, projectionQuery})
 	if err != nil {
 		return nil, repo.mongoFindErrorToModelsError(mongoDocumentMatch, lo, err)
 	}
@@ -379,7 +388,7 @@ func (repo *groupsRepository) RevokeGroupInvite(ctx context.Context, filter *mod
 		{Key: "invites", Value: bson.D{
 			{Key: "$elemMatch", Value: bson.D{
 				{Key: "id", Value: filter.InviteID},
-				{Key: "senderAccountId", Value: accountID}, // idk better be sure u know
+				{Key: "senderAccountId", Value: accountID},
 			}},
 		}}}
 
@@ -387,7 +396,7 @@ func (repo *groupsRepository) RevokeGroupInvite(ctx context.Context, filter *mod
 		{Key: "$pull", Value: bson.D{
 			{Key: "invites", Value: bson.D{
 				{Key: "id", Value: filter.InviteID},
-				{Key: "senderAccountId", Value: accountID}, // idk better be sure u know
+				{Key: "senderAccountId", Value: accountID},
 			}},
 		}}}
 

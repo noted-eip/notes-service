@@ -81,4 +81,80 @@ func TestInvitesSuite(t *testing.T) {
 		require.Equal(t, getGroupRes.Group.Members[1].AccountId, dave.ID) // idk man not gonna do loops and shit
 	})
 
+	t.Run("list-invite-extensive", func(t *testing.T) {
+		randomUserOne := newTestAccount(t, tu)
+		randomUserTwo := newTestAccount(t, tu)
+		randomUserThree := newTestAccount(t, tu)
+
+		accountList := [3]*testAccount{randomUserOne, randomUserTwo, randomUserThree}
+		var inviteList [3]*v1.GroupInvite
+
+		// Send invites two the three new accounts
+		for idx, account := range accountList {
+			sendInviteRes, err := tu.groups.SendInvite(dave.Context, &v1.SendInviteRequest{GroupId: kerchakGroup.ID, RecipientAccountId: account.ID})
+			require.NoError(t, err)
+			require.NotNil(t, sendInviteRes)
+			inviteList[idx] = sendInviteRes.Invite
+		}
+
+		// List from dave's context
+		invitesList, err := tu.groups.ListInvites(dave.Context, &v1.ListInvitesRequest{SenderAccountId: dave.ID, GroupId: kerchakGroup.ID})
+		require.NoError(t, err)
+		require.NotNil(t, invitesList)
+
+		// Len and senderID check
+		require.Equal(t, len(invitesList.Invites), 3)
+		for _, invite := range invitesList.Invites {
+			require.Equal(t, invite.SenderAccountId, dave.ID)
+		}
+
+		// Test on an invited account, basic check on the returned list (len and ids)
+		invitesList, err = tu.groups.ListInvites(randomUserOne.Context, &v1.ListInvitesRequest{RecipientAccountId: randomUserOne.ID})
+		require.NoError(t, err)
+		require.Equal(t, len(invitesList.Invites), 1)
+		require.Equal(t, invitesList.Invites[0].SenderAccountId, dave.ID)
+		require.Equal(t, invitesList.Invites[0].RecipientAccountId, randomUserOne.ID)
+		require.Equal(t, invitesList.Invites[0].GroupId, kerchakGroup.ID)
+
+		// Test that you can't fetch another person invites
+		invitesList, err = tu.groups.ListInvites(randomUserTwo.Context, &v1.ListInvitesRequest{RecipientAccountId: randomUserOne.ID})
+		require.Error(t, err)
+		require.Nil(t, invitesList)
+
+		// Accept every invite and show that the list of dave's invites is now 0
+		for idx, invite := range inviteList {
+			curAccount := accountList[idx]
+
+			acceptInviteRes, err := tu.groups.AcceptInvite(curAccount.Context, &v1.AcceptInviteRequest{GroupId: kerchakGroup.ID, InviteId: invite.Id})
+			require.NoError(t, err)
+			require.NotNil(t, acceptInviteRes)
+		}
+
+		// List from dave's context
+		invitesList, err = tu.groups.ListInvites(dave.Context, &v1.ListInvitesRequest{SenderAccountId: dave.ID, GroupId: kerchakGroup.ID})
+		require.NoError(t, err)
+		require.NotNil(t, invitesList)
+		require.Equal(t, len(invitesList.Invites), 0)
+	})
+
+	t.Run("revoke-invite", func(t *testing.T) {
+		randomUserOne := newTestAccount(t, tu)
+		sendInviteRes, err := tu.groups.SendInvite(dave.Context, &v1.SendInviteRequest{GroupId: kerchakGroup.ID, RecipientAccountId: randomUserOne.ID})
+		require.NoError(t, err)
+		require.NotNil(t, sendInviteRes)
+
+		invite := sendInviteRes.Invite
+
+		revokeRes, err := tu.groups.RevokeInvite(dave.Context, &v1.RevokeInviteRequest{
+			GroupId:  kerchakGroup.ID,
+			InviteId: invite.Id,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, revokeRes)
+
+		getInviteRes, err := tu.groups.GetInvite(dave.Context, &v1.GetInviteRequest{GroupId: kerchakGroup.ID, InviteId: invite.Id})
+		require.Error(t, err)
+		require.Nil(t, getInviteRes)
+	})
+
 }
