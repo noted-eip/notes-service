@@ -129,7 +129,7 @@ func (srv *groupsAPI) ListInvites(ctx context.Context, req *notesv1.ListInvitesR
 			return nil, err
 		}
 		member := group.FindMember(token.AccountID)
-		if !member.IsAdmin {
+		if member == nil || !member.IsAdmin {
 			return nil, status.Error(codes.PermissionDenied, "forbidden operation")
 		}
 	} else {
