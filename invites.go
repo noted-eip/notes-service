@@ -36,7 +36,22 @@ func (srv *groupsAPI) SendInvite(ctx context.Context, req *notesv1.SendInviteReq
 }
 
 func (srv *groupsAPI) GetInvite(ctx context.Context, req *notesv1.GetInviteRequest) (*notesv1.GetInviteResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "unimplemented")
+	token, err := srv.authenticate(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// err = validators.ValidateSendInviteRequest(req)
+	// if err != nil {
+	// 	return nil, status.Error(codes.InvalidArgument, err.Error())
+	// }
+
+	invite, err := srv.groups.GetInvite(ctx, &models.OneInviteFilter{GroupID: req.GroupId, InviteID: req.InviteId}, token.AccountID)
+	if err != nil {
+		return nil, statusFromModelError(err)
+	}
+
+	return &notesv1.GetInviteResponse{Invite: modelsInviteToProtobufInvite(invite, req.GroupId)}, nil
 }
 
 func (srv *groupsAPI) AcceptInvite(ctx context.Context, req *notesv1.AcceptInviteRequest) (*notesv1.AcceptInviteResponse, error) {
@@ -59,15 +74,71 @@ func (srv *groupsAPI) AcceptInvite(ctx context.Context, req *notesv1.AcceptInvit
 }
 
 func (srv *groupsAPI) DenyInvite(ctx context.Context, req *notesv1.DenyInviteRequest) (*notesv1.DenyInviteResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "unimplemented")
+	token, err := srv.authenticate(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// err = validators.ValidateDenyInviteRequest(req)
+	// if err != nil {
+	// 	return nil, status.Error(codes.InvalidArgument, err.Error())
+	// }
+
+	err = srv.groups.DenyInvite(ctx, &models.OneInviteFilter{GroupID: req.GroupId, InviteID: req.InviteId}, token.AccountID)
+	if err != nil {
+		return nil, statusFromModelError(err)
+	}
+
+	return &notesv1.DenyInviteResponse{}, nil
 }
 
 func (srv *groupsAPI) RevokeInvite(ctx context.Context, req *notesv1.RevokeInviteRequest) (*notesv1.RevokeInviteResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "unimplemented")
+	token, err := srv.authenticate(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// err = validators.ValidateDenyInviteRequest(req)
+	// if err != nil {
+	// 	return nil, status.Error(codes.InvalidArgument, err.Error())
+	// }
+
+	err = srv.groups.RevokeGroupInvite(ctx, &models.OneInviteFilter{GroupID: req.GroupId, InviteID: req.InviteId}, token.AccountID)
+	if err != nil {
+		return nil, statusFromModelError(err)
+	}
+
+	return &notesv1.RevokeInviteResponse{}, nil
 }
 
 func (srv *groupsAPI) ListInvites(ctx context.Context, req *notesv1.ListInvitesRequest) (*notesv1.ListInvitesResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "unimplemented")
+	token, err := srv.authenticate(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// err = validators.ValidateDenyInviteRequest(req)
+	// if err != nil {
+	// 	return nil, status.Error(codes.InvalidArgument, err.Error())
+	// }
+
+	// Check if token.AccountID is recipient/sender and if not, admin from the GroupID
+
+	invites, err := srv.groups.ListInvites(ctx,
+		&models.ManyInvitesFilter{
+			SenderAccountID:    &req.SenderAccountId,
+			RecipientAccountID: &req.RecipientAccountId,
+			GroupID:            &req.GroupId,
+		}, &models.ListOptions{
+			Limit:  int64(req.Limit),
+			Offset: int64(req.Offset),
+		})
+
+	if err != nil {
+		return nil, statusFromModelError(err)
+	}
+
+	return &notesv1.ListInvitesResponse{Invites: modelsInvitesToProtobufInvites(invites, req.GroupId)}, nil
 }
 
 func modelsInviteToProtobufInvite(invite *models.GroupInvite, groupID string) *notesv1.GroupInvite {
@@ -79,4 +150,14 @@ func modelsInviteToProtobufInvite(invite *models.GroupInvite, groupID string) *n
 		CreatedAt:          timestamppb.New(invite.CreatedAt),
 		ValidUntil:         timestamppb.New(invite.ValidUntil),
 	}
+}
+
+func modelsInvitesToProtobufInvites(invites []*models.GroupInvite, groupID string) []*notesv1.GroupInvite {
+	protoInvites := make([]*notesv1.GroupInvite, len(invites))
+
+	for i := range invites {
+		protoInvites[i] = modelsInviteToProtobufInvite(invites[i], groupID)
+	}
+
+	return protoInvites
 }

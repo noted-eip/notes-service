@@ -288,8 +288,8 @@ func (repo *groupsRepository) GetInvite(ctx context.Context, filter *models.OneI
 	return &invites[0], nil
 }
 
-func (repo *groupsRepository) ListInvites(ctx context.Context, filter *models.ManyInvitesFilter, lo *models.ListOptions) ([]*models.ListInvitesResult, error) {
-	invites := make([]*models.ListInvitesResult, 0)
+func (repo *groupsRepository) ListInvites(ctx context.Context, filter *models.ManyInvitesFilter, lo *models.ListOptions) ([]*models.GroupInvite, error) {
+	invites := make([]*models.GroupInvite, 0)
 
 	mongoDocumentMatch := bson.D{}
 
