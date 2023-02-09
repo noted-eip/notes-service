@@ -268,9 +268,9 @@ func (repo *groupsRepository) GetInvite(ctx context.Context, filter *models.OneI
 		{Key: "invites", Value: bson.D{
 			{Key: "$elemMatch", Value: bson.D{
 				{Key: "id", Value: filter.InviteID},
-				{Key: "$or", Value: bson.D{
-					{Key: "recipientAccountId", Value: accountID},
-					{Key: "senderAccountId", Value: accountID}, // idk better be sure u know
+				{Key: "$or", Value: bson.A{
+					bson.D{{Key: "recipientAccountId", Value: accountID}},
+					bson.D{{Key: "senderAccountId", Value: accountID}}, // idk better be sure u know
 				}},
 			}},
 		}},
