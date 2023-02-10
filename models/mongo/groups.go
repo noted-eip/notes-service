@@ -245,7 +245,7 @@ func (repo *groupsRepository) DenyInvite(ctx context.Context, filter *models.One
 		{Key: "invites", Value: bson.D{
 			{Key: "$elemMatch", Value: bson.D{
 				{Key: "id", Value: filter.InviteID},
-				{Key: "recipientAccountId", Value: accountID}, // idk better be sure u know
+				{Key: "recipientAccountId", Value: accountID},
 			}},
 		}}}
 
