@@ -140,14 +140,12 @@ func (srv *groupsAPI) ListInvites(ctx context.Context, req *notesv1.ListInvitesR
 
 	invites, err := srv.groups.ListInvites(ctx,
 		&models.ManyInvitesFilter{
-			SenderAccountID:    &req.SenderAccountId,
-			RecipientAccountID: &req.RecipientAccountId,
-			GroupID:            &req.GroupId,
+			SenderAccountID:    req.SenderAccountId,
+			RecipientAccountID: req.RecipientAccountId,
+			GroupID:            req.GroupId,
 		},
-		&models.ListOptions{
-			Limit:  int64(req.Limit),
-			Offset: int64(req.Offset),
-		})
+		listOptionsFromLimitOffset(req.Limit, req.Offset),
+	)
 
 	if err != nil {
 		return nil, statusFromModelError(err)

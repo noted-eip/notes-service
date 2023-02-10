@@ -166,11 +166,11 @@ type ManyGroupsFilter struct {
 
 type ManyInvitesFilter struct {
 	// (Optional) List all invites sent by this user.
-	SenderAccountID *string
+	SenderAccountID string
 	// (Optional) List all invites destined to this user.
-	RecipientAccountID *string
+	RecipientAccountID string
 	// (Optional) List all invites in this group.
-	GroupID *string
+	GroupID string
 }
 
 type CreateGroupPayload struct {

@@ -265,14 +265,26 @@ func (repo *groupsRepository) GetInvite(ctx context.Context, filter *models.OneI
 
 	query := bson.D{
 		{Key: "_id", Value: filter.GroupID},
-		{Key: "invites", Value: bson.D{
-			{Key: "$elemMatch", Value: bson.D{
-				{Key: "id", Value: filter.InviteID},
-				{Key: "$or", Value: bson.A{
-					bson.D{{Key: "recipientAccountId", Value: accountID}},
-					bson.D{{Key: "senderAccountId", Value: accountID}}, // idk better be sure u know
+		{Key: "$or", Value: bson.A{
+			bson.D{
+				{Key: "invites", Value: bson.D{
+					{Key: "$elemMatch", Value: bson.D{
+						{Key: "id", Value: filter.InviteID},
+						{Key: "$or", Value: bson.A{
+							bson.D{{Key: "recipientAccountId", Value: accountID}},
+							bson.D{{Key: "senderAccountId", Value: accountID}}, // idk better be sure u know
+						}},
+					}},
 				}},
-			}},
+			},
+			bson.D{
+				{Key: "members", Value: bson.D{
+					{Key: "$elemMatch", Value: bson.D{
+						{Key: "accountId", Value: accountID},
+						{Key: "isAdmin", Value: true},
+					}},
+				}},
+			},
 		}},
 	}
 
@@ -284,8 +296,7 @@ func (repo *groupsRepository) GetInvite(ctx context.Context, filter *models.OneI
 		return nil, models.ErrNotFound
 	}
 
-	invites := *group.Invites
-	return &invites[0], nil
+	return group.FindInvite(filter.InviteID), nil
 }
 
 func (repo *groupsRepository) ListInvites(ctx context.Context, filter *models.ManyInvitesFilter, lo *models.ListOptions) ([]*models.ListInvitesResult, error) {
@@ -294,14 +305,14 @@ func (repo *groupsRepository) ListInvites(ctx context.Context, filter *models.Ma
 	mongoDocumentMatch := bson.D{}
 
 	if filter != nil {
-		if *filter.SenderAccountID != "" {
-			mongoDocumentMatch = append(mongoDocumentMatch, bson.E{Key: "invites.senderAccountId", Value: *filter.SenderAccountID})
+		if filter.SenderAccountID != "" {
+			mongoDocumentMatch = append(mongoDocumentMatch, bson.E{Key: "invites.senderAccountId", Value: filter.SenderAccountID})
 		}
-		if *filter.RecipientAccountID != "" {
-			mongoDocumentMatch = append(mongoDocumentMatch, bson.E{Key: "invites.recipientAccountId", Value: *filter.RecipientAccountID})
+		if filter.RecipientAccountID != "" {
+			mongoDocumentMatch = append(mongoDocumentMatch, bson.E{Key: "invites.recipientAccountId", Value: filter.RecipientAccountID})
 		}
-		if *filter.GroupID != "" {
-			mongoDocumentMatch = append(mongoDocumentMatch, bson.E{Key: "_id", Value: *filter.GroupID})
+		if filter.GroupID != "" {
+			mongoDocumentMatch = append(mongoDocumentMatch, bson.E{Key: "_id", Value: filter.GroupID})
 		}
 	}
 
@@ -315,8 +326,8 @@ func (repo *groupsRepository) ListInvites(ctx context.Context, filter *models.Ma
 	invitesArrayFilterCondition := bson.D{
 		{Key: "$and",
 			Value: bson.A{
-				idToMongoCondition(filter.SenderAccountID, "$$invite.senderAccountId"),
-				idToMongoCondition(filter.RecipientAccountID, "$$invite.recipientAccountId"),
+				idToMongoCondition(&filter.SenderAccountID, "$$invite.senderAccountId"),
+				idToMongoCondition(&filter.RecipientAccountID, "$$invite.recipientAccountId"),
 			},
 		},
 	}
@@ -342,12 +353,7 @@ func (repo *groupsRepository) ListInvites(ctx context.Context, filter *models.Ma
 		Value: "$invites",
 	}}
 
-	// Offset and Limit
-	if lo.Limit == 0 { // NOTE: Don't know if I should put this in the endpoint code
-		lo.Limit = 20
-	}
-
-	paginationSkip := bson.D{{
+	paginationSkip := bson.D{{ // NOTE: Not putting it in repo.aggregate because it can reduce the work done after, like in this example, we skip and offset before projecting
 		Key:   "$skip",
 		Value: lo.Offset,
 	}}
@@ -368,12 +374,7 @@ func (repo *groupsRepository) ListInvites(ctx context.Context, filter *models.Ma
 		},
 	}}
 
-	cur, err := repo.coll.Aggregate(ctx, mongo.Pipeline{matchQuery, filterQuery, unwindQuery, paginationSkip, paginationLimit, projectionQuery})
-	if err != nil {
-		return nil, repo.mongoFindErrorToModelsError(mongoDocumentMatch, lo, err)
-	}
-
-	err = cur.All(ctx, &invites)
+	err := repo.aggregate(ctx, mongo.Pipeline{matchQuery, filterQuery, unwindQuery, paginationSkip, paginationLimit, projectionQuery}, &invites)
 	if err != nil {
 		return nil, repo.mongoFindErrorToModelsError(mongoDocumentMatch, lo, err)
 	}

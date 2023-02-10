@@ -16,6 +16,22 @@ type repository struct {
 	newUUID func() string
 }
 
+func (repo *repository) aggregate(ctx context.Context, pipeline interface{}, result interface{}, opts ...*options.AggregateOptions) error {
+	repo.logger.Debug("aggregate", zap.Any("pipeline", pipeline))
+
+	cur, err := repo.coll.Aggregate(ctx, pipeline, opts...)
+	if err != nil {
+		return repo.mongoAggregateErrorToModelsError(pipeline, err)
+	}
+
+	cur.All(ctx, result)
+	if err != nil {
+		return repo.mongoAggregateErrorToModelsError(pipeline, err)
+	}
+
+	return nil
+}
+
 func (repo *repository) findOneAndUpdate(ctx context.Context, query interface{}, update interface{}, result interface{}, opts ...*options.FindOneAndUpdateOptions) error {
 	repo.logger.Debug("find one and update", zap.Any("query", query), zap.Any("update", update))
 	opts = append(opts, options.FindOneAndUpdate().SetReturnDocument(options.After))
@@ -75,6 +91,14 @@ func (repo *repository) find(ctx context.Context, query interface{}, results int
 	}
 
 	return nil
+}
+
+func (repo *repository) mongoAggregateErrorToModelsError(query interface{}, err error) error {
+	if errors.Is(err, mongo.ErrNoDocuments) {
+		return models.ErrNotFound
+	}
+	repo.logger.Error("aggregate failed", zap.Any("query", query), zap.Error(err))
+	return models.ErrUnknown
 }
 
 func (repo *repository) mongoFindOneErrorToModelsError(query interface{}, err error) error {
