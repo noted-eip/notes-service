@@ -41,6 +41,6 @@ func ValidateRevokeInviteRequest(req *notesv1.RevokeInviteRequest) error {
 	)
 }
 
-func ValidateListInviteRequest(req *notesv1.ListInvitesRequest) error {
+func ValidateListInvitesRequest(req *notesv1.ListInvitesRequest) error {
 	return validation.ValidateStruct(req)
 }
