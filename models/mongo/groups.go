@@ -174,7 +174,7 @@ func (repo *groupsRepository) SendInvite(ctx context.Context, filter *models.One
 		{Key: "members.accountId", Value: accountID},
 		// Recipient is not a member.
 		{Key: "members.accountId", Value: bson.D{
-			{Key: "$ne", Value: filter.GroupID},
+			{Key: "$ne", Value: payload.RecipientAccountID},
 		}},
 		// No duplicate invites.
 		{Key: "invites", Value: bson.D{
@@ -380,18 +380,26 @@ func (repo *groupsRepository) RevokeGroupInvite(ctx context.Context, filter *mod
 	group := &models.Group{}
 	query := bson.D{
 		{Key: "_id", Value: filter.GroupID},
-		{Key: "invites", Value: bson.D{
-			{Key: "$elemMatch", Value: bson.D{
-				{Key: "id", Value: filter.InviteID},
-				{Key: "senderAccountId", Value: accountID},
-			}},
-		}}}
+		{Key: "$or", Value: bson.A{
+			bson.D{{Key: "invites", Value: bson.D{
+				{Key: "$elemMatch", Value: bson.D{
+					{Key: "id", Value: filter.InviteID},
+					{Key: "senderAccountId", Value: accountID},
+				}},
+			}}},
+			bson.D{{Key: "members", Value: bson.D{
+				{Key: "$elemMatch", Value: bson.D{
+					{Key: "accountId", Value: accountID},
+					{Key: "isAdmin", Value: true},
+				}},
+			}}},
+		}},
+	}
 
 	update := bson.D{
 		{Key: "$pull", Value: bson.D{
 			{Key: "invites", Value: bson.D{
 				{Key: "id", Value: filter.InviteID},
-				{Key: "senderAccountId", Value: accountID},
 			}},
 		}}}
 

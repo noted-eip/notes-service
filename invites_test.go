@@ -19,7 +19,11 @@ func TestInvitesSuite(t *testing.T) {
 	dave := newTestAccount(t, tu)
 	kerchakGroup := newTestGroup(t, tu, kerchak, member)
 
-	// TODO: t.Run("stranger-cannot-send-invite", func(t *testing.T) {})
+	t.Run("stranger-cannot-send-invite", func(t *testing.T) {
+		res, err := tu.groups.SendInvite(stranger.Context, &v1.SendInviteRequest{GroupId: kerchakGroup.ID, RecipientAccountId: dave.ID})
+		requireErrorHasGRPCCode(t, codes.NotFound, err)
+		require.Nil(t, res)
+	})
 
 	var protoInviteSlot *v1.GroupInvite
 
@@ -39,11 +43,23 @@ func TestInvitesSuite(t *testing.T) {
 		protoInviteSlot = res.Invite
 	})
 
-	// TODO: t.Run("member-cannot-send-invite-to-self", func(t *testing.T) {})
+	t.Run("member-cannot-send-invite-to-self", func(t *testing.T) {
+		res, err := tu.groups.SendInvite(member.Context, &v1.SendInviteRequest{GroupId: kerchakGroup.ID, RecipientAccountId: member.ID})
+		requireErrorHasGRPCCode(t, codes.NotFound, err)
+		require.Nil(t, res)
+	})
 
-	// TODO: t.Run("member-cannot-send-invite-to-member", func(t *testing.T) {})
+	t.Run("member-cannot-send-invite-to-member", func(t *testing.T) {
+		res, err := tu.groups.SendInvite(kerchak.Context, &v1.SendInviteRequest{GroupId: kerchakGroup.ID, RecipientAccountId: member.ID})
+		requireErrorHasGRPCCode(t, codes.NotFound, err)
+		require.Nil(t, res)
+	})
 
-	// TODO: t.Run("member-cannot-send-duplicate-invite", func(t *testing.T) {})
+	t.Run("member-cannot-send-duplicate-invite", func(t *testing.T) {
+		res, err := tu.groups.SendInvite(kerchak.Context, &v1.SendInviteRequest{GroupId: kerchakGroup.ID, RecipientAccountId: dave.ID})
+		requireErrorHasGRPCCode(t, codes.NotFound, err)
+		require.Nil(t, res)
+	})
 
 	t.Run("stranger-cannot-get-invite", func(t *testing.T) {
 		res, err := tu.groups.GetInvite(stranger.Context, &v1.GetInviteRequest{GroupId: kerchakGroup.ID, InviteId: protoInviteSlot.Id})
@@ -75,9 +91,17 @@ func TestInvitesSuite(t *testing.T) {
 		require.Nil(t, res)
 	})
 
-	// TODO: t.Run("stranger-cannot-deny-invite", func(t *testing.T) {})
+	t.Run("stranger-cannot-deny-invite", func(t *testing.T) {
+		res, err := tu.groups.DenyInvite(stranger.Context, &v1.DenyInviteRequest{GroupId: kerchakGroup.ID, InviteId: protoInviteSlot.Id})
+		requireErrorHasGRPCCode(t, codes.NotFound, err)
+		require.Nil(t, res)
+	})
 
-	// TODO: t.Run("member-cannot-deny-invite", func(t *testing.T) {})
+	t.Run("member-cannot-deny-invite", func(t *testing.T) {
+		res, err := tu.groups.DenyInvite(member.Context, &v1.DenyInviteRequest{GroupId: kerchakGroup.ID, InviteId: protoInviteSlot.Id})
+		requireErrorHasGRPCCode(t, codes.NotFound, err)
+		require.Nil(t, res)
+	})
 
 	t.Run("recipient-can-deny-invite", func(t *testing.T) {
 		res, err := tu.groups.DenyInvite(dave.Context, &v1.DenyInviteRequest{GroupId: kerchakGroup.ID, InviteId: protoInviteSlot.Id})
@@ -98,11 +122,23 @@ func TestInvitesSuite(t *testing.T) {
 
 	kerchakDaveInvite := kerchak.SendInvite(t, tu, dave, kerchakGroup)
 
-	// TODO: t.Run("stranger-cannot-accept-invite", func(t *testing.T) {})
+	t.Run("stranger-cannot-accept-invite", func(t *testing.T) {
+		res, err := tu.groups.AcceptInvite(stranger.Context, &v1.AcceptInviteRequest{GroupId: kerchakGroup.ID, InviteId: kerchakDaveInvite.ID})
+		requireErrorHasGRPCCode(t, codes.NotFound, err)
+		require.Nil(t, res)
+	})
 
-	// TODO: t.Run("sender-cannot-accept-invite", func(t *testing.T) {})
+	t.Run("sender-cannot-accept-invite", func(t *testing.T) {
+		res, err := tu.groups.AcceptInvite(kerchak.Context, &v1.AcceptInviteRequest{GroupId: kerchakGroup.ID, InviteId: kerchakDaveInvite.ID})
+		requireErrorHasGRPCCode(t, codes.NotFound, err)
+		require.Nil(t, res)
+	})
 
-	// TODO: t.Run("member-cannot-accept-invite", func(t *testing.T) {}})
+	t.Run("member-cannot-accept-invite", func(t *testing.T) {
+		res, err := tu.groups.AcceptInvite(member.Context, &v1.AcceptInviteRequest{GroupId: kerchakGroup.ID, InviteId: kerchakDaveInvite.ID})
+		requireErrorHasGRPCCode(t, codes.NotFound, err)
+		require.Nil(t, res)
+	})
 
 	t.Run("recipient-can-accept-invite", func(t *testing.T) {
 		res, err := tu.groups.AcceptInvite(dave.Context, &v1.AcceptInviteRequest{GroupId: kerchakGroup.ID, InviteId: kerchakDaveInvite.ID})
@@ -135,24 +171,38 @@ func TestInvitesSuite(t *testing.T) {
 		require.Nil(t, group.FindInviteByAccountTuple(dave.ID, jhon.ID))
 	})
 
-	// TODO: t.Run("list-invites-is-correctly-paginated", func(t *testing.T) {})
-
-	// TODO: t.Run("user-can-list-invites-they-sent", func(t *testing.T) {})
-
+	// Presets for ListInvites unit-tests
+	// Creates 3 new users, one group owned by dave
 	randomUserOne := newTestAccount(t, tu)
 	randomUserTwo := newTestAccount(t, tu)
 	randomUserThree := newTestAccount(t, tu)
+	daveGroup := newTestGroup(t, tu, dave)
+	// Send to the 3 new users an invite to kerchakGroup (by dave)
 	testAccountSlots := [3]*testAccount{randomUserOne, randomUserTwo, randomUserThree}
 	for _, account := range testAccountSlots {
 		dave.SendInvite(t, tu, account, kerchakGroup)
 	}
+	// Sends randomUserOne an invite for dave's group (by dave)
+	dave.SendInvite(t, tu, randomUserOne, daveGroup)
+
+	t.Run("user-can-list-invites-they-sent", func(t *testing.T) {
+		res, err := tu.groups.ListInvites(dave.Context, &v1.ListInvitesRequest{SenderAccountId: dave.ID})
+		require.NoError(t, err)
+		require.NotNil(t, res)
+
+		// Check all invites are returned. The 3 sent on kerchak group, and the one on Dave's group
+		require.Equal(t, len(res.Invites), 4)
+		for _, invite := range res.Invites {
+			require.Equal(t, invite.SenderAccountId, dave.ID)
+		}
+	})
 
 	t.Run("member-can-list-invites-they-sent-in-group", func(t *testing.T) {
 		res, err := tu.groups.ListInvites(dave.Context, &v1.ListInvitesRequest{SenderAccountId: dave.ID, GroupId: kerchakGroup.ID})
 		require.NoError(t, err)
 		require.NotNil(t, res)
 
-		// Check all invites are returned.
+		// Check all invites are returned. The 3 sent on kerchak groups by dave
 		require.Equal(t, len(res.Invites), 3)
 		for _, invite := range res.Invites {
 			require.Equal(t, invite.SenderAccountId, dave.ID)
@@ -160,31 +210,101 @@ func TestInvitesSuite(t *testing.T) {
 		}
 	})
 
+	t.Run("list-invites-is-correctly-paginated", func(t *testing.T) {
+		res, err := tu.groups.ListInvites(dave.Context, &v1.ListInvitesRequest{
+			SenderAccountId: dave.ID,
+			GroupId:         kerchakGroup.ID,
+			Limit:           1,
+			Offset:          1,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, res)
+
+		// Check that the invite of randomUserTwo is returned.
+		require.Equal(t, len(res.Invites), 1)
+		invite := res.Invites[0]
+		require.Equal(t, invite.SenderAccountId, dave.ID)
+		require.Equal(t, invite.RecipientAccountId, randomUserTwo.ID)
+		require.Equal(t, kerchakGroup.ID, invite.GroupId)
+	})
+
 	t.Run("user-can-list-invites-destined-to-them", func(t *testing.T) {
 		res, err := tu.groups.ListInvites(randomUserOne.Context, &v1.ListInvitesRequest{RecipientAccountId: randomUserOne.ID})
 		require.NoError(t, err)
+
+		// Check that there is the one invite from dave's group and kerchak's group
+		require.Equal(t, len(res.Invites), 2)
+		for _, invite := range res.Invites {
+			require.Equal(t, invite.SenderAccountId, dave.ID)
+			require.Equal(t, invite.RecipientAccountId, randomUserOne.ID)
+		}
+	})
+
+	var randomUserOneKerchakInvite *testInvite
+
+	t.Run("user-can-list-invites-destined-to-them-in-group", func(t *testing.T) {
+		res, err := tu.groups.ListInvites(randomUserOne.Context, &v1.ListInvitesRequest{RecipientAccountId: randomUserOne.ID, GroupId: kerchakGroup.ID})
+		require.NoError(t, err)
+
+		// Check that there is only the one sent by dave on kerchak's group
 		require.Equal(t, len(res.Invites), 1)
 		require.Equal(t, res.Invites[0].SenderAccountId, dave.ID)
 		require.Equal(t, res.Invites[0].RecipientAccountId, randomUserOne.ID)
 		require.Equal(t, res.Invites[0].GroupId, kerchakGroup.ID)
+
+		// Store this invite for later
+		randomUserOneKerchakInvite = &testInvite{
+			recipient: randomUserOne,
+			sender:    dave,
+			group:     kerchakGroup,
+			ID:        res.Invites[0].Id,
+		}
 	})
 
-	// TODO: t.Run("user-can-list-invites-destined-to-them-in-group", func(t *testing.T) {})
-
-	t.Run("invitee-cannot-list-invites-destined-to-someone-else", func(t *testing.T) {
+	t.Run("invite-cannot-list-invites-destined-to-someone-else", func(t *testing.T) {
 		res, err := tu.groups.ListInvites(randomUserTwo.Context, &v1.ListInvitesRequest{RecipientAccountId: randomUserOne.ID})
 		requireErrorHasGRPCCode(t, codes.PermissionDenied, err)
 		require.Nil(t, res)
 	})
 
-	// TODO: t.Run("user-can-list-invites-in-group", func(t *testing.T) {})
+	// Accept the previously stored invite
+	randomUserOne.AcceptInvite(t, tu, randomUserOneKerchakInvite)
 
-	// TODO: t.Run("stranger-cannot-revoke-invite", func(t *testing.T) {})
+	t.Run("user-can-list-invites-in-group", func(t *testing.T) {
+		// Now RandomUserOne can ListInvites
+		res, err := tu.groups.ListInvites(randomUserOne.Context, &v1.ListInvitesRequest{
+			GroupId: kerchakGroup.ID,
+		})
 
-	// TODO: t.Run("recipient-cannot-revoke-invite", func(t *testing.T) {})
+		require.NoError(t, err)
+		// There is 2 invites left in kerchak's group, for randomUserTwo and randomUserThree
+		require.Equal(t, len(res.Invites), 2)
+		for _, invite := range res.Invites {
+			require.Equal(t, invite.GroupId, kerchakGroup.ID)
+			require.NotEqual(t, invite.RecipientAccountId, randomUserOne.ID)
+		}
+	})
 
 	maxime := newTestAccount(t, tu)
 	kerchakMaximeInvite := dave.SendInvite(t, tu, maxime, kerchakGroup)
+
+	t.Run("stranger-cannot-revoke-invite", func(t *testing.T) {
+		res, err := tu.groups.RevokeInvite(stranger.Context, &v1.RevokeInviteRequest{
+			GroupId:  kerchakMaximeInvite.group.ID,
+			InviteId: kerchakMaximeInvite.ID,
+		})
+		requireErrorHasGRPCCode(t, codes.NotFound, err)
+		require.Nil(t, res)
+	})
+
+	t.Run("recipient-cannot-revoke-invite", func(t *testing.T) {
+		res, err := tu.groups.RevokeInvite(maxime.Context, &v1.RevokeInviteRequest{
+			GroupId:  kerchakMaximeInvite.group.ID,
+			InviteId: kerchakMaximeInvite.ID,
+		})
+		requireErrorHasGRPCCode(t, codes.NotFound, err)
+		require.Nil(t, res)
+	})
 
 	t.Run("sender-can-revoke-invite", func(t *testing.T) {
 		res, err := tu.groups.RevokeInvite(dave.Context, &v1.RevokeInviteRequest{
@@ -198,19 +318,19 @@ func TestInvitesSuite(t *testing.T) {
 		group, err := tu.groupsRepository.GetGroupInternal(context.Background(), &models.OneGroupFilter{GroupID: kerchakGroup.ID})
 		require.NoError(t, err)
 		require.Nil(t, group.FindInvite(kerchakMaximeInvite.ID))
-		require.Nil(t, group.FindInviteByAccountTuple(dave.ID, randomUserOne.ID))
-		require.Nil(t, group.FindMember(randomUserOne.ID))
+		require.Nil(t, group.FindInviteByAccountTuple(dave.ID, maxime.ID))
+		require.Nil(t, group.FindMember(maxime.ID))
 	})
 
-	// diego := newTestAccount(t, tu)
-	// kerchakDiegoInvite := dave.SendInvite(t, tu, diego, kerchakGroup)
+	diego := newTestAccount(t, tu)
+	kerchakDiegoInvite := dave.SendInvite(t, tu, diego, kerchakGroup)
 
-	// t.Run("admin-can-revoke-invite", func(t *testing.T) {
-	// 	res, err := tu.groups.RevokeInvite(kerchak.Context, &v1.RevokeInviteRequest{
-	// 		GroupId:  kerchakGroup.ID,
-	// 		InviteId: kerchakDiegoInvite.ID,
-	// 	})
-	// 	require.NoError(t, err)
-	// 	require.NotNil(t, res)
-	// })
+	t.Run("admin-can-revoke-invite", func(t *testing.T) {
+		res, err := tu.groups.RevokeInvite(kerchak.Context, &v1.RevokeInviteRequest{
+			GroupId:  kerchakGroup.ID,
+			InviteId: kerchakDiegoInvite.ID,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, res)
+	})
 }
