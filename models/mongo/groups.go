@@ -277,12 +277,7 @@ func (repo *groupsRepository) GetInvite(ctx context.Context, filter *models.OneI
 				}},
 			},
 			bson.D{
-				{Key: "members", Value: bson.D{
-					{Key: "$elemMatch", Value: bson.D{
-						{Key: "accountId", Value: accountID},
-						{Key: "isAdmin", Value: true},
-					}},
-				}},
+				{Key: "members.accountId", Value: accountID},
 			},
 		}},
 	}
