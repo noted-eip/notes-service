@@ -78,7 +78,7 @@ func (srv *service) TokenFromContext(ctx context.Context) (*Token, error) {
 	}
 
 	claims, ok := tok.Claims.(*Token)
-	if !ok {
+	if !ok || claims.AccountID == "" {
 		return nil, ErrInvalidClaims
 	}
 

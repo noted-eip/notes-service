@@ -104,9 +104,9 @@ func (repo *groupsRepository) GetGroupInternal(ctx context.Context, filter *mode
 
 	query := bson.D{{Key: "_id", Value: filter.GroupID}}
 
-	err := repo.coll.FindOne(ctx, query).Decode(group)
+	err := repo.findOne(ctx, query, group)
 	if err != nil {
-		return nil, repo.mongoFindOneErrorToModelsError(query, err)
+		return nil, err
 	}
 
 	return group, nil
