@@ -158,4 +158,19 @@ func TestGroupsSuite(t *testing.T) {
 		require.NotNil(t, res)
 		require.Len(t, res.Groups, 1)
 	})
+
+	// Test account on delete side effects
+	daveGroup := newTestGroup(t, tu, dave)
+	daveNote := newTestNote(t, tu, daveGroup, dave, nil)
+
+	t.Run("delete-group-change-note-group-to-user-workspace", func(t *testing.T) {
+		res, err := tu.groups.DeleteGroup(dave.Context, &notesv1.DeleteGroupRequest{GroupId: daveGroup.ID})
+		require.NoError(t, err)
+		require.NotNil(t, res)
+
+		note, err := tu.notes.GetNote(dave.Context, &notesv1.GetNoteRequest{NoteId: daveNote.ID, GroupId: daveWorkspace.Id})
+		require.NoError(t, err)
+		require.NotNil(t, note)
+	})
+
 }
