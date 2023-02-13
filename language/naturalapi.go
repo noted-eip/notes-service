@@ -49,7 +49,7 @@ func (s *NaturalAPIService) Init() error {
 	return nil
 }
 
-func (s *NaturalAPIService) GetKeywordsFromTextInput(input string) (*models.Keywords, error) {
+func (s *NaturalAPIService) GetKeywordsFromTextInput(input string) ([]models.Keyword, error) {
 	if s.client == nil {
 		return nil, status.Error(codes.Unavailable, "no credentials for natural api")
 	}
@@ -66,7 +66,7 @@ func (s *NaturalAPIService) GetKeywordsFromTextInput(input string) (*models.Keyw
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	var keywords models.Keywords
+	var keywords []models.Keyword
 
 	for _, entity := range res.Entities {
 		newKeyword := models.Keyword{
@@ -81,5 +81,5 @@ func (s *NaturalAPIService) GetKeywordsFromTextInput(input string) (*models.Keyw
 		keywords = append(keywords, newKeyword)
 	}
 
-	return &keywords, nil
+	return keywords, nil
 }

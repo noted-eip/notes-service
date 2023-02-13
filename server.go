@@ -11,11 +11,11 @@ import (
 	"fmt"
 	"net"
 	"notes-service/models"
-	notespb "notes-service/protorepo/noted/notes/v1"
+	notesv1 "notes-service/protorepo/noted/notes/v1"
 	"strings"
 	"time"
 
-	mongoServices "notes-service/models/mongo"
+	"notes-service/models/mongo"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -29,14 +29,15 @@ type server struct {
 	slogger *zap.SugaredLogger
 
 	authService     auth.Service
-	languageService language.Service // NOTE: Could put directly service typed as NaturalAPIService, remove Init() from interface and just put it in NaturalAPIService
+	languageService language.Service
 
-	mongoDB *mongoServices.Database
+	mongoDB *mongo.Database
 
 	notesRepository  models.NotesRepository
-	blocksRepository models.BlocksRepository
+	groupsRepository models.GroupsRepository
 
-	notesService notespb.NotesAPIServer
+	notesAPI  notesv1.NotesAPIServer
+	groupsAPI notesv1.GroupsAPIServer
 
 	grpcServer *grpc.Server
 }
@@ -45,7 +46,8 @@ func (s *server) Init(opt ...grpc.ServerOption) {
 	s.initLogger()
 	s.initAuthService()
 	s.initRepositories()
-	s.initNotesService()
+	s.initGroupsAPI()
+	s.initNotesAPI()
 	s.initLanguageService()
 	s.initgrpcServer(opt...)
 }
@@ -110,7 +112,6 @@ func (s *server) initLogger() {
 func (s *server) initLanguageService() {
 	s.languageService = &language.NaturalAPIService{}
 	err := s.languageService.Init()
-
 	must(err, "unable to instantiate language service")
 }
 
@@ -122,27 +123,37 @@ func (s *server) initAuthService() {
 	s.authService = auth.NewService(pubKey)
 }
 
-func (s *server) initNotesService() {
-	s.notesService = &notesService{
-		language:  s.languageService,
-		auth:      s.authService,
-		logger:    s.logger,
-		repoNote:  s.notesRepository,
-		repoBlock: s.blocksRepository,
+func (s *server) initGroupsAPI() {
+	s.groupsAPI = &groupsAPI{
+		auth:   s.authService,
+		logger: s.logger,
+		notes:  s.notesRepository,
+		groups: s.groupsRepository,
+	}
+}
+
+func (s *server) initNotesAPI() {
+	s.notesAPI = &notesAPI{
+		language: s.languageService,
+		auth:     s.authService,
+		logger:   s.logger,
+		notes:    s.notesRepository,
+		groups:   s.groupsRepository,
 	}
 }
 
 func (s *server) initgrpcServer(opt ...grpc.ServerOption) {
 	s.grpcServer = grpc.NewServer(opt...)
-	notespb.RegisterNotesAPIServer(s.grpcServer, s.notesService)
+	notesv1.RegisterNotesAPIServer(s.grpcServer, s.notesAPI)
+	notesv1.RegisterGroupsAPIServer(s.grpcServer, s.groupsAPI)
 }
 
 func (s *server) initRepositories() {
 	var err error
-	s.mongoDB, err = mongoServices.NewDatabase(context.Background(), *mongoUri, *mongoDbName, s.logger)
+	s.mongoDB, err = mongo.NewDatabase(context.Background(), *mongoUri, *mongoDbName, s.logger)
 	must(err, "could not instantiate mongo database")
-	s.notesRepository = mongoServices.NewNotesRepository(s.mongoDB.DB, s.logger)
-	s.blocksRepository = mongoServices.NewBlocksRepository(s.mongoDB.DB, s.logger)
+	s.notesRepository = mongo.NewNotesRepository(s.mongoDB.DB, s.logger)
+	s.groupsRepository = mongo.NewGroupsRepository(s.mongoDB.DB, s.logger)
 }
 
 func must(err error, msg string) {
