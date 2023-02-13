@@ -133,6 +133,28 @@ func (srv *groupsAPI) DeleteGroup(ctx context.Context, req *notesv1.DeleteGroupR
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
+	// Get every notes in the group
+	notes, err := srv.notes.ListNotesInternal(ctx, &models.ManyNotesFilter{GroupID: req.GroupId}, &models.ListOptions{Limit: 1000, Offset: 0}) // NOTE: Arbitrary number to get all notes, can create "findAll" function aswell, don't make me do a for for loop that uses offset and limit :(
+	if err != nil {
+		return nil, statusFromModelError(err)
+	}
+	// Change the note's group to the first user's workspace if it has one
+	for _, note := range notes {
+		memberWorkspace, err := srv.groups.GetWorkspaceInternal(ctx, note.AuthorAccountID)
+		if err != nil {
+			continue // NOTE: In case an account has no workspace
+		}
+
+		_, err = srv.notes.UpdateNotesInternal(
+			ctx,
+			&models.ManyNotesFilter{GroupID: req.GroupId, AuthorAccountID: note.AuthorAccountID},
+			models.UpdateNoteGroupPayload{GroupID: memberWorkspace.ID},
+		)
+		if err != nil {
+			return nil, statusFromModelError(err)
+		}
+	}
+
 	err = srv.groups.DeleteGroup(ctx, &models.OneGroupFilter{GroupID: req.GroupId}, token.AccountID)
 	if err != nil {
 		return nil, statusFromModelError(err)

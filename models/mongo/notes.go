@@ -71,6 +71,26 @@ func (repo *notesRepository) GetNote(ctx context.Context, filter *models.OneNote
 	return note, nil
 }
 
+func (repo *notesRepository) UpdateNotesInternal(ctx context.Context, filter *models.ManyNotesFilter, payload interface{}) (*models.Note, error) {
+	note := &models.Note{}
+	query := bson.D{
+		{Key: "groupId", Value: filter.GroupID},
+		{Key: "authorAccountId", Value: filter.AuthorAccountID},
+	}
+	update := bson.D{
+		{Key: "$set", Value: payload},
+		{Key: "$set", Value: bson.D{
+			{Key: "modifiedAt", Value: time.Now()},
+		}}}
+
+	_, err := repo.updateMany(ctx, query, update)
+	if err != nil {
+		return nil, err
+	}
+
+	return note, nil
+}
+
 func (repo *notesRepository) UpdateNote(ctx context.Context, filter *models.OneNoteFilter, payload *models.UpdateNotePayload, accountID string) (*models.Note, error) {
 	note := &models.Note{}
 	query := bson.D{

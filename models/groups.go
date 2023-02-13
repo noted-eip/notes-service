@@ -236,6 +236,7 @@ type GroupsRepository interface {
 	// Groups
 	CreateGroup(ctx context.Context, payload *CreateGroupPayload, accountID string) (*Group, error)
 	CreateWorkspace(ctx context.Context, payload *CreateWorkspacePayload, accountID string) (*Group, error)
+	GetWorkspaceInternal(ctx context.Context, accountID string) (*Group, error)
 	GetGroup(ctx context.Context, filter *OneGroupFilter, accountID string) (*Group, error)
 	GetGroupInternal(ctx context.Context, filter *OneGroupFilter) (*Group, error)
 	UpdateGroup(ctx context.Context, filter *OneGroupFilter, payload *UpdateGroupPayload, accountID string) (*Group, error)
