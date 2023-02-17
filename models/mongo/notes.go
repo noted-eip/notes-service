@@ -115,7 +115,7 @@ func (repo *notesRepository) ListNotesInternal(ctx context.Context, filter *mode
 			query = append(query, bson.E{Key: "groupId", Value: filter.GroupID})
 		}
 	}
-	requieredFields := bson.D{{"blocks", 0}, {"keywords", 0}}
+	requieredFields := bson.D{{Key: "blocks", Value: 0}, {Key: "keywords", Value: 0}}
 	opts := options.Find().SetProjection(requieredFields)
 
 	err := repo.find(ctx, query, &notes, lo, opts)
