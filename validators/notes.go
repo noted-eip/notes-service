@@ -39,9 +39,16 @@ func ValidateDeleteNoteRequest(req *notespb.DeleteNoteRequest) error {
 }
 
 func ValidateListNoteRequest(req *notespb.ListNotesRequest) error {
-	return validation.ValidateStruct(req,
+	err := validation.ValidateStruct(req,
 		validation.Field(&req.AuthorAccountId, validation.Required),
 	)
+	if err == nil {
+		return err
+	}
+	err = validation.ValidateStruct(req,
+		validation.Field(&req.GroupId, validation.Required),
+	)
+	return err
 }
 
 func ValidateExportNoteRequest(req *notespb.ExportNoteRequest) error {

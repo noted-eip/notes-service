@@ -148,12 +148,18 @@ func (srv *notesAPI) ListNotes(ctx context.Context, req *notesv1.ListNotesReques
 	}
 
 	// Check user is part of the group
-	_, err = srv.groups.GetGroup(ctx, &models.OneGroupFilter{GroupID: req.GroupId}, token.AccountID)
-	if err != nil {
-		return nil, statusFromModelError(err)
+	if req.GroupId == "" {
+		if token.AccountID != req.AuthorAccountId {
+			return nil, status.Error(codes.PermissionDenied, "Could get note of another account")
+		}
+	} else {
+		_, err = srv.groups.GetGroup(ctx, &models.OneGroupFilter{GroupID: req.GroupId}, token.AccountID)
+		if err != nil {
+			return nil, statusFromModelError(err)
+		}
 	}
 
-	notes, err := srv.notes.ListNotesInternal(ctx, &models.ManyNotesFilter{AuthorAccountID: req.AuthorAccountId}, &models.ListOptions{Limit: 20, Offset: 0})
+	notes, err := srv.notes.ListNotesInternal(ctx, &models.ManyNotesFilter{AuthorAccountID: req.AuthorAccountId}, &models.ListOptions{Limit: req.Limit, Offset: req.Offset})
 	if err != nil {
 		return nil, statusFromModelError(err)
 	}

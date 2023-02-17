@@ -8,6 +8,7 @@ import (
 	"github.com/jaevor/go-nanoid"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.uber.org/zap"
 )
 
@@ -158,7 +159,10 @@ func (repo *groupsRepository) ListGroupsInternal(ctx context.Context, filter *mo
 		}})
 	}
 
-	err := repo.find(ctx, query, &groups, lo)
+	requieredFields := bson.D{{"members", 0}}
+	opts := options.Find().SetProjection(requieredFields)
+
+	err := repo.find(ctx, query, &groups, lo, opts)
 	if err != nil {
 		return nil, err
 	}

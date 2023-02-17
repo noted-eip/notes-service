@@ -10,6 +10,7 @@ import (
 	"github.com/jaevor/go-nanoid"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.uber.org/zap"
 )
 
@@ -114,8 +115,10 @@ func (repo *notesRepository) ListNotesInternal(ctx context.Context, filter *mode
 			query = append(query, bson.E{Key: "groupId", Value: filter.GroupID})
 		}
 	}
+	requieredFields := bson.D{{"blocks", 0}, {"keywords", 0}}
+	opts := options.Find().SetProjection(requieredFields)
 
-	err := repo.find(ctx, query, &notes, lo)
+	err := repo.find(ctx, query, &notes, lo, opts)
 	if err != nil {
 		return nil, err
 	}
