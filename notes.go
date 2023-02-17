@@ -150,7 +150,7 @@ func (srv *notesAPI) ListNotes(ctx context.Context, req *notesv1.ListNotesReques
 	// Check user is part of the group
 	if req.GroupId == "" {
 		if token.AccountID != req.AuthorAccountId {
-			return nil, status.Error(codes.PermissionDenied, "Could get note of another account")
+			return nil, status.Error(codes.PermissionDenied, "could get note of another account")
 		}
 	} else {
 		_, err = srv.groups.GetGroup(ctx, &models.OneGroupFilter{GroupID: req.GroupId}, token.AccountID)
