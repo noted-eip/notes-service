@@ -1,284 +1,323 @@
 package main
 
 import (
-	"context"
-	"notes-service/auth"
-	"notes-service/background"
-	"notes-service/language"
-	"notes-service/models/memory"
-	notespb "notes-service/protorepo/noted/notes/v1"
+	notesv1 "notes-service/protorepo/noted/notes/v1"
+
 	"testing"
 
-	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
-	"github.com/stretchr/testify/suite"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/fieldmaskpb"
 )
 
-type NotesAPISuite struct {
-	suite.Suite
-	auth auth.TestService
-	srv  *notesService
-}
+func TestNotesSuite(t *testing.T) {
+	tu := newTestUtilsOrDie(t)
+	edouard := newTestAccount(t, tu)
+	gabriel := newTestAccount(t, tu)
+	maxime := newTestAccount(t, tu)
+	edouardGroup := newTestGroup(t, tu, edouard, maxime)
 
-func TestNotesService(t *testing.T) {
-	suite.Run(t, new(NotesAPISuite))
-}
-
-func (s *NotesAPISuite) SetupSuite() {
-	logger := newLoggerOrFail(s.T())
-	db := newDatabaseOrFail(s.T(), logger)
-
-	s.auth = auth.TestService{}
-	s.srv = &notesService{
-		auth:       &s.auth,
-		logger:     logger,
-		language:   &language.NaturalAPIService{},
-		repoNote:   memory.NewNotesRepository(db, logger),
-		repoBlock:  memory.NewBlocksRepository(db, logger),
-		background: background.NewService(logger),
-	}
-	s.Require().NoError(s.srv.language.Init())
-}
-
-func (s *NotesAPISuite) TestCreateNoteNoAuth() {
-	res, err := s.srv.CreateNote(context.TODO(), &notespb.CreateNoteRequest{})
-
-	s.Require().Error(err)
-	s.Equal(codes.Unauthenticated, status.Code(err))
-	s.Nil(res)
-}
-
-func (s *NotesAPISuite) TestCreateNoteValidator() {
-	generatedUuid, err := uuid.NewRandom()
-	s.Require().NoError(err)
-	ctx, err := s.auth.ContextWithToken(context.TODO(), &auth.Token{UserID: generatedUuid})
-	s.Require().NoError(err)
-	res, err := s.srv.CreateNote(ctx, &notespb.CreateNoteRequest{})
-
-	s.Require().Error(err)
-	s.Equal(codes.InvalidArgument, status.Code(err))
-	s.Nil(res)
-}
-
-func (s *NotesAPISuite) TestCreateNoteReturnNote() {
-	generatedUuid, err := uuid.NewRandom()
-	s.Require().NoError(err)
-	ctx, err := s.auth.ContextWithToken(context.TODO(), &auth.Token{UserID: generatedUuid})
-	s.Require().NoError(err)
-	res, err := s.srv.CreateNote(ctx, &notespb.CreateNoteRequest{
-		Note: &notespb.Note{
-			AuthorId: generatedUuid.String(),
-			Title:    "ci-test",
-			Blocks:   nil,
-		},
-	})
-	s.Require().NoError(err)
-	s.NotNil(res)
-}
-
-func (s *NotesAPISuite) TestGetNoteNoAuth() {
-	res, err := s.srv.GetNote(context.TODO(), &notespb.GetNoteRequest{})
-	s.Require().Error(err)
-	s.Equal(codes.Unauthenticated, status.Code(err))
-	s.Nil(res)
-}
-
-func (s *NotesAPISuite) TestGetNoteValidator() {
-	generatedUuid, err := uuid.NewRandom()
-	s.Require().NoError(err)
-	ctx, err := s.auth.ContextWithToken(context.TODO(), &auth.Token{UserID: generatedUuid})
-	s.Require().NoError(err)
-	res, err := s.srv.GetNote(ctx, &notespb.GetNoteRequest{})
-	s.Require().Error(err)
-	s.Equal(codes.InvalidArgument, status.Code(err))
-	s.Nil(res)
-
-}
-
-func (s *NotesAPISuite) TestGetNoteShouldReturnNote() {
-	generatedUuid, err := uuid.NewRandom()
-	s.Require().NoError(err)
-	ctx, err := s.auth.ContextWithToken(context.TODO(), &auth.Token{UserID: generatedUuid})
-	s.Require().NoError(err)
-
-	resExpected, err := s.srv.CreateNote(ctx, &notespb.CreateNoteRequest{
-		Note: &notespb.Note{
-			AuthorId: generatedUuid.String(),
-			Title:    "ci-test",
-			Blocks:   nil,
-		},
-	})
-	s.Require().NoError(err)
-
-	res, err := s.srv.GetNote(ctx, &notespb.GetNoteRequest{
-		Id: resExpected.Note.Id,
+	t.Run("create-note", func(t *testing.T) {
+		res, err := tu.notes.CreateNote(edouard.Context, &notesv1.CreateNoteRequest{
+			GroupId: edouardGroup.ID,
+			Title:   "My New Note",
+		})
+		require.NoError(t, err)
+		require.NotNil(t, res)
+		require.Equal(t, "My New Note", res.Note.Title)
 	})
 
-	s.NotNil(res)
-	s.Require().NoError(err)
-	s.Equal(res.Note.Id, resExpected.Note.Id)
-	s.Equal(res.Note.AuthorId, resExpected.Note.AuthorId)
-	s.Equal(res.Note.Title, resExpected.Note.Title)
-
-}
-
-func (s *NotesAPISuite) TestUpdateNoteNoAuth() {
-	res, err := s.srv.UpdateNote(context.TODO(), &notespb.UpdateNoteRequest{})
-	s.Require().Error(err)
-	s.Equal(codes.Unauthenticated, status.Code(err))
-	s.Nil(res)
-}
-
-func (s *NotesAPISuite) TestUpdateNoteValidator() {
-	generatedUuid, err := uuid.NewRandom()
-	s.Require().NoError(err)
-	ctx, err := s.auth.ContextWithToken(context.TODO(), &auth.Token{UserID: generatedUuid})
-	s.Require().NoError(err)
-	res, err := s.srv.UpdateNote(ctx, &notespb.UpdateNoteRequest{})
-	s.Require().Error(err)
-	s.Equal(codes.InvalidArgument, status.Code(err))
-	s.Nil(res)
-}
-
-/*
-func (s *NotesAPISuite) TestUpdateNoteShouldReturnNoError() {
-	saveAuthPackage := s.srv.auth
-	s.srv.auth = NewMockService()
-	//get userId
-	token, err := s.srv.auth.TokenFromContext(context.TODO())
-	s.Require().NoError(err)
-	userId := token.UserID.String()
-
-	resCreateNote, err := s.srv.CreateNote(context.TODO(), &notespb.CreateNoteRequest{
-		Note: &notespb.Note{
-			AuthorId: userId,
-			Title:    "ci-test",
-			Blocks:   nil,
-		},
+	t.Run("create-note-permission-denied", func(t *testing.T) {
+		res, err := tu.notes.CreateNote(gabriel.Context, &notesv1.CreateNoteRequest{
+			GroupId: edouardGroup.ID,
+			Title:   "My New Note",
+		})
+		requireErrorHasGRPCCode(t, codes.NotFound, err)
+		require.Nil(t, res)
 	})
 
-	_, err := s.srv.UpdateNote(context.TODO(), &notespb.UpdateNoteRequest{
-		Id: resCreateNote.Note.Id,
-		Note: &notespb.Note{
-			AuthorId: userId,
-			Title:    "ci-test-uptated",
-			Blocks:   nil,
-		},
+	t.Run("create-note-with-blocks", func(t *testing.T) {
+		res, err := tu.notes.CreateNote(edouard.Context, &notesv1.CreateNoteRequest{
+			GroupId: edouardGroup.ID,
+			Title:   "My New Note",
+			Blocks: []*notesv1.Block{
+				{
+					Type: notesv1.Block_TYPE_BULLET_POINT,
+					Data: &notesv1.Block_BulletPoint{
+						BulletPoint: "Sample Bullet Point",
+					},
+				},
+				{
+					Type: notesv1.Block_TYPE_CODE,
+					Data: &notesv1.Block_Code_{
+						Code: &notesv1.Block_Code{
+							Snippet: "Sample Snippet",
+							Lang:    "Sample Lang",
+						},
+					},
+				},
+				{
+					Type: notesv1.Block_TYPE_HEADING_1,
+					Data: &notesv1.Block_Heading{
+						Heading: "Sample Heading",
+					},
+				},
+			},
+		})
+		require.NoError(t, err)
+		require.NotNil(t, res)
+		require.Len(t, res.Note.Blocks, 3)
+		require.NotEmpty(t, res.Note.Blocks[0].Id)
+		require.NotEmpty(t, res.Note.Blocks[1].Id)
+		require.NotEmpty(t, res.Note.Blocks[2].Id)
+		require.Equal(t, notesv1.Block_TYPE_BULLET_POINT, res.Note.Blocks[0].Type)
+		require.Equal(t, notesv1.Block_TYPE_CODE, res.Note.Blocks[1].Type)
+		require.Equal(t, notesv1.Block_TYPE_HEADING_1, res.Note.Blocks[2].Type)
+		require.Equal(t, "Sample Bullet Point", res.Note.Blocks[0].GetBulletPoint())
+		require.Equal(t, "Sample Snippet", res.Note.Blocks[1].GetCode().Snippet)
+		require.Equal(t, "Sample Lang", res.Note.Blocks[1].GetCode().Lang)
+		require.Equal(t, "Sample Heading", res.Note.Blocks[2].GetHeading())
 	})
 
-	res, err := s.srv.GetNote(context.TODO(), &notespb.GetNoteRequest{
-		Id: resCreateNote.Note.Id,
-	})
-	s.Require().NoError(err)
-
-	s.Nil(res)
-	s.Equal(res.Note.Title, "CI-TEST-UPDATED")
-
-}*/
-
-func (s *NotesAPISuite) TestDeleteNoteNoAuth() {
-	res, err := s.srv.DeleteNote(context.TODO(), &notespb.DeleteNoteRequest{})
-	s.Require().Error(err)
-	s.Equal(codes.Unauthenticated, status.Code(err))
-	s.Nil(res)
-}
-
-func (s *NotesAPISuite) TestDeleteNoteValidator() {
-	generatedUuid, err := uuid.NewRandom()
-	s.Require().NoError(err)
-	ctx, err := s.auth.ContextWithToken(context.TODO(), &auth.Token{UserID: generatedUuid})
-	s.Require().NoError(err)
-	res, err := s.srv.DeleteNote(ctx, &notespb.DeleteNoteRequest{})
-	s.Require().Error(err)
-	s.Equal(codes.InvalidArgument, status.Code(err))
-	s.Nil(res)
-}
-
-func (s *NotesAPISuite) TestDeleteNoteShouldReturnNoError() {
-	generatedUuid, err := uuid.NewRandom()
-	s.Require().NoError(err)
-	ctx, err := s.auth.ContextWithToken(context.TODO(), &auth.Token{UserID: generatedUuid})
-	s.Require().NoError(err)
-	//get userId
-
-	resCreateNote, err := s.srv.CreateNote(ctx, &notespb.CreateNoteRequest{
-		Note: &notespb.Note{
-			AuthorId: generatedUuid.String(),
-			Title:    "ci-test",
-			Blocks:   nil,
-		},
-	})
-	s.Require().NoError(err)
-	res, err := s.srv.DeleteNote(ctx, &notespb.DeleteNoteRequest{
-		Id: resCreateNote.Note.Id,
-	})
-	s.Require().NoError(err)
-	s.Nil(res)
-}
-
-func (s *NotesAPISuite) TestListNotesNoAuth() {
-	res, err := s.srv.ListNotes(context.TODO(), &notespb.ListNotesRequest{})
-	s.Require().Error(err)
-	s.Equal(codes.Unauthenticated, status.Code(err))
-	s.Nil(res)
-}
-
-func (s *NotesAPISuite) TestListNotesValidator() {
-	generatedUuid, err := uuid.NewRandom()
-	s.Require().NoError(err)
-	ctx, err := s.auth.ContextWithToken(context.TODO(), &auth.Token{UserID: generatedUuid})
-	s.Require().NoError(err)
-	res, err := s.srv.ListNotes(ctx, &notespb.ListNotesRequest{})
-	s.Require().Error(err)
-	s.Equal(codes.InvalidArgument, status.Code(err))
-	s.Nil(res)
-}
-
-func (s *NotesAPISuite) TestListNotesReturnNotes() {
-	generatedUuid, err := uuid.NewRandom()
-	s.Require().NoError(err)
-	ctx, err := s.auth.ContextWithToken(context.TODO(), &auth.Token{UserID: generatedUuid})
-	s.Require().NoError(err)
-
-	authorId := generatedUuid.String()
-	noteName := "ci-test-"
-
-	_, err = s.srv.CreateNote(ctx, &notespb.CreateNoteRequest{
-		Note: &notespb.Note{AuthorId: authorId, Title: (noteName + "1"), Blocks: nil},
-	})
-	s.Require().NoError(err)
-
-	_, err = s.srv.CreateNote(ctx, &notespb.CreateNoteRequest{
-		Note: &notespb.Note{AuthorId: authorId, Title: (noteName + "2"), Blocks: nil},
-	})
-	s.Require().NoError(err)
-
-	_, err = s.srv.CreateNote(ctx, &notespb.CreateNoteRequest{
-		Note: &notespb.Note{AuthorId: authorId, Title: (noteName + "3"), Blocks: nil},
-	})
-	s.Require().NoError(err)
-
-	res, err := s.srv.ListNotes(ctx, &notespb.ListNotesRequest{
-		AuthorId: authorId,
+	t.Run("create-note-with-all-block-types", func(t *testing.T) {
+		res, err := tu.notes.CreateNote(edouard.Context, &notesv1.CreateNoteRequest{
+			GroupId: edouardGroup.ID,
+			Title:   "My New Note",
+			Blocks: []*notesv1.Block{
+				{
+					Type: notesv1.Block_TYPE_NUMBER_POINT,
+					Data: &notesv1.Block_NumberPoint{
+						NumberPoint: "Sample Number Point",
+					},
+				},
+				{
+					Type: notesv1.Block_TYPE_BULLET_POINT,
+					Data: &notesv1.Block_BulletPoint{
+						BulletPoint: "Sample Bullet Point",
+					},
+				},
+				{
+					Type: notesv1.Block_TYPE_MATH,
+					Data: &notesv1.Block_Math{
+						Math: "Sample Math",
+					},
+				},
+				{
+					Type: notesv1.Block_TYPE_CODE,
+					Data: &notesv1.Block_Code_{
+						Code: &notesv1.Block_Code{
+							Snippet: "Sample Snippet",
+							Lang:    "Sample Lang",
+						},
+					},
+				},
+				{
+					Type: notesv1.Block_TYPE_IMAGE,
+					Data: &notesv1.Block_Image_{
+						Image: &notesv1.Block_Image{
+							Url:     "Sample Url",
+							Caption: "Sample Caption",
+						},
+					},
+				},
+				{
+					Type: notesv1.Block_TYPE_HEADING_1,
+					Data: &notesv1.Block_Heading{
+						Heading: "Sample Heading 1",
+					},
+				},
+				{
+					Type: notesv1.Block_TYPE_HEADING_2,
+					Data: &notesv1.Block_Heading{
+						Heading: "Sample Heading 2",
+					},
+				},
+				{
+					Type: notesv1.Block_TYPE_HEADING_3,
+					Data: &notesv1.Block_Heading{
+						Heading: "Sample Heading 3",
+					},
+				},
+				{
+					Type: notesv1.Block_TYPE_PARAGRAPH,
+					Data: &notesv1.Block_Paragraph{
+						Paragraph: "Sample Paragraph",
+					},
+				},
+			},
+		})
+		require.NoError(t, err)
+		require.NotNil(t, res)
+		require.Len(t, res.Note.Blocks, 9)
+		require.Equal(t, notesv1.Block_TYPE_NUMBER_POINT, res.Note.Blocks[0].Type)
+		require.Equal(t, notesv1.Block_TYPE_BULLET_POINT, res.Note.Blocks[1].Type)
+		require.Equal(t, notesv1.Block_TYPE_MATH, res.Note.Blocks[2].Type)
+		require.Equal(t, notesv1.Block_TYPE_CODE, res.Note.Blocks[3].Type)
+		require.Equal(t, notesv1.Block_TYPE_IMAGE, res.Note.Blocks[4].Type)
+		require.Equal(t, notesv1.Block_TYPE_HEADING_1, res.Note.Blocks[5].Type)
+		require.Equal(t, notesv1.Block_TYPE_HEADING_2, res.Note.Blocks[6].Type)
+		require.Equal(t, notesv1.Block_TYPE_HEADING_3, res.Note.Blocks[7].Type)
+		require.Equal(t, notesv1.Block_TYPE_PARAGRAPH, res.Note.Blocks[8].Type)
+		require.Equal(t, "Sample Number Point", res.Note.Blocks[0].GetNumberPoint())
+		require.Equal(t, "Sample Bullet Point", res.Note.Blocks[1].GetBulletPoint())
+		require.Equal(t, "Sample Math", res.Note.Blocks[2].GetMath())
+		require.Equal(t, "Sample Lang", res.Note.Blocks[3].GetCode().Lang)
+		require.Equal(t, "Sample Snippet", res.Note.Blocks[3].GetCode().Snippet)
+		require.Equal(t, "Sample Caption", res.Note.Blocks[4].GetImage().Caption)
+		require.Equal(t, "Sample Url", res.Note.Blocks[4].GetImage().Url)
+		require.Equal(t, "Sample Heading 1", res.Note.Blocks[5].GetHeading())
+		require.Equal(t, "Sample Heading 2", res.Note.Blocks[6].GetHeading())
+		require.Equal(t, "Sample Heading 3", res.Note.Blocks[7].GetHeading())
+		require.Equal(t, "Sample Paragraph", res.Note.Blocks[8].GetParagraph())
 	})
 
-	s.Require().NoError(err)
-	s.NotNil(res)
-	s.Equal(3, len(res.Notes))
-}
+	t.Run("create-note-with-invalid-blocks", func(t *testing.T) {
+		res, err := tu.notes.CreateNote(edouard.Context, &notesv1.CreateNoteRequest{
+			GroupId: edouardGroup.ID,
+			Title:   "Sample Title",
+			Blocks: []*notesv1.Block{
+				{
+					Type: notesv1.Block_TYPE_HEADING_1,
+					Data: &notesv1.Block_Code_{
+						Code: &notesv1.Block_Code{
+							Snippet: "Sample Snippet",
+							Lang:    "Sample Lang",
+						},
+					},
+				},
+				{
+					Type: notesv1.Block_TYPE_CODE,
+					Data: nil,
+				},
+				{
+					Type: notesv1.Block_TYPE_IMAGE,
+					Data: nil,
+				},
+				{
+					Type: notesv1.Block_TYPE_CODE,
+					Data: &notesv1.Block_Heading{
+						Heading: "Sample Heading",
+					},
+				},
+				{},
+				{
+					Type: notesv1.Block_TYPE_INVALID,
+				},
+				{
+					Data: &notesv1.Block_BulletPoint{
+						BulletPoint: "Sample Bullet Point",
+					},
+				},
+			},
+		})
+		require.NoError(t, err)
+		require.NotNil(t, res)
+		require.Equal(t, notesv1.Block_TYPE_HEADING_1, res.Note.Blocks[0].Type)
+		require.Equal(t, notesv1.Block_TYPE_CODE, res.Note.Blocks[1].Type)
+		require.Equal(t, notesv1.Block_TYPE_IMAGE, res.Note.Blocks[2].Type)
+		require.Equal(t, notesv1.Block_TYPE_CODE, res.Note.Blocks[3].Type)
+		require.Equal(t, notesv1.Block_TYPE_INVALID, res.Note.Blocks[4].Type)
+		require.Equal(t, notesv1.Block_TYPE_INVALID, res.Note.Blocks[5].Type)
+		require.Equal(t, notesv1.Block_TYPE_INVALID, res.Note.Blocks[6].Type)
+		require.Equal(t, "", res.Note.Blocks[0].GetHeading())
+		require.Equal(t, "", res.Note.Blocks[1].GetCode().Lang)
+		require.Equal(t, "", res.Note.Blocks[1].GetCode().Snippet)
+		require.Equal(t, "", res.Note.Blocks[2].GetImage().Caption)
+		require.Equal(t, "", res.Note.Blocks[2].GetImage().Url)
+		require.Equal(t, "", res.Note.Blocks[3].GetCode().Lang)
+		require.Equal(t, "", res.Note.Blocks[3].GetCode().Snippet)
+		require.Equal(t, "", res.Note.Blocks[6].GetBulletPoint())
+	})
 
-func newDatabaseOrFail(t *testing.T, logger *zap.Logger) *memory.Database {
-	db, err := memory.NewDatabase(context.Background(), logger)
-	require.NoError(t, err, "could not instantiate in-memory database")
-	return db
-}
+	edouardNote := newTestNote(t, tu, edouardGroup, edouard, []*notesv1.Block{})
 
-func newLoggerOrFail(t *testing.T) *zap.Logger {
-	logger, err := zap.NewDevelopment(zap.AddStacktrace(zapcore.FatalLevel), zap.WithCaller(false))
-	require.NoError(t, err, "could not instantiate zap logger")
-	return logger
+	t.Run("update-note-title", func(t *testing.T) {
+		res, err := tu.notes.UpdateNote(edouard.Context, &notesv1.UpdateNoteRequest{
+			GroupId: edouardGroup.ID,
+			NoteId:  edouardNote.ID,
+			Note: &notesv1.Note{
+				Title: "Brand New Title",
+			},
+			UpdateMask: &fieldmaskpb.FieldMask{
+				Paths: []string{"title"},
+			},
+		})
+		require.NoError(t, err)
+		require.NotNil(t, res)
+		require.Equal(t, "Brand New Title", res.Note.Title)
+	})
+
+	t.Run("update-note-title-group-member-cannot-edit", func(t *testing.T) {
+		res, err := tu.notes.UpdateNote(maxime.Context, &notesv1.UpdateNoteRequest{
+			GroupId: edouardGroup.ID,
+			NoteId:  edouardNote.ID,
+			Note: &notesv1.Note{
+				Title: "Brand New Title",
+			},
+			UpdateMask: &fieldmaskpb.FieldMask{
+				Paths: []string{"title"},
+			},
+		})
+		requireErrorHasGRPCCode(t, codes.NotFound, err)
+		require.Nil(t, res)
+	})
+
+	t.Run("update-note-title-stranger-cannot-edit", func(t *testing.T) {
+		res, err := tu.notes.UpdateNote(gabriel.Context, &notesv1.UpdateNoteRequest{
+			GroupId: edouardGroup.ID,
+			NoteId:  edouardNote.ID,
+			Note: &notesv1.Note{
+				Title: "Brand New Title",
+			},
+			UpdateMask: &fieldmaskpb.FieldMask{
+				Paths: []string{"title"},
+			},
+		})
+		requireErrorHasGRPCCode(t, codes.NotFound, err)
+		require.Nil(t, res)
+	})
+
+	t.Run("update-note-title-group-member-cannot-edit", func(t *testing.T) {
+		res, err := tu.notes.UpdateNote(maxime.Context, &notesv1.UpdateNoteRequest{
+			GroupId: edouardGroup.ID,
+			NoteId:  edouardNote.ID,
+			Note: &notesv1.Note{
+				Title: "Brand New Title",
+			},
+			UpdateMask: &fieldmaskpb.FieldMask{
+				Paths: []string{"title"},
+			},
+		})
+		requireErrorHasGRPCCode(t, codes.NotFound, err)
+		require.Nil(t, res)
+	})
+
+	maximeNote := newTestNote(t, tu, edouardGroup, maxime, nil)
+
+	t.Run("delete-note-member-cannot-delete", func(t *testing.T) {
+		res, err := tu.notes.DeleteNote(edouard.Context, &notesv1.DeleteNoteRequest{
+			GroupId: maximeNote.Group.ID,
+			NoteId:  maximeNote.ID,
+		})
+		requireErrorHasGRPCCode(t, codes.NotFound, err)
+		require.Nil(t, res)
+	})
+
+	t.Run("delete-note-stranger-cannot-delete", func(t *testing.T) {
+		res, err := tu.notes.DeleteNote(gabriel.Context, &notesv1.DeleteNoteRequest{
+			GroupId: maximeNote.Group.ID,
+			NoteId:  maximeNote.ID,
+		})
+		requireErrorHasGRPCCode(t, codes.NotFound, err)
+		require.Nil(t, res)
+	})
+
+	t.Run("delete-note", func(t *testing.T) {
+		res, err := tu.notes.DeleteNote(maxime.Context, &notesv1.DeleteNoteRequest{
+			GroupId: maximeNote.Group.ID,
+			NoteId:  maximeNote.ID,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, res)
+	})
 }

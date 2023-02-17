@@ -4,48 +4,46 @@ import (
 	"context"
 	"notes-service/background"
 	"notes-service/models"
-	notespb "notes-service/protorepo/noted/notes/v1"
+	notesv1 "notes-service/protorepo/noted/notes/v1"
 	"notes-service/validators"
 
-	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
-func (srv *notesService) InsertBlock(ctx context.Context, in *notespb.InsertBlockRequest) (*notespb.InsertBlockResponse, error) {
-	token, err := Authenticate(srv, ctx)
+func (srv *notesAPI) InsertBlock(ctx context.Context, req *notesv1.InsertBlockRequest) (*notesv1.InsertBlockResponse, error) {
+	token, err := srv.authenticate(ctx)
 	if err != nil {
-		return nil, status.Error(codes.Unauthenticated, err.Error())
+		return nil, err
 	}
-	err = validators.ValidateInsertBlockRequest(in)
+
+	err = validators.ValidateInsertBlockRequest(req)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
-	// Check if the user own the note
-	note, err := srv.repoNote.Get(ctx, in.NoteId)
+
+	// Check user is part of the group.
+	_, err = srv.groups.GetGroup(ctx, &models.OneGroupFilter{GroupID: req.GroupId}, token.AccountID)
 	if err != nil {
-		return nil, status.Error(codes.NotFound, "could not get block")
-	}
-	if token.UserID.String() != note.AuthorId {
-		return nil, status.Error(codes.PermissionDenied, "This author has not the rights to create a block")
+		return nil, statusFromModelError(err)
 	}
 
-	var block = models.Block{}
-	err = convertApiBlockToModelBlock(&block, in.Block)
+	block, err := srv.notes.InsertBlock(ctx,
+		&models.OneNoteFilter{GroupID: req.GroupId, NoteID: req.NoteId},
+		&models.InsertNoteBlockPayload{
+			Index: uint(req.Index),
+			Block: *protobufBlockToModelsBlock(req.Block),
+		},
+		token.AccountID)
 	if err != nil {
-		srv.logger.Error("failed to create block", zap.Error(err))
-		return nil, status.Errorf(codes.Internal, "invalid data content provided for block index : %d", in.Index)
-	}
-	BlockId, err := srv.repoBlock.Create(ctx, &models.Block{NoteId: in.NoteId, Type: uint32(in.Block.Type), Index: in.Index, Content: block.Content})
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "couldn't create block id : %s", *BlockId)
+		return nil, statusFromModelError(err)
 	}
 
 	// Launch process to generate keywords in 15minutes after the last modification
 	srv.background.AddProcess(&background.Process{
-		Identifier: models.NoteIdentifier{NoteId: block.NoteId, ActionType: models.NoteUpdateKeyword},
+		Identifier: models.NoteIdentifier{NoteId: req.NoteId, ActionType: models.NoteUpdateKeyword},
 		CallBackFct: func() error {
-			err := srv.UpdateKeywordsByNoteId(block.NoteId)
+			err := srv.UpdateKeywordsByNoteId(req.NoteId, token)
 			return err
 		},
 		SecondsToDebounce:             900,
@@ -53,52 +51,41 @@ func (srv *notesService) InsertBlock(ctx context.Context, in *notespb.InsertBloc
 		RepeatProcess:                 false,
 	})
 
-	blockResponse := &notespb.Block{Id: *BlockId, Type: in.Block.Type, Data: in.Block.Data}
-	return &notespb.InsertBlockResponse{Block: blockResponse}, nil
+	return &notesv1.InsertBlockResponse{Block: modelsBlockToProtobufBlock(block)}, nil
 }
 
-func (srv *notesService) UpdateBlock(ctx context.Context, in *notespb.UpdateBlockRequest) (*notespb.UpdateBlockResponse, error) {
-	token, err := Authenticate(srv, ctx)
+func (srv *notesAPI) UpdateBlock(ctx context.Context, req *notesv1.UpdateBlockRequest) (*notesv1.UpdateBlockResponse, error) {
+	token, err := srv.authenticate(ctx)
 	if err != nil {
-		return nil, status.Error(codes.Unauthenticated, err.Error())
+		return nil, err
 	}
-	err = validators.ValidateUpdateBlockRequest(in)
+
+	err = validators.ValidateUpdateBlockRequest(req)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
-	// Check if the block exist
-	block, err := srv.repoBlock.GetBlock(ctx, in.Id)
+
+	// Check user is part of the group.
+	_, err = srv.groups.GetGroup(ctx, &models.OneGroupFilter{GroupID: req.GroupId}, token.AccountID)
 	if err != nil {
-		srv.logger.Error("Block not found in database", zap.Error(err))
-		return nil, status.Error(codes.NotFound, "could not delete block")
-	}
-	// Check if the user own the note
-	note, err := srv.repoNote.Get(ctx, block.NoteId)
-	if err != nil {
-		srv.logger.Error("Note not found in database", zap.Error(err))
-		return nil, status.Error(codes.NotFound, "could not upate block")
-	}
-	if token.UserID.String() != note.AuthorId {
-		return nil, status.Error(codes.PermissionDenied, "This author has not the rights to update this note")
+		return nil, statusFromModelError(err)
 	}
 
-	var blockUpated = models.Block{}
-	err = convertApiBlockToModelBlock(&blockUpated, in.Block)
+	block, err := srv.notes.UpdateBlock(ctx,
+		&models.OneBlockFilter{GroupID: req.GroupId, NoteID: req.NoteId, BlockID: req.BlockId},
+		&models.UpdateBlockPayload{
+			Block: *protobufBlockToModelsBlock(req.Block),
+		},
+		token.AccountID)
 	if err != nil {
-		srv.logger.Error("failed to update block", zap.Error(err))
-		return nil, status.Errorf(codes.Internal, "invalid content provided for block id : %s", in.Id)
+		return nil, statusFromModelError(err)
 	}
 
-	block, err = srv.repoBlock.Update(ctx, in.Id, &models.Block{ID: in.Id, Type: uint32(in.Block.Type), Index: in.Index, Content: blockUpated.Content})
-	if err != nil {
-		srv.logger.Error("failed to create block", zap.Error(err))
-		return nil, status.Errorf(codes.Internal, "Internal error the block isn't created")
-	}
 	// Launch process to generate keywords in 15minutes after the last modification
 	srv.background.AddProcess(&background.Process{
-		Identifier: models.NoteIdentifier{NoteId: block.NoteId, ActionType: models.NoteUpdateKeyword},
+		Identifier: models.NoteIdentifier{NoteId: req.NoteId, ActionType: models.NoteUpdateKeyword},
 		CallBackFct: func() error {
-			err := srv.UpdateKeywordsByNoteId(block.NoteId)
+			err := srv.UpdateKeywordsByNoteId(req.NoteId, token)
 			return err
 		},
 		SecondsToDebounce:             900,
@@ -106,51 +93,38 @@ func (srv *notesService) UpdateBlock(ctx context.Context, in *notespb.UpdateBloc
 		RepeatProcess:                 false,
 	})
 
-	return &notespb.UpdateBlockResponse{
-		Block: &notespb.Block{
-			Id:   in.Id,
-			Type: in.Block.Type,
-			Data: in.Block.Data,
-		},
-	}, nil
+	return &notesv1.UpdateBlockResponse{Block: modelsBlockToProtobufBlock(block)}, nil
 }
 
-func (srv *notesService) DeleteBlock(ctx context.Context, in *notespb.DeleteBlockRequest) (*notespb.DeleteBlockResponse, error) {
-	token, err := Authenticate(srv, ctx)
+func (srv *notesAPI) DeleteBlock(ctx context.Context, req *notesv1.DeleteBlockRequest) (*notesv1.DeleteBlockResponse, error) {
+	token, err := srv.authenticate(ctx)
 	if err != nil {
-		return nil, status.Error(codes.Unauthenticated, err.Error())
+		return nil, err
 	}
-	err = validators.ValidateDeleteBlockRequest(in)
+
+	err = validators.ValidateDeleteBlockRequest(req)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
-	// Check if the block exist
-	block, err := srv.repoBlock.GetBlock(ctx, in.Id)
+
+	// Check user is part of the group.
+	_, err = srv.groups.GetGroup(ctx, &models.OneGroupFilter{GroupID: req.GroupId}, token.AccountID)
 	if err != nil {
-		srv.logger.Error("Block not found in database", zap.Error(err))
-		return nil, status.Error(codes.NotFound, "could not delete block")
-	}
-	// Check if the user own the note
-	note, err := srv.repoNote.Get(ctx, block.NoteId)
-	if err != nil {
-		srv.logger.Error("Note not found in database", zap.Error(err))
-		return nil, status.Error(codes.NotFound, "could not delete block")
-	}
-	if token.UserID.String() != note.AuthorId {
-		return nil, status.Error(codes.PermissionDenied, "This author has not the rights to update this note")
+		return nil, statusFromModelError(err)
 	}
 
-	err = srv.repoBlock.DeleteBlock(ctx, in.Id)
+	err = srv.notes.DeleteBlock(ctx,
+		&models.OneBlockFilter{GroupID: req.GroupId, NoteID: req.NoteId, BlockID: req.BlockId},
+		token.AccountID)
 	if err != nil {
-		srv.logger.Error("block was not deleted : ", zap.Error(err))
-		return nil, status.Errorf(codes.Internal, "could not delete block")
+		return nil, statusFromModelError(err)
 	}
 
 	// Launch process to generate keywords in 15minutes after the last modification
 	srv.background.AddProcess(&background.Process{
-		Identifier: models.NoteIdentifier{NoteId: block.NoteId, ActionType: models.NoteUpdateKeyword},
+		Identifier: models.NoteIdentifier{NoteId: req.NoteId, ActionType: models.NoteUpdateKeyword},
 		CallBackFct: func() error {
-			err := srv.UpdateKeywordsByNoteId(block.NoteId)
+			err := srv.UpdateKeywordsByNoteId(req.NoteId, token)
 			return err
 		},
 		SecondsToDebounce:             900,
@@ -158,5 +132,5 @@ func (srv *notesService) DeleteBlock(ctx context.Context, in *notespb.DeleteBloc
 		RepeatProcess:                 false,
 	})
 
-	return nil, nil
+	return &notesv1.DeleteBlockResponse{}, nil
 }

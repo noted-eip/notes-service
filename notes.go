@@ -2,13 +2,12 @@ package main
 
 import (
 	"context"
-	"sort"
-	"strconv"
 
 	"notes-service/auth"
 	"notes-service/background"
+	"notes-service/exports"
 	"notes-service/models"
-	notespb "notes-service/protorepo/noted/notes/v1"
+	notesv1 "notes-service/protorepo/noted/notes/v1"
 	"notes-service/validators"
 
 	"notes-service/language"
@@ -19,56 +18,53 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-type notesService struct {
-	notespb.UnimplementedNotesAPIServer
+type notesAPI struct {
+	notesv1.UnimplementedNotesAPIServer
+
+	logger *zap.Logger
 
 	auth       auth.Service
-	logger     *zap.Logger
-	repoNote   models.NotesRepository
-	repoBlock  models.BlocksRepository
 	language   language.Service
 	background background.Service
+
+	notes  models.NotesRepository
+	groups models.GroupsRepository
 }
 
-var _ notespb.NotesAPIServer = &notesService{}
+var _ notesv1.NotesAPIServer = &notesAPI{}
 
-func (srv *notesService) CreateNote(ctx context.Context, in *notespb.CreateNoteRequest) (*notespb.CreateNoteResponse, error) {
-	token, err := Authenticate(srv, ctx)
+func (srv *notesAPI) CreateNote(ctx context.Context, req *notesv1.CreateNoteRequest) (*notesv1.CreateNoteResponse, error) {
+	token, err := srv.authenticate(ctx)
 	if err != nil {
-		return nil, status.Error(codes.Unauthenticated, err.Error())
+		return nil, err
 	}
-	err = validators.ValidateCreateNoteRequest(in)
+
+	err = validators.ValidateCreateNoteRequest(req)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
-	// The user who create the note is the owner, no in.Note.AuthorId
-	note, err := srv.repoNote.Create(ctx, &models.NotePayload{AuthorId: token.UserID.String(), Title: in.Note.Title})
 
+	// Check user is part of the group.
+	_, err = srv.groups.GetGroup(ctx, &models.OneGroupFilter{GroupID: req.GroupId}, token.AccountID)
 	if err != nil {
-		srv.logger.Error("failed to create note", zap.Error(err))
-		return nil, status.Error(codes.Internal, "could not create note")
+		return nil, statusFromModelError(err)
 	}
 
-	blocks := make([]models.Block, len(in.Note.Blocks))
-
-	for index, block := range in.Note.Blocks {
-		err := convertApiBlockToModelBlock(&blocks[index], block)
-		if err != nil {
-			srv.logger.Error("failed to create note", zap.Error(err))
-			return nil, status.Errorf(codes.Internal, "invalid content provided for block index : %d", index)
-		}
-		blockId, err := srv.repoBlock.Create(ctx, &models.Block{NoteId: note.ID, Type: uint32(in.Note.Blocks[index].Type), Index: uint32(index + 1), Content: blocks[index].Content})
-		if err != nil {
-			srv.logger.Error("failed to create block index : "+strconv.Itoa(index), zap.Error(err))
-			return nil, status.Errorf(codes.Internal, "failed to create block index : %d", index)
-		}
-		in.Note.Blocks[index].Id = *blockId
+	note, err := srv.notes.CreateNote(ctx, &models.CreateNotePayload{
+		GroupID:         req.GroupId,
+		Title:           req.Title,
+		AuthorAccountID: token.AccountID,
+		FolderID:        "",
+		Blocks:          protobufBlocksToModelsBlocks(req.Blocks),
+	}, token.AccountID)
+	if err != nil {
+		return nil, statusFromModelError(err)
 	}
 
 	srv.background.AddProcess(&background.Process{
 		Identifier: models.NoteIdentifier{NoteId: note.ID, ActionType: models.NoteUpdateKeyword},
 		CallBackFct: func() error {
-			err := srv.UpdateKeywordsByNoteId(note.ID)
+			err := srv.UpdateKeywordsByNoteId(note.ID, token)
 			return err
 		},
 		SecondsToDebounce:             900,
@@ -76,189 +72,157 @@ func (srv *notesService) CreateNote(ctx context.Context, in *notespb.CreateNoteR
 		RepeatProcess:                 false,
 	})
 
-	noteResponse := notespb.Note{Id: note.ID, AuthorId: note.AuthorId, Title: note.Title, Blocks: in.Note.Blocks, CreatedAt: timestamppb.New(note.CreationDate), ModifiedAt: timestamppb.New(note.ModificationDate)}
-	return &notespb.CreateNoteResponse{Note: &noteResponse}, nil
+	return &notesv1.CreateNoteResponse{Note: modelsNoteToProtobufNote(note)}, nil
 }
 
-func (srv *notesService) GetNote(ctx context.Context, in *notespb.GetNoteRequest) (*notespb.GetNoteResponse, error) {
-	_, err := Authenticate(srv, ctx)
+func (srv *notesAPI) GetNote(ctx context.Context, req *notesv1.GetNoteRequest) (*notesv1.GetNoteResponse, error) {
+	token, err := srv.authenticate(ctx)
 	if err != nil {
-		return nil, status.Error(codes.Unauthenticated, err.Error())
+		return nil, err
 	}
-	err = validators.ValidateGetNoteRequest(in)
+
+	err = validators.ValidateGetNoteRequest(req)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	// Check if user is a note group member
-
-	note, err := srv.repoNote.Get(ctx, in.Id)
+	// Check user is part of the group.
+	_, err = srv.groups.GetGroup(ctx, &models.OneGroupFilter{GroupID: req.GroupId}, token.AccountID)
 	if err != nil {
-		srv.logger.Error("failed to get note", zap.Error(err))
-		return nil, status.Error(codes.NotFound, "could not get note.")
+		return nil, statusFromModelError(err)
 	}
 
-	blocksTmp, err := srv.repoBlock.GetBlocks(ctx, note.ID)
+	note, err := srv.notes.GetNote(ctx, &models.OneNoteFilter{GroupID: req.GroupId, NoteID: req.NoteId}, token.AccountID)
 	if err != nil {
-		srv.logger.Error("failed to get blocks", zap.Error(err))
-		return nil, status.Errorf(codes.NotFound, "invalid content provided for blocks form noteId : %s", note.ID)
+		return nil, statusFromModelError(err)
 	}
 
-	sort.Sort(models.BlocksByIndex(blocksTmp))
-
-	// Convert []models.block to []notespb.Block
-	blocks := make([]*notespb.Block, len(blocksTmp))
-	for index, block := range blocksTmp {
-		blocks[index] = &notespb.Block{}
-		err := convertModelBlockToApiBlock(block, blocks[index])
-		if err != nil {
-			srv.logger.Error("failed to the content of a block", zap.Error(err))
-			return nil, status.Errorf(codes.Internal, "fail to get content from block Id : %s", block.ID)
-		}
-		blocks[index] = &notespb.Block{Id: block.ID, Type: notespb.Block_Type(block.Type), Data: blocks[index].Data}
-	}
-	noteResponse := notespb.Note{Id: note.ID, AuthorId: note.AuthorId, Title: note.Title, Blocks: blocks, CreatedAt: timestamppb.New(note.CreationDate), ModifiedAt: timestamppb.New(note.ModificationDate)}
-	return &notespb.GetNoteResponse{Note: &noteResponse}, nil
+	return &notesv1.GetNoteResponse{Note: modelsNoteToProtobufNote(note)}, nil
 }
 
-func (srv *notesService) UpdateNote(ctx context.Context, in *notespb.UpdateNoteRequest) (*notespb.UpdateNoteResponse, error) {
-	token, err := Authenticate(srv, ctx)
+func (srv *notesAPI) UpdateNote(ctx context.Context, req *notesv1.UpdateNoteRequest) (*notesv1.UpdateNoteResponse, error) {
+	token, err := srv.authenticate(ctx)
 	if err != nil {
-		return nil, status.Error(codes.Unauthenticated, err.Error())
-	}
-	err = validators.ValidateUpdateNoteRequest(in)
-	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
-	}
-	// Check if the user own the note
-	note, err := srv.repoNote.Get(ctx, in.Id)
-	if err != nil {
-		srv.logger.Error("Note not found in database", zap.Error(err))
-		return nil, status.Error(codes.NotFound, "could not update note")
-	}
-	if token.UserID.String() != note.AuthorId {
-		return nil, status.Error(codes.PermissionDenied, "This author has not the rights to update this note")
+		return nil, err
 	}
 
-	// Delete all blocks
-	err = srv.repoBlock.DeleteBlocks(ctx, in.Id)
-	if err != nil {
-		srv.logger.Error("blocks weren't deleted : ", zap.Error(err))
-		return nil, status.Error(codes.Internal, "could not delete blocks")
-	}
-
-	// TODO : Update only the note metInformation if the blocks are nil
-	err = srv.repoNote.Update(ctx, in.Id, &models.NotePayload{AuthorId: in.Note.AuthorId, Title: in.Note.Title})
-	if err != nil {
-		srv.logger.Error("failed to update note", zap.Error(err))
-		return nil, status.Error(codes.Internal, "could not update note")
-	}
-
-	// Create all blocks
-	blocks := make([]models.Block, len(in.Note.Blocks))
-	for index, block := range in.Note.Blocks {
-		err := convertApiBlockToModelBlock(&blocks[index], block)
-		if err != nil {
-			srv.logger.Error("failed to update blocks", zap.Error(err))
-			return nil, status.Errorf(codes.Internal, "invalid content provided for block index : %d", index)
-		}
-		srv.repoBlock.Create(ctx, &models.Block{NoteId: in.Id, Type: uint32(in.Note.Blocks[index].Type), Index: uint32(index + 1), Content: blocks[index].Content})
-	}
-
-	// Launch process to generate keywords in 15minutes after the last modification
-	srv.background.AddProcess(&background.Process{
-		Identifier: models.NoteIdentifier{NoteId: note.ID, ActionType: models.NoteUpdateKeyword},
-		CallBackFct: func() error {
-			err := srv.UpdateKeywordsByNoteId(note.ID)
-			return err
-		},
-		SecondsToDebounce:             900,
-		CancelProcessOnSameIdentifier: true,
-		RepeatProcess:                 false,
-	})
-
-	return nil, nil
-}
-
-func (srv *notesService) DeleteNote(ctx context.Context, in *notespb.DeleteNoteRequest) (*notespb.DeleteNoteResponse, error) {
-	token, err := Authenticate(srv, ctx)
-	if err != nil {
-		return nil, status.Error(codes.Unauthenticated, err.Error())
-	}
-	err = validators.ValidateDeleteNoteRequest(in)
-	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
-	}
-	// Check if the user own the note
-	note, err := srv.repoNote.Get(ctx, in.Id)
-	if err != nil {
-		srv.logger.Error("Note not found in database", zap.Error(err))
-		return nil, status.Error(codes.NotFound, "could not update note")
-	}
-	if token.UserID.String() != note.AuthorId {
-		return nil, status.Error(codes.PermissionDenied, "This author has not the rights to update this note")
-	}
-	// Delete all blocks related to the noteId
-	err = srv.repoBlock.DeleteBlocks(ctx, in.Id)
-	if err != nil {
-		srv.logger.Error("blocks weren't deleted : ", zap.Error(err))
-		return nil, status.Error(codes.Internal, "could not delete blocks")
-	}
-	// Delete the note
-	err = srv.repoNote.Delete(ctx, in.Id)
-	if err != nil {
-		srv.logger.Error("failed to delete note", zap.Error(err))
-		return nil, status.Error(codes.Internal, "could not delete note")
-	}
-
-	// TODO : notify the background process that the noteId have been deleted, and cancel the associeted task
-
-	return nil, nil
-}
-
-func (srv *notesService) ListNotes(ctx context.Context, in *notespb.ListNotesRequest) (*notespb.ListNotesResponse, error) {
-	_, err := Authenticate(srv, ctx)
-	if err != nil {
-		return nil, status.Error(codes.Unauthenticated, err.Error())
-	}
-	err = validators.ValidateListNoteRequest(in)
+	err = validators.ValidateUpdateNoteRequest(req)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	// TODO: check if user is a note group member
-
-	notes, err := srv.repoNote.List(ctx, in.AuthorId)
+	// Check user is part of the group.
+	_, err = srv.groups.GetGroup(ctx, &models.OneGroupFilter{GroupID: req.GroupId}, token.AccountID)
 	if err != nil {
-		srv.logger.Error("failed to get note", zap.Error(err))
-		return nil, status.Errorf(codes.NotFound, "could not get note")
+		return nil, statusFromModelError(err)
 	}
 
-	notesResponse := make([]*notespb.Note, len(notes))
-	for index, note := range notes {
-		notesResponse[index] = &notespb.Note{Id: note.ID, AuthorId: note.AuthorId, Title: note.Title, CreatedAt: timestamppb.New(note.CreationDate), ModifiedAt: timestamppb.New(note.ModificationDate)}
+	note, err := srv.notes.UpdateNote(ctx,
+		&models.OneNoteFilter{GroupID: req.GroupId, NoteID: req.NoteId},
+		&models.UpdateNotePayload{Title: req.Note.Title},
+		token.AccountID)
+	if err != nil {
+		return nil, statusFromModelError(err)
 	}
-	return &notespb.ListNotesResponse{Notes: notesResponse}, nil
+
+	return &notesv1.UpdateNoteResponse{Note: modelsNoteToProtobufNote(note)}, nil
 }
 
-func (srv *notesService) UpdateKeywordsByNoteId(noteId string) error {
-	// Get la note & les blocks
-	note, err := srv.repoNote.Get(context.TODO(), noteId)
+func (srv *notesAPI) DeleteNote(ctx context.Context, req *notesv1.DeleteNoteRequest) (*notesv1.DeleteNoteResponse, error) {
+	token, err := srv.authenticate(ctx)
 	if err != nil {
-		srv.logger.Error("failed to get note", zap.Error(err))
-		return status.Error(codes.NotFound, "could not get note.")
+		return nil, err
 	}
-	blocks, err := srv.repoBlock.GetBlocks(context.TODO(), note.ID)
+
+	err = validators.ValidateDeleteNoteRequest(req)
 	if err != nil {
-		srv.logger.Error("failed to get blocks", zap.Error(err))
-		return status.Errorf(codes.NotFound, "invalid content provided for blocks form noteId : %s", note.ID)
+		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
-	for index, block := range blocks {
-		newSize := len(note.Blocks) + 1
-		note.Blocks = make([]models.Block, newSize)
-		note.Blocks[index] = *block
+
+	err = srv.notes.DeleteNote(ctx,
+		&models.OneNoteFilter{GroupID: req.GroupId, NoteID: req.NoteId},
+		token.AccountID)
+	if err != nil {
+		return nil, statusFromModelError(err)
 	}
-	// Gen les keywords
+
+	return &notesv1.DeleteNoteResponse{}, nil
+}
+
+func (srv *notesAPI) ListNotes(ctx context.Context, req *notesv1.ListNotesRequest) (*notesv1.ListNotesResponse, error) {
+	token, err := srv.authenticate(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	err = validators.ValidateListNoteRequest(req)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	// Check user is part of the group
+	_, err = srv.groups.GetGroup(ctx, &models.OneGroupFilter{GroupID: req.GroupId}, token.AccountID)
+	if err != nil {
+		return nil, statusFromModelError(err)
+	}
+
+	notes, err := srv.notes.ListNotesInternal(ctx, &models.ManyNotesFilter{AuthorAccountID: req.AuthorAccountId}, &models.ListOptions{Limit: 20, Offset: 0})
+	if err != nil {
+		return nil, statusFromModelError(err)
+	}
+
+	protobufNotes := make([]*notesv1.Note, len(notes))
+	for i := range notes {
+		protobufNotes[i] = modelsNoteToProtobufNote(notes[i])
+	}
+
+	return &notesv1.ListNotesResponse{Notes: protobufNotes}, nil
+}
+
+func (srv *notesAPI) ExportNote(ctx context.Context, req *notesv1.ExportNoteRequest) (*notesv1.ExportNoteResponse, error) {
+	token, err := srv.authenticate(ctx)
+	if err != nil {
+		return nil, status.Error(codes.Unauthenticated, err.Error())
+	}
+
+	err = validators.ValidateExportNoteRequest(req)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	note, err := srv.GetNote(ctx, &notesv1.GetNoteRequest{GroupId: req.GroupId, NoteId: req.NoteId})
+	if err != nil {
+		return nil, statusFromModelError(err)
+	}
+
+	// Check user is part of the group
+	_, err = srv.groups.GetGroup(ctx, &models.OneGroupFilter{GroupID: req.GroupId}, token.AccountID)
+	if err != nil {
+		return nil, statusFromModelError(err)
+	}
+
+	formatter, ok := protobufFormatToFormatter[req.ExportFormat]
+	if !ok {
+		srv.logger.Error("format not recognized", zap.Error(err))
+		return nil, status.Errorf(codes.Internal, "format not recognized : %s", req.ExportFormat.String())
+	}
+
+	fileBytes, err := formatter(note.Note)
+
+	if err != nil {
+		srv.logger.Error("failed to convert note", zap.Error(err))
+		return nil, status.Errorf(codes.Internal, "failed to convert note to: %s", req.ExportFormat.String())
+	}
+
+	return &notesv1.ExportNoteResponse{File: fileBytes}, nil
+}
+
+func (srv *notesAPI) UpdateKeywordsByNoteId(noteId string, token *auth.Token) error {
+	note, err := srv.notes.GetNote(context.TODO(), &models.OneNoteFilter{ /*GroupID: req.GroupId, */ NoteID: noteId}, token.AccountID)
+	if err != nil {
+		return statusFromModelError(err)
+	}
+
 	// TODDO : mettre un timeout sur le call google
 	err = generateNoteTagsToModelNote(srv.language, note)
 	if err != nil {
@@ -266,13 +230,14 @@ func (srv *notesService) UpdateKeywordsByNoteId(noteId string) error {
 		return status.Errorf(codes.Internal, "failed to gen keywords for noteId : %s", note.ID)
 	}
 
-	// Update la note
-	newNote := models.NotePayload{ID: note.ID, AuthorId: note.AuthorId, Title: note.Title, Blocks: note.Blocks, Keywords: note.Keywords}
-	err = srv.repoNote.Update(context.TODO(), noteId, &newNote)
+	note, err = srv.notes.UpdateNote(context.TODO(),
+		&models.OneNoteFilter{GroupID: note.GroupID, NoteID: note.ID},
+		&models.UpdateNotePayload{Keywords: note.Keywords},
+		token.AccountID)
 	if err != nil {
-		srv.logger.Error("failed upate note with keywords", zap.Error(err))
-		return status.Errorf(codes.Internal, "failed upate note with keywords for noteId : %s", note.ID)
+		return statusFromModelError(err)
 	}
+
 	return nil
 }
 
@@ -280,9 +245,13 @@ func generateNoteTagsToModelNote(languageService language.Service, note *models.
 	var fullNote string
 
 	for _, block := range note.Blocks {
-		if block.Type != uint32(notespb.Block_TYPE_CODE) && block.Type != uint32(notespb.Block_TYPE_IMAGE) {
-			fullNote += block.Content + "\n"
+		if block.Type != "code" && block.Type != "image" {
+			content, ok := GetBlockContent(&block)
+			if ok {
+				fullNote += content + "\n"
+			}
 		}
+
 	}
 
 	keywords, err := languageService.GetKeywordsFromTextInput(fullNote)
@@ -290,73 +259,166 @@ func generateNoteTagsToModelNote(languageService language.Service, note *models.
 		return status.Error(codes.Internal, err.Error())
 	}
 
-	note.Keywords = *keywords
+	note.Keywords = keywords
 	return nil
 }
 
-func convertApiBlockToModelBlock(block *models.Block, blockRequest *notespb.Block) error {
-	switch op := blockRequest.Data.(type) {
-	case *notespb.Block_Heading:
-		block.Content = op.Heading
-	case *notespb.Block_Paragraph:
-		block.Content = op.Paragraph
-	case *notespb.Block_NumberPoint:
-		block.Content = op.NumberPoint
-	case *notespb.Block_BulletPoint:
-		block.Content = op.BulletPoint
-	case *notespb.Block_Math:
-		block.Content = op.Math
-	case *notespb.Block_Image_:
-		block.Image.Caption = op.Image.Caption
-		block.Image.Url = op.Image.Url
-	case *notespb.Block_Code_:
-		block.Code.Lang = op.Code.Lang
-		block.Code.Snippet = op.Code.Snippet
-	default:
-		return status.Error(codes.Internal, "block data type not known")
-	}
-	return nil
-}
-
-func convertModelBlockToApiBlock(blockSrc *models.Block, blockDest *notespb.Block) error {
-	switch blockSrc.Type {
-	case uint32(notespb.Block_TYPE_HEADING_1):
-		fallthrough
-	case uint32(notespb.Block_TYPE_HEADING_2):
-		fallthrough
-	case uint32(notespb.Block_TYPE_HEADING_3):
-		blockDest.Data = &notespb.Block_Heading{Heading: blockSrc.Content}
-	case uint32(notespb.Block_TYPE_PARAGRAPH):
-		blockDest.Data = &notespb.Block_Paragraph{Paragraph: blockSrc.Content}
-	case uint32(notespb.Block_TYPE_NUMBERED_POINT):
-		blockDest.Data = &notespb.Block_NumberPoint{NumberPoint: blockSrc.Content}
-	case uint32(notespb.Block_TYPE_BULLET_POINT):
-		blockDest.Data = &notespb.Block_BulletPoint{BulletPoint: blockSrc.Content}
-	case uint32(notespb.Block_TYPE_MATH):
-		blockDest.Data = &notespb.Block_Math{Math: blockSrc.Content}
-	case uint32(notespb.Block_TYPE_IMAGE):
-		(*blockDest).Data = &notespb.Block_Image_{Image: &notespb.Block_Image{Caption: blockSrc.Image.Caption, Url: blockSrc.Image.Url}}
-	case uint32(notespb.Block_TYPE_CODE):
-		(*blockDest).Data = &notespb.Block_Code_{Code: &notespb.Block_Code{Snippet: blockSrc.Code.Snippet, Lang: blockSrc.Code.Lang}}
-	default:
-		return status.Errorf(codes.Internal, "no such content in this block")
-	}
-	return nil
-}
-
-func Authenticate(srv *notesService, ctx context.Context) (*auth.Token, error) {
-	token, err := srv.authenticate(ctx)
-	if err != nil {
-		return nil, status.Error(codes.Unauthenticated, err.Error())
-	}
-	return token, nil
-}
-
-func (srv *notesService) authenticate(ctx context.Context) (*auth.Token, error) {
+func (srv *notesAPI) authenticate(ctx context.Context) (*auth.Token, error) {
 	token, err := srv.auth.TokenFromContext(ctx)
 	if err != nil {
-		srv.logger.Debug("failed to authenticate request", zap.Error(err))
+		srv.logger.Debug("could not authenticate request", zap.Error(err))
 		return nil, status.Error(codes.Unauthenticated, "invalid token")
 	}
 	return token, nil
+}
+
+var protobufFormatToFormatter = map[notesv1.NoteExportFormat]func(*notesv1.Note) ([]byte, error){
+	notesv1.NoteExportFormat_NOTE_EXPORT_FORMAT_MARKDOWN: exports.NoteToMarkdown,
+	notesv1.NoteExportFormat_NOTE_EXPORT_FORMAT_PDF:      exports.NoteToPDF,
+}
+
+func protobufBlocksToModelsBlocks(blocks []*notesv1.Block) []models.NoteBlock {
+	modelsBlocks := make([]models.NoteBlock, len(blocks))
+
+	for i := range blocks {
+		modelsBlocks[i] = *protobufBlockToModelsBlock(blocks[i])
+	}
+
+	return modelsBlocks
+}
+
+func protobufBlockToModelsBlock(block *notesv1.Block) *models.NoteBlock {
+	modelsBlock := &models.NoteBlock{
+		Type: block.Type.String(),
+	}
+	switch block.Type {
+	case notesv1.Block_TYPE_HEADING_1:
+		val := block.GetHeading()
+		modelsBlock.Heading = &val
+	case notesv1.Block_TYPE_HEADING_2:
+		val := block.GetHeading()
+		modelsBlock.Heading = &val
+	case notesv1.Block_TYPE_HEADING_3:
+		val := block.GetHeading()
+		modelsBlock.Heading = &val
+	case notesv1.Block_TYPE_PARAGRAPH:
+		val := block.GetParagraph()
+		modelsBlock.Paragraph = &val
+	case notesv1.Block_TYPE_MATH:
+		val := block.GetMath()
+		modelsBlock.Math = &val
+	case notesv1.Block_TYPE_CODE:
+		modelsBlock.Code = &models.NoteBlockCode{}
+		if code := block.GetCode(); code != nil {
+			modelsBlock.Code = &models.NoteBlockCode{
+				Snippet: code.Snippet,
+				Lang:    code.Lang,
+			}
+		}
+	case notesv1.Block_TYPE_IMAGE:
+		modelsBlock.Image = &models.NoteBlockImage{}
+		if image := block.GetImage(); image != nil {
+			modelsBlock.Image = &models.NoteBlockImage{
+				Caption: image.Caption,
+				Url:     image.Url,
+			}
+		}
+	case notesv1.Block_TYPE_BULLET_POINT:
+		val := block.GetBulletPoint()
+		modelsBlock.BulletPoint = &val
+	case notesv1.Block_TYPE_NUMBER_POINT:
+		val := block.GetNumberPoint()
+		modelsBlock.NumberPoint = &val
+	}
+	return modelsBlock
+}
+
+func modelsNoteToProtobufNote(note *models.Note) *notesv1.Note {
+	protobufNote := &notesv1.Note{
+		Id:              note.ID,
+		GroupId:         note.GroupID,
+		AuthorAccountId: note.AuthorAccountID,
+		Title:           note.Title,
+		CreatedAt:       timestamppb.New(note.CreatedAt),
+		ModifiedAt:      timestamppb.New(note.ModifiedAt),
+		AnalyzedAt:      timestamppb.New(note.AnalyzedAt),
+		Blocks:          make([]*notesv1.Block, len(note.Blocks)),
+	}
+
+	for i := range note.Blocks {
+		protobufNote.Blocks[i] = modelsBlockToProtobufBlock(&note.Blocks[i])
+	}
+
+	return protobufNote
+}
+
+func modelsBlockToProtobufBlock(block *models.NoteBlock) *notesv1.Block {
+	blockType, ok := notesv1.Block_Type_value[block.Type]
+	if !ok {
+		blockType = int32(notesv1.Block_TYPE_INVALID)
+	}
+	ret := &notesv1.Block{
+		Id:   block.ID,
+		Type: notesv1.Block_Type(blockType),
+	}
+
+	switch notesv1.Block_Type(blockType) {
+	case notesv1.Block_TYPE_HEADING_1:
+		ret.Data = &notesv1.Block_Heading{
+			Heading: stringPtrValueOrFallback(block.Heading, ""),
+		}
+	case notesv1.Block_TYPE_HEADING_2:
+		ret.Data = &notesv1.Block_Heading{
+			Heading: stringPtrValueOrFallback(block.Heading, ""),
+		}
+	case notesv1.Block_TYPE_HEADING_3:
+		ret.Data = &notesv1.Block_Heading{
+			Heading: stringPtrValueOrFallback(block.Heading, ""),
+		}
+	case notesv1.Block_TYPE_PARAGRAPH:
+		ret.Data = &notesv1.Block_Paragraph{
+			Paragraph: stringPtrValueOrFallback(block.Paragraph, ""),
+		}
+	case notesv1.Block_TYPE_CODE:
+		if block.Code == nil {
+			break
+		}
+		ret.Data = &notesv1.Block_Code_{
+			Code: &notesv1.Block_Code{
+				Snippet: block.Code.Snippet,
+				Lang:    block.Code.Lang,
+			},
+		}
+	case notesv1.Block_TYPE_MATH:
+		ret.Data = &notesv1.Block_Math{
+			Math: stringPtrValueOrFallback(block.Math, ""),
+		}
+	case notesv1.Block_TYPE_IMAGE:
+		if block.Image == nil {
+			break
+		}
+		ret.Data = &notesv1.Block_Image_{
+			Image: &notesv1.Block_Image{
+				Caption: block.Image.Caption,
+				Url:     block.Image.Url,
+			},
+		}
+	case notesv1.Block_TYPE_BULLET_POINT:
+		ret.Data = &notesv1.Block_BulletPoint{
+			BulletPoint: stringPtrValueOrFallback(block.BulletPoint, ""),
+		}
+	case notesv1.Block_TYPE_NUMBER_POINT:
+		ret.Data = &notesv1.Block_NumberPoint{
+			NumberPoint: stringPtrValueOrFallback(block.NumberPoint, ""),
+		}
+	}
+
+	return ret
+}
+
+func stringPtrValueOrFallback(ptr *string, fallback string) string {
+	if ptr != nil {
+		return *ptr
+	}
+	return fallback
 }
