@@ -179,12 +179,19 @@ func (srv *notesAPI) ListNotes(ctx context.Context, req *notesv1.ListNotesReques
 		return nil, statusFromModelError(err)
 	}
 
+	return &notesv1.ListNotesResponse{Notes: modelsNotesToProtobufNotes(notes)}, nil
+}
+
+func modelsNotesToProtobufNotes(notes []*models.Note) []*notesv1.Note {
 	protobufNotes := make([]*notesv1.Note, len(notes))
 	for i := range notes {
 		protobufNotes[i] = modelsNoteToProtobufNote(notes[i])
+		// NOTE: List notes doesn't return the notes blocks but we
+		// must explicitely set it to nil to avoid sending an empty
+		// array.
+		protobufNotes[i].Blocks = nil
 	}
-
-	return &notesv1.ListNotesResponse{Notes: protobufNotes}, nil
+	return protobufNotes
 }
 
 func (srv *notesAPI) ExportNote(ctx context.Context, req *notesv1.ExportNoteRequest) (*notesv1.ExportNoteResponse, error) {

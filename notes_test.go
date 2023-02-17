@@ -340,5 +340,12 @@ func TestNotesSuite(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, res)
 		require.Len(t, res.Notes, 5)
+
+		// Make sure only the note's metadata is returned.
+		require.Nil(t, res.Notes[0].Blocks)
+		require.Nil(t, res.Notes[1].Blocks)
+		require.Nil(t, res.Notes[2].Blocks)
+		require.Nil(t, res.Notes[3].Blocks)
+		require.Nil(t, res.Notes[4].Blocks)
 	})
 }
