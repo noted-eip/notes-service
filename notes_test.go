@@ -2,6 +2,7 @@ package main
 
 import (
 	notesv1 "notes-service/protorepo/noted/notes/v1"
+	"time"
 
 	"testing"
 
@@ -13,22 +14,28 @@ import (
 func TestNotesSuite(t *testing.T) {
 	tu := newTestUtilsOrDie(t)
 	edouard := newTestAccount(t, tu)
-	gabriel := newTestAccount(t, tu)
+	stranger := newTestAccount(t, tu)
 	maxime := newTestAccount(t, tu)
 	edouardGroup := newTestGroup(t, tu, edouard, maxime)
 
 	t.Run("create-note", func(t *testing.T) {
+		before := time.Now()
 		res, err := tu.notes.CreateNote(edouard.Context, &notesv1.CreateNoteRequest{
 			GroupId: edouardGroup.ID,
 			Title:   "My New Note",
 		})
+		after := time.Now()
 		require.NoError(t, err)
 		require.NotNil(t, res)
 		require.Equal(t, "My New Note", res.Note.Title)
+		require.Nil(t, res.Note.ModifiedAt)
+		require.Nil(t, res.Note.AnalyzedAt)
+		require.GreaterOrEqual(t, res.Note.CreatedAt.AsTime().Unix(), before.Unix())
+		require.LessOrEqual(t, res.Note.CreatedAt.AsTime().Unix(), after.Unix())
 	})
 
 	t.Run("stranger-cannot-create-note", func(t *testing.T) {
-		res, err := tu.notes.CreateNote(gabriel.Context, &notesv1.CreateNoteRequest{
+		res, err := tu.notes.CreateNote(stranger.Context, &notesv1.CreateNoteRequest{
 			GroupId: edouardGroup.ID,
 			Title:   "My New Note",
 		})
@@ -232,6 +239,7 @@ func TestNotesSuite(t *testing.T) {
 	edouardNote := newTestNote(t, tu, edouardGroup, edouard, []*notesv1.Block{})
 
 	t.Run("owner-can-update-note-title", func(t *testing.T) {
+		before := time.Now()
 		res, err := tu.notes.UpdateNote(edouard.Context, &notesv1.UpdateNoteRequest{
 			GroupId: edouardGroup.ID,
 			NoteId:  edouardNote.ID,
@@ -242,9 +250,13 @@ func TestNotesSuite(t *testing.T) {
 				Paths: []string{"title"},
 			},
 		})
+		after := time.Now()
+
 		require.NoError(t, err)
 		require.NotNil(t, res)
 		require.Equal(t, "Brand New Title", res.Note.Title)
+		require.GreaterOrEqual(t, res.Note.ModifiedAt.AsTime().Unix(), before.Unix())
+		require.LessOrEqual(t, res.Note.ModifiedAt.AsTime().Unix(), after.Unix())
 	})
 
 	t.Run("member-cannot-update-note-title", func(t *testing.T) {
@@ -263,7 +275,7 @@ func TestNotesSuite(t *testing.T) {
 	})
 
 	t.Run("stranger-cannot-update-note-title", func(t *testing.T) {
-		res, err := tu.notes.UpdateNote(gabriel.Context, &notesv1.UpdateNoteRequest{
+		res, err := tu.notes.UpdateNote(stranger.Context, &notesv1.UpdateNoteRequest{
 			GroupId: edouardGroup.ID,
 			NoteId:  edouardNote.ID,
 			Note: &notesv1.Note{
@@ -304,7 +316,7 @@ func TestNotesSuite(t *testing.T) {
 	})
 
 	t.Run("stranger-cannot-delete-note", func(t *testing.T) {
-		res, err := tu.notes.DeleteNote(gabriel.Context, &notesv1.DeleteNoteRequest{
+		res, err := tu.notes.DeleteNote(stranger.Context, &notesv1.DeleteNoteRequest{
 			GroupId: maximeNote.Group.ID,
 			NoteId:  maximeNote.ID,
 		})
@@ -321,9 +333,48 @@ func TestNotesSuite(t *testing.T) {
 		require.NotNil(t, res)
 	})
 
-	t.Run("member-can-list-notes", func(t *testing.T) {
+	newTestNote(t, tu, edouardGroup, maxime, nil)
+
+	t.Run("member-can-list-notes-by-group", func(t *testing.T) {
 		res, err := tu.notes.ListNotes(maxime.Context, &notesv1.ListNotesRequest{
 			GroupId: edouardGroup.ID,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, res)
+		require.Len(t, res.Notes, 6)
+
+		// Make sure only the note's metadata is returned.
+		require.Nil(t, res.Notes[0].Blocks)
+		require.Nil(t, res.Notes[1].Blocks)
+		require.Nil(t, res.Notes[2].Blocks)
+		require.Nil(t, res.Notes[3].Blocks)
+		require.Nil(t, res.Notes[4].Blocks)
+	})
+
+	t.Run("stranger-cannot-list-notes", func(t *testing.T) {
+		res, err := tu.notes.ListNotes(stranger.Context, &notesv1.ListNotesRequest{
+			GroupId: edouardGroup.ID,
+		})
+		requireErrorHasGRPCCode(t, codes.NotFound, err)
+		require.Nil(t, res)
+	})
+
+	maximeGroup := newTestGroup(t, tu, maxime, edouard)
+	newTestNote(t, tu, maximeGroup, edouard, nil)
+
+	t.Run("user-can-list-their-notes-across-groups", func(t *testing.T) {
+		res, err := tu.notes.ListNotes(edouard.Context, &notesv1.ListNotesRequest{
+			AuthorAccountId: edouard.ID,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, res)
+		require.Len(t, res.Notes, 6)
+	})
+
+	t.Run("user-can-list-their-notes-in-group", func(t *testing.T) {
+		res, err := tu.notes.ListNotes(edouard.Context, &notesv1.ListNotesRequest{
+			AuthorAccountId: edouard.ID,
+			GroupId:         edouardGroup.ID,
 		})
 		require.NoError(t, err)
 		require.NotNil(t, res)
