@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"notes-service/auth"
+	"notes-service/background"
 	"notes-service/language"
 	"notes-service/models"
 	"notes-service/models/mongo"
@@ -63,6 +64,7 @@ func newTestUtilsOrDie(t *testing.T) *testUtils {
 	notesRepository := mongo.NewNotesRepository(db.DB, logger)
 	groupsRepository := mongo.NewGroupsRepository(db.DB, logger)
 	language := &language.NaturalAPIService{}
+	background := background.NewService(logger)
 	require.NoError(t, language.Init())
 	newUUID, err := nanoid.Standard(21)
 	require.NoError(t, err)
@@ -75,11 +77,12 @@ func newTestUtilsOrDie(t *testing.T) *testUtils {
 		notesRepository:  notesRepository,
 		groupsRepository: groupsRepository,
 		notes: &notesAPI{
-			logger:   logger,
-			auth:     auth,
-			language: language,
-			notes:    notesRepository,
-			groups:   groupsRepository,
+			logger:     logger,
+			auth:       auth,
+			notes:      notesRepository,
+			groups:     groupsRepository,
+			language:   language,
+			background: background,
 		},
 		groups: &groupsAPI{
 			logger: logger,
