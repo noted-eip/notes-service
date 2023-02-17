@@ -48,10 +48,10 @@ func (s *server) Init(opt ...grpc.ServerOption) {
 	s.initLogger()
 	s.initAuthService()
 	s.initRepositories()
-	s.initGroupsAPI()
-	s.initNotesAPI()
 	s.initLanguageService()
 	s.initBackgroundService()
+	s.initGroupsAPI()
+	s.initNotesAPI()
 	s.initgrpcServer(opt...)
 }
 

@@ -64,10 +64,10 @@ func (srv *notesAPI) CreateNote(ctx context.Context, req *notesv1.CreateNoteRequ
 	srv.background.AddProcess(&background.Process{
 		Identifier: models.NoteIdentifier{NoteId: note.ID, ActionType: models.NoteUpdateKeyword},
 		CallBackFct: func() error {
-			err := srv.UpdateKeywordsByNoteId(note.ID, token)
+			err := srv.UpdateKeywordsByNoteId(note.ID, req.GroupId, token.AccountID)
 			return err
 		},
-		SecondsToDebounce:             900,
+		SecondsToDebounce:             5,
 		CancelProcessOnSameIdentifier: true,
 		RepeatProcess:                 false,
 	})
@@ -217,8 +217,8 @@ func (srv *notesAPI) ExportNote(ctx context.Context, req *notesv1.ExportNoteRequ
 	return &notesv1.ExportNoteResponse{File: fileBytes}, nil
 }
 
-func (srv *notesAPI) UpdateKeywordsByNoteId(noteId string, token *auth.Token) error {
-	note, err := srv.notes.GetNote(context.TODO(), &models.OneNoteFilter{ /*GroupID: req.GroupId, */ NoteID: noteId}, token.AccountID)
+func (srv *notesAPI) UpdateKeywordsByNoteId(noteId string, groupId string, accountID string) error {
+	note, err := srv.notes.GetNote(context.TODO(), &models.OneNoteFilter{GroupID: groupId, NoteID: noteId}, accountID)
 	if err != nil {
 		return statusFromModelError(err)
 	}
@@ -233,7 +233,7 @@ func (srv *notesAPI) UpdateKeywordsByNoteId(noteId string, token *auth.Token) er
 	note, err = srv.notes.UpdateNote(context.TODO(),
 		&models.OneNoteFilter{GroupID: note.GroupID, NoteID: note.ID},
 		&models.UpdateNotePayload{Keywords: note.Keywords},
-		token.AccountID)
+		accountID)
 	if err != nil {
 		return statusFromModelError(err)
 	}

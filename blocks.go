@@ -43,7 +43,7 @@ func (srv *notesAPI) InsertBlock(ctx context.Context, req *notesv1.InsertBlockRe
 	srv.background.AddProcess(&background.Process{
 		Identifier: models.NoteIdentifier{NoteId: req.NoteId, ActionType: models.NoteUpdateKeyword},
 		CallBackFct: func() error {
-			err := srv.UpdateKeywordsByNoteId(req.NoteId, token)
+			err := srv.UpdateKeywordsByNoteId(req.NoteId, req.GroupId, token.AccountID)
 			return err
 		},
 		SecondsToDebounce:             900,
@@ -85,7 +85,7 @@ func (srv *notesAPI) UpdateBlock(ctx context.Context, req *notesv1.UpdateBlockRe
 	srv.background.AddProcess(&background.Process{
 		Identifier: models.NoteIdentifier{NoteId: req.NoteId, ActionType: models.NoteUpdateKeyword},
 		CallBackFct: func() error {
-			err := srv.UpdateKeywordsByNoteId(req.NoteId, token)
+			err := srv.UpdateKeywordsByNoteId(req.NoteId, req.GroupId, token.AccountID)
 			return err
 		},
 		SecondsToDebounce:             900,
@@ -124,7 +124,7 @@ func (srv *notesAPI) DeleteBlock(ctx context.Context, req *notesv1.DeleteBlockRe
 	srv.background.AddProcess(&background.Process{
 		Identifier: models.NoteIdentifier{NoteId: req.NoteId, ActionType: models.NoteUpdateKeyword},
 		CallBackFct: func() error {
-			err := srv.UpdateKeywordsByNoteId(req.NoteId, token)
+			err := srv.UpdateKeywordsByNoteId(req.NoteId, req.GroupId, token.AccountID)
 			return err
 		},
 		SecondsToDebounce:             900,
