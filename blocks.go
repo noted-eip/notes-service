@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"notes-service/background"
 	"notes-service/models"
 	notesv1 "notes-service/protorepo/noted/notes/v1"
 	"notes-service/validators"
@@ -38,6 +39,18 @@ func (srv *notesAPI) InsertBlock(ctx context.Context, req *notesv1.InsertBlockRe
 		return nil, statusFromModelError(err)
 	}
 
+	// Launch process to generate keywords in 15minutes after the last modification
+	srv.background.AddProcess(&background.Process{
+		Identifier: models.NoteIdentifier{NoteId: req.NoteId, ActionType: models.NoteUpdateKeyword},
+		CallBackFct: func() error {
+			err := srv.UpdateKeywordsByNoteId(req.NoteId, req.GroupId, token.AccountID)
+			return err
+		},
+		SecondsToDebounce:             900,
+		CancelProcessOnSameIdentifier: true,
+		RepeatProcess:                 false,
+	})
+
 	return &notesv1.InsertBlockResponse{Block: modelsBlockToProtobufBlock(block)}, nil
 }
 
@@ -68,6 +81,18 @@ func (srv *notesAPI) UpdateBlock(ctx context.Context, req *notesv1.UpdateBlockRe
 		return nil, statusFromModelError(err)
 	}
 
+	// Launch process to generate keywords in 15minutes after the last modification
+	srv.background.AddProcess(&background.Process{
+		Identifier: models.NoteIdentifier{NoteId: req.NoteId, ActionType: models.NoteUpdateKeyword},
+		CallBackFct: func() error {
+			err := srv.UpdateKeywordsByNoteId(req.NoteId, req.GroupId, token.AccountID)
+			return err
+		},
+		SecondsToDebounce:             900,
+		CancelProcessOnSameIdentifier: true,
+		RepeatProcess:                 false,
+	})
+
 	return &notesv1.UpdateBlockResponse{Block: modelsBlockToProtobufBlock(block)}, nil
 }
 
@@ -94,6 +119,18 @@ func (srv *notesAPI) DeleteBlock(ctx context.Context, req *notesv1.DeleteBlockRe
 	if err != nil {
 		return nil, statusFromModelError(err)
 	}
+
+	// Launch process to generate keywords in 15minutes after the last modification
+	srv.background.AddProcess(&background.Process{
+		Identifier: models.NoteIdentifier{NoteId: req.NoteId, ActionType: models.NoteUpdateKeyword},
+		CallBackFct: func() error {
+			err := srv.UpdateKeywordsByNoteId(req.NoteId, req.GroupId, token.AccountID)
+			return err
+		},
+		SecondsToDebounce:             900,
+		CancelProcessOnSameIdentifier: true,
+		RepeatProcess:                 false,
+	})
 
 	return &notesv1.DeleteBlockResponse{}, nil
 }

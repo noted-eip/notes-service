@@ -5,6 +5,19 @@ import (
 	"time"
 )
 
+type Action uint
+
+type NoteIdentifier struct {
+	NoteId     string
+	ActionType Action
+}
+
+const (
+	NoteUpdateKeyword Action = 1
+	// Put in enum the other type of actions
+	//...
+)
+
 type NoteBlockImage struct {
 	Url     string `json:"url" bson:"url"`
 	Caption string `json:"caption" bson:"caption"`
@@ -99,7 +112,8 @@ type UpdateBlockPayload struct {
 }
 
 type UpdateNotePayload struct {
-	Title string `json:"title,omitempty" bson:"title,omitempty"`
+	Title    string    `json:"title,omitempty" bson:"title,omitempty"`
+	Keywords []Keyword `json:"keywords" bson:"keywords"`
 }
 
 type OneNoteFilter struct {

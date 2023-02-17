@@ -4,6 +4,7 @@ import (
 	"crypto/ed25519"
 	"encoding/base64"
 	"notes-service/auth"
+	"notes-service/background"
 	"notes-service/language"
 
 	"context"
@@ -28,8 +29,9 @@ type server struct {
 	logger  *zap.Logger
 	slogger *zap.SugaredLogger
 
-	authService     auth.Service
-	languageService language.Service
+	authService       auth.Service
+	backgroundService background.Service
+	languageService   language.Service // NOTE: Could put directly service typed as NaturalAPIService, remove Init() from interface and just put it in NaturalAPIService
 
 	mongoDB *mongo.Database
 
@@ -46,9 +48,10 @@ func (s *server) Init(opt ...grpc.ServerOption) {
 	s.initLogger()
 	s.initAuthService()
 	s.initRepositories()
+	s.initLanguageService()
+	s.initBackgroundService()
 	s.initGroupsAPI()
 	s.initNotesAPI()
-	s.initLanguageService()
 	s.initgrpcServer(opt...)
 }
 
@@ -123,6 +126,10 @@ func (s *server) initAuthService() {
 	s.authService = auth.NewService(pubKey)
 }
 
+func (s *server) initBackgroundService() {
+	s.backgroundService = background.NewService(s.logger)
+}
+
 func (s *server) initGroupsAPI() {
 	s.groupsAPI = &groupsAPI{
 		auth:   s.authService,
@@ -134,11 +141,12 @@ func (s *server) initGroupsAPI() {
 
 func (s *server) initNotesAPI() {
 	s.notesAPI = &notesAPI{
-		language: s.languageService,
-		auth:     s.authService,
-		logger:   s.logger,
-		notes:    s.notesRepository,
-		groups:   s.groupsRepository,
+		auth:       s.authService,
+		logger:     s.logger,
+		notes:      s.notesRepository,
+		groups:     s.groupsRepository,
+		language:   s.languageService,
+		background: s.backgroundService,
 	}
 }
 

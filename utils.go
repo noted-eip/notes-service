@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"notes-service/auth"
+	"notes-service/background"
 	"notes-service/language"
 	"notes-service/models"
 	"notes-service/models/mongo"
@@ -63,6 +64,7 @@ func newTestUtilsOrDie(t *testing.T) *testUtils {
 	notesRepository := mongo.NewNotesRepository(db.DB, logger)
 	groupsRepository := mongo.NewGroupsRepository(db.DB, logger)
 	language := &language.NaturalAPIService{}
+	background := background.NewService(logger)
 	require.NoError(t, language.Init())
 	newUUID, err := nanoid.Standard(21)
 	require.NoError(t, err)
@@ -75,11 +77,12 @@ func newTestUtilsOrDie(t *testing.T) *testUtils {
 		notesRepository:  notesRepository,
 		groupsRepository: groupsRepository,
 		notes: &notesAPI{
-			logger:   logger,
-			auth:     auth,
-			language: language,
-			notes:    notesRepository,
-			groups:   groupsRepository,
+			logger:     logger,
+			auth:       auth,
+			notes:      notesRepository,
+			groups:     groupsRepository,
+			language:   language,
+			background: background,
 		},
 		groups: &groupsAPI{
 			logger: logger,
@@ -219,5 +222,22 @@ func listOptionsFromLimitOffset(limit int32, offset int32) *models.ListOptions {
 	return &models.ListOptions{
 		Limit:  int64(limit),
 		Offset: int64(offset),
+	}
+}
+
+func GetBlockContent(block *models.NoteBlock) (string, bool) {
+	switch block.Type {
+	case "heading":
+		return *block.Heading, true
+	case "paragraph":
+		return *block.Paragraph, true
+	case "math":
+		return *block.Math, true
+	case "bulletpoint":
+		return *block.BulletPoint, true
+	case "numberpoint":
+		return *block.NumberPoint, true
+	default:
+		return "", false
 	}
 }

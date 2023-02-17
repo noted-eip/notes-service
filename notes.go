@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"notes-service/auth"
+	"notes-service/background"
 	"notes-service/exports"
 	"notes-service/models"
 	notesv1 "notes-service/protorepo/noted/notes/v1"
@@ -22,8 +23,9 @@ type notesAPI struct {
 
 	logger *zap.Logger
 
-	auth     auth.Service
-	language language.Service
+	auth       auth.Service
+	language   language.Service
+	background background.Service
 
 	notes  models.NotesRepository
 	groups models.GroupsRepository
@@ -58,6 +60,17 @@ func (srv *notesAPI) CreateNote(ctx context.Context, req *notesv1.CreateNoteRequ
 	if err != nil {
 		return nil, statusFromModelError(err)
 	}
+
+	srv.background.AddProcess(&background.Process{
+		Identifier: models.NoteIdentifier{NoteId: note.ID, ActionType: models.NoteUpdateKeyword},
+		CallBackFct: func() error {
+			err := srv.UpdateKeywordsByNoteId(note.ID, req.GroupId, token.AccountID)
+			return err
+		},
+		SecondsToDebounce:             900,
+		CancelProcessOnSameIdentifier: true,
+		RepeatProcess:                 false,
+	})
 
 	return &notesv1.CreateNoteResponse{Note: modelsNoteToProtobufNote(note)}, nil
 }
@@ -202,6 +215,52 @@ func (srv *notesAPI) ExportNote(ctx context.Context, req *notesv1.ExportNoteRequ
 	}
 
 	return &notesv1.ExportNoteResponse{File: fileBytes}, nil
+}
+
+func (srv *notesAPI) UpdateKeywordsByNoteId(noteId string, groupId string, accountID string) error {
+	note, err := srv.notes.GetNote(context.TODO(), &models.OneNoteFilter{GroupID: groupId, NoteID: noteId}, accountID)
+	if err != nil {
+		return statusFromModelError(err)
+	}
+
+	// TODDO : mettre un timeout sur le call google
+	err = generateNoteTagsToModelNote(srv.language, note)
+	if err != nil {
+		srv.logger.Error("failed to gen keywords", zap.Error(err))
+		return status.Errorf(codes.Internal, "failed to gen keywords for noteId : %s", note.ID)
+	}
+
+	note, err = srv.notes.UpdateNote(context.TODO(),
+		&models.OneNoteFilter{GroupID: note.GroupID, NoteID: note.ID},
+		&models.UpdateNotePayload{Keywords: note.Keywords},
+		accountID)
+	if err != nil {
+		return statusFromModelError(err)
+	}
+
+	return nil
+}
+
+func generateNoteTagsToModelNote(languageService language.Service, note *models.Note) error {
+	var fullNote string
+
+	for _, block := range note.Blocks {
+		if block.Type != "code" && block.Type != "image" {
+			content, ok := GetBlockContent(&block)
+			if ok {
+				fullNote += content + "\n"
+			}
+		}
+
+	}
+
+	keywords, err := languageService.GetKeywordsFromTextInput(fullNote)
+	if err != nil {
+		return status.Error(codes.Internal, err.Error())
+	}
+
+	note.Keywords = keywords
+	return nil
 }
 
 func (srv *notesAPI) authenticate(ctx context.Context) (*auth.Token, error) {

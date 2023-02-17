@@ -11,7 +11,7 @@ func (srv *notesAPI) generateNoteTagsToModelNote(note *models.Note) error {
 	var fullNote string
 
 	for _, block := range note.Blocks {
-		content, ok := getContent(&block)
+		content, ok := GetBlockContent(&block)
 		if ok {
 			fullNote += content + "\n"
 		}
@@ -24,21 +24,4 @@ func (srv *notesAPI) generateNoteTagsToModelNote(note *models.Note) error {
 
 	note.Keywords = keywords
 	return nil
-}
-
-func getContent(block *models.NoteBlock) (string, bool) {
-	switch block.Type {
-	case "heading":
-		return *block.Heading, true
-	case "paragraph":
-		return *block.Paragraph, true
-	case "math":
-		return *block.Math, true
-	case "bulletpoint":
-		return *block.BulletPoint, true
-	case "numberpoint":
-		return *block.NumberPoint, true
-	default:
-		return "", false
-	}
 }
