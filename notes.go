@@ -238,7 +238,7 @@ func (srv *notesAPI) UpdateKeywordsByNoteId(noteId string, groupId string, accou
 		return status.Errorf(codes.Internal, "failed to gen keywords for noteId : %s", note.ID)
 	}
 
-	note, err = srv.notes.UpdateNote(context.TODO(),
+	_, err = srv.notes.UpdateNote(context.TODO(),
 		&models.OneNoteFilter{GroupID: note.GroupID, NoteID: note.ID},
 		&models.UpdateNotePayload{Keywords: note.Keywords},
 		accountID)
@@ -348,8 +348,8 @@ func modelsNoteToProtobufNote(note *models.Note) *notesv1.Note {
 		AuthorAccountId: note.AuthorAccountID,
 		Title:           note.Title,
 		CreatedAt:       timestamppb.New(note.CreatedAt),
-		ModifiedAt:      timestamppb.New(note.ModifiedAt),
-		AnalyzedAt:      timestamppb.New(note.AnalyzedAt),
+		ModifiedAt:      protobufTimestampOrNil(note.ModifiedAt),
+		AnalyzedAt:      protobufTimestampOrNil(note.AnalyzedAt),
 		Blocks:          make([]*notesv1.Block, len(note.Blocks)),
 	}
 

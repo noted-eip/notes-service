@@ -38,14 +38,15 @@ func (repo *notesRepository) CreateNote(ctx context.Context, payload *models.Cre
 		payload.Blocks[i].ID = repo.newUUID()
 	}
 
+	now := time.Now()
 	note := &models.Note{
 		ID:              repo.newUUID(),
 		Title:           payload.Title,
 		AuthorAccountID: accountID,
 		GroupID:         payload.GroupID,
-		CreatedAt:       time.Now(),
-		ModifiedAt:      time.Now(),
-		AnalyzedAt:      time.Now(),
+		CreatedAt:       now,
+		ModifiedAt:      nil,
+		AnalyzedAt:      nil,
 		Keywords:        []models.Keyword{},
 		Blocks:          payload.Blocks,
 	}

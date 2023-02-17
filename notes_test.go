@@ -2,6 +2,7 @@ package main
 
 import (
 	notesv1 "notes-service/protorepo/noted/notes/v1"
+	"time"
 
 	"testing"
 
@@ -18,13 +19,19 @@ func TestNotesSuite(t *testing.T) {
 	edouardGroup := newTestGroup(t, tu, edouard, maxime)
 
 	t.Run("create-note", func(t *testing.T) {
+		before := time.Now()
 		res, err := tu.notes.CreateNote(edouard.Context, &notesv1.CreateNoteRequest{
 			GroupId: edouardGroup.ID,
 			Title:   "My New Note",
 		})
+		after := time.Now()
 		require.NoError(t, err)
 		require.NotNil(t, res)
 		require.Equal(t, "My New Note", res.Note.Title)
+		require.Nil(t, res.Note.ModifiedAt)
+		require.Nil(t, res.Note.AnalyzedAt)
+		require.GreaterOrEqual(t, res.Note.CreatedAt.AsTime().Unix(), before.Unix())
+		require.LessOrEqual(t, res.Note.CreatedAt.AsTime().Unix(), after.Unix())
 	})
 
 	t.Run("stranger-cannot-create-note", func(t *testing.T) {
@@ -232,6 +239,7 @@ func TestNotesSuite(t *testing.T) {
 	edouardNote := newTestNote(t, tu, edouardGroup, edouard, []*notesv1.Block{})
 
 	t.Run("owner-can-update-note-title", func(t *testing.T) {
+		before := time.Now()
 		res, err := tu.notes.UpdateNote(edouard.Context, &notesv1.UpdateNoteRequest{
 			GroupId: edouardGroup.ID,
 			NoteId:  edouardNote.ID,
@@ -242,9 +250,13 @@ func TestNotesSuite(t *testing.T) {
 				Paths: []string{"title"},
 			},
 		})
+		after := time.Now()
+
 		require.NoError(t, err)
 		require.NotNil(t, res)
 		require.Equal(t, "Brand New Title", res.Note.Title)
+		require.GreaterOrEqual(t, res.Note.ModifiedAt.AsTime().Unix(), before.Unix())
+		require.LessOrEqual(t, res.Note.ModifiedAt.AsTime().Unix(), after.Unix())
 	})
 
 	t.Run("member-cannot-update-note-title", func(t *testing.T) {
