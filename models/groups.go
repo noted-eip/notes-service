@@ -166,11 +166,11 @@ type ManyGroupsFilter struct {
 
 type ManyInvitesFilter struct {
 	// (Optional) List all invites sent by this user.
-	SenderAccountID *string
+	SenderAccountID string
 	// (Optional) List all invites destined to this user.
-	RecipientAccountID *string
+	RecipientAccountID string
 	// (Optional) List all invites in this group.
-	GroupID *string
+	GroupID string
 }
 
 type CreateGroupPayload struct {
@@ -225,8 +225,8 @@ type UpdateGroupConversationMessagePayload struct {
 }
 
 type ListInvitesResult struct {
-	GroupInvite
-	GroupID string
+	GroupInvite `json:"inline" bson:"inline"`
+	GroupID     string `json:"groupId" bson:"groupId"`
 }
 
 // GroupsRepository encapsulates the persistence layer that stores groups.
@@ -246,7 +246,8 @@ type GroupsRepository interface {
 	SendInvite(ctx context.Context, filter *OneGroupFilter, payload *SendInvitePayload, accountID string) (*GroupInvite, error)
 	AcceptInvite(ctx context.Context, filter *OneInviteFilter, accountID string) (*GroupMember, error)
 	DenyInvite(ctx context.Context, filter *OneInviteFilter, accountID string) error
-	ListInvites(ctx context.Context, filter *ManyInvitesFilter, accountID string) ([]*ListInvitesResult, error)
+	GetInvite(ctx context.Context, filter *OneInviteFilter, accountID string) (*GroupInvite, error)
+	ListInvites(ctx context.Context, filter *ManyInvitesFilter, lo *ListOptions) ([]*ListInvitesResult, error)
 	RevokeGroupInvite(ctx context.Context, filter *OneInviteFilter, accountID string) error
 
 	// Conversations

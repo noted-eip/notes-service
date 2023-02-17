@@ -36,7 +36,22 @@ func (srv *groupsAPI) SendInvite(ctx context.Context, req *notesv1.SendInviteReq
 }
 
 func (srv *groupsAPI) GetInvite(ctx context.Context, req *notesv1.GetInviteRequest) (*notesv1.GetInviteResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "unimplemented")
+	token, err := srv.authenticate(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	err = validators.ValidateGetInviteRequest(req)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	invite, err := srv.groups.GetInvite(ctx, &models.OneInviteFilter{GroupID: req.GroupId, InviteID: req.InviteId}, token.AccountID)
+	if err != nil {
+		return nil, statusFromModelError(err)
+	}
+
+	return &notesv1.GetInviteResponse{Invite: modelsInviteToProtobufInvite(invite, req.GroupId)}, nil
 }
 
 func (srv *groupsAPI) AcceptInvite(ctx context.Context, req *notesv1.AcceptInviteRequest) (*notesv1.AcceptInviteResponse, error) {
@@ -59,15 +74,84 @@ func (srv *groupsAPI) AcceptInvite(ctx context.Context, req *notesv1.AcceptInvit
 }
 
 func (srv *groupsAPI) DenyInvite(ctx context.Context, req *notesv1.DenyInviteRequest) (*notesv1.DenyInviteResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "unimplemented")
+	token, err := srv.authenticate(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	err = validators.ValidateDenyInviteRequest(req)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	err = srv.groups.DenyInvite(ctx, &models.OneInviteFilter{GroupID: req.GroupId, InviteID: req.InviteId}, token.AccountID)
+	if err != nil {
+		return nil, statusFromModelError(err)
+	}
+
+	return &notesv1.DenyInviteResponse{}, nil
 }
 
 func (srv *groupsAPI) RevokeInvite(ctx context.Context, req *notesv1.RevokeInviteRequest) (*notesv1.RevokeInviteResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "unimplemented")
+	token, err := srv.authenticate(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	err = validators.ValidateRevokeInviteRequest(req)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	err = srv.groups.RevokeGroupInvite(ctx, &models.OneInviteFilter{GroupID: req.GroupId, InviteID: req.InviteId}, token.AccountID)
+	if err != nil {
+		return nil, statusFromModelError(err)
+	}
+
+	return &notesv1.RevokeInviteResponse{}, nil
 }
 
 func (srv *groupsAPI) ListInvites(ctx context.Context, req *notesv1.ListInvitesRequest) (*notesv1.ListInvitesResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "unimplemented")
+	token, err := srv.authenticate(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	err = validators.ValidateListInvitesRequest(req)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	if token.AccountID != req.RecipientAccountId && token.AccountID != req.SenderAccountId {
+		if req.GroupId != "" {
+			group, err := srv.groups.GetGroupInternal(ctx, &models.OneGroupFilter{GroupID: req.GroupId})
+
+			if err != nil {
+				return nil, err
+			}
+			member := group.FindMember(token.AccountID)
+			if member == nil {
+				return nil, status.Error(codes.PermissionDenied, "forbidden operation")
+			}
+		} else {
+			return nil, status.Error(codes.PermissionDenied, "forbidden operation")
+		}
+	}
+
+	invites, err := srv.groups.ListInvites(ctx,
+		&models.ManyInvitesFilter{
+			SenderAccountID:    req.SenderAccountId,
+			RecipientAccountID: req.RecipientAccountId,
+			GroupID:            req.GroupId,
+		},
+		listOptionsFromLimitOffset(req.Limit, req.Offset),
+	)
+
+	if err != nil {
+		return nil, statusFromModelError(err)
+	}
+
+	return &notesv1.ListInvitesResponse{Invites: modelsListInviteResponseToProtobufInvites(invites)}, nil
 }
 
 func modelsInviteToProtobufInvite(invite *models.GroupInvite, groupID string) *notesv1.GroupInvite {
@@ -79,4 +163,14 @@ func modelsInviteToProtobufInvite(invite *models.GroupInvite, groupID string) *n
 		CreatedAt:          timestamppb.New(invite.CreatedAt),
 		ValidUntil:         timestamppb.New(invite.ValidUntil),
 	}
+}
+
+func modelsListInviteResponseToProtobufInvites(invites []*models.ListInvitesResult) []*notesv1.GroupInvite {
+	protoInvites := make([]*notesv1.GroupInvite, len(invites))
+
+	for i := range invites {
+		protoInvites[i] = modelsInviteToProtobufInvite(&invites[i].GroupInvite, invites[i].GroupID)
+	}
+
+	return protoInvites
 }

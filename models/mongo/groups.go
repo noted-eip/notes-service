@@ -178,7 +178,7 @@ func (repo *groupsRepository) SendInvite(ctx context.Context, filter *models.One
 		{Key: "members.accountId", Value: accountID},
 		// Recipient is not a member.
 		{Key: "members.accountId", Value: bson.D{
-			{Key: "$ne", Value: filter.GroupID},
+			{Key: "$ne", Value: payload.RecipientAccountID},
 		}},
 		// No duplicate invites.
 		{Key: "invites", Value: bson.D{
@@ -243,15 +243,171 @@ func (repo *groupsRepository) AcceptInvite(ctx context.Context, filter *models.O
 }
 
 func (repo *groupsRepository) DenyInvite(ctx context.Context, filter *models.OneInviteFilter, accountID string) error {
-	return nil
+	group := &models.Group{}
+	query := bson.D{
+		{Key: "_id", Value: filter.GroupID},
+		{Key: "invites", Value: bson.D{
+			{Key: "$elemMatch", Value: bson.D{
+				{Key: "id", Value: filter.InviteID},
+				{Key: "recipientAccountId", Value: accountID},
+			}},
+		}}}
+
+	update := bson.D{
+		{Key: "$pull", Value: bson.D{
+			{Key: "invites", Value: bson.D{
+				{Key: "id", Value: filter.InviteID},
+			}},
+		}}}
+
+	return repo.findOneAndUpdate(ctx, query, update, group)
 }
 
-func (repo *groupsRepository) ListInvites(ctx context.Context, filter *models.ManyInvitesFilter, accountID string) ([]*models.ListInvitesResult, error) {
-	return nil, nil
+func (repo *groupsRepository) GetInvite(ctx context.Context, filter *models.OneInviteFilter, accountID string) (*models.GroupInvite, error) {
+	group := &models.Group{}
+
+	query := bson.D{
+		{Key: "_id", Value: filter.GroupID},
+		{Key: "$or", Value: bson.A{
+			bson.D{
+				{Key: "invites", Value: bson.D{
+					{Key: "$elemMatch", Value: bson.D{
+						{Key: "id", Value: filter.InviteID},
+						{Key: "$or", Value: bson.A{
+							bson.D{{Key: "recipientAccountId", Value: accountID}},
+							bson.D{{Key: "senderAccountId", Value: accountID}}, // idk better be sure u know
+						}},
+					}},
+				}},
+			},
+			bson.D{
+				{Key: "members.accountId", Value: accountID},
+			},
+		}},
+	}
+
+	err := repo.findOne(ctx, query, group)
+	if err != nil {
+		return nil, err
+	}
+	if len(*group.Invites) == 0 {
+		return nil, models.ErrNotFound
+	}
+
+	return group.FindInvite(filter.InviteID), nil
+}
+
+func (repo *groupsRepository) ListInvites(ctx context.Context, filter *models.ManyInvitesFilter, lo *models.ListOptions) ([]*models.ListInvitesResult, error) {
+	invites := make([]*models.ListInvitesResult, 0)
+
+	mongoDocumentMatch := bson.D{}
+
+	if filter != nil {
+		if filter.SenderAccountID != "" {
+			mongoDocumentMatch = append(mongoDocumentMatch, bson.E{Key: "invites.senderAccountId", Value: filter.SenderAccountID})
+		}
+		if filter.RecipientAccountID != "" {
+			mongoDocumentMatch = append(mongoDocumentMatch, bson.E{Key: "invites.recipientAccountId", Value: filter.RecipientAccountID})
+		}
+		if filter.GroupID != "" {
+			mongoDocumentMatch = append(mongoDocumentMatch, bson.E{Key: "_id", Value: filter.GroupID})
+		}
+	}
+
+	idToMongoCondition := func(id *string, varIdentifier string) interface{} {
+		if *id != "" {
+			return bson.D{{Key: "$eq", Value: []interface{}{varIdentifier, id}}}
+		}
+		return "true"
+	}
+
+	invitesArrayFilterCondition := bson.D{
+		{Key: "$and",
+			Value: bson.A{
+				idToMongoCondition(&filter.SenderAccountID, "$$invite.senderAccountId"),
+				idToMongoCondition(&filter.RecipientAccountID, "$$invite.recipientAccountId"),
+			},
+		},
+	}
+
+	// Match only groups that matches the filter (which match the invites that were asked for)
+	matchQuery := bson.D{{Key: "$match", Value: mongoDocumentMatch}}
+
+	// In those documents, filter the invites array to have only the invites that matches the filter
+	filterQuery := bson.D{{
+		Key: "$project", Value: bson.D{
+			{Key: "invites", Value: bson.D{
+				{Key: "$filter", Value: bson.D{
+					{Key: "input", Value: "$invites"},
+					{Key: "as", Value: "invite"},
+					{Key: "cond", Value: invitesArrayFilterCondition},
+				}},
+			},
+			}}}}
+
+	// Separate every invite in it's specific array element
+	unwindQuery := bson.D{{
+		Key:   "$unwind",
+		Value: "$invites",
+	}}
+
+	paginationSkip := bson.D{{ // NOTE: Not putting it in repo.aggregate because it can reduce the work done after, like in this example, we skip and offset before projecting
+		Key:   "$skip",
+		Value: lo.Offset,
+	}}
+	paginationLimit := bson.D{{
+		Key:   "$limit",
+		Value: lo.Limit,
+	}}
+
+	// Reorder every variables to have a concise a pertinent element
+	projectionQuery := bson.D{{
+		Key: "$project",
+		Value: bson.D{
+			{Key: "recipientAccountId", Value: "$invites.recipientAccountId"},
+			{Key: "senderAccountId", Value: "$invites.senderAccountId"},
+			{Key: "id", Value: "$invites.id"},
+			{Key: "groupId", Value: "$_id"},
+			{Key: "_id", Value: 0},
+		},
+	}}
+
+	err := repo.aggregate(ctx, mongo.Pipeline{matchQuery, filterQuery, unwindQuery, paginationSkip, paginationLimit, projectionQuery}, &invites)
+	if err != nil {
+		return nil, repo.mongoFindErrorToModelsError(mongoDocumentMatch, lo, err)
+	}
+
+	return invites, nil
 }
 
 func (repo *groupsRepository) RevokeGroupInvite(ctx context.Context, filter *models.OneInviteFilter, accountID string) error {
-	return nil
+	group := &models.Group{}
+	query := bson.D{
+		{Key: "_id", Value: filter.GroupID},
+		{Key: "$or", Value: bson.A{
+			bson.D{{Key: "invites", Value: bson.D{
+				{Key: "$elemMatch", Value: bson.D{
+					{Key: "id", Value: filter.InviteID},
+					{Key: "senderAccountId", Value: accountID},
+				}},
+			}}},
+			bson.D{{Key: "members", Value: bson.D{
+				{Key: "$elemMatch", Value: bson.D{
+					{Key: "accountId", Value: accountID},
+					{Key: "isAdmin", Value: true},
+				}},
+			}}},
+		}},
+	}
+
+	update := bson.D{
+		{Key: "$pull", Value: bson.D{
+			{Key: "invites", Value: bson.D{
+				{Key: "id", Value: filter.InviteID},
+			}},
+		}}}
+
+	return repo.findOneAndUpdate(ctx, query, update, group)
 }
 
 func (repo *groupsRepository) GetConversation(ctx context.Context, filter *models.OneConversationFilter, accountID string) (*models.GroupConversation, error) {

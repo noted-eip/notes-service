@@ -19,3 +19,28 @@ func ValidateAcceptInviteRequest(req *notesv1.AcceptInviteRequest) error {
 		validation.Field(&req.InviteId, validation.Required),
 	)
 }
+
+func ValidateDenyInviteRequest(req *notesv1.DenyInviteRequest) error {
+	return validation.ValidateStruct(req,
+		validation.Field(&req.GroupId, validation.Required),
+		validation.Field(&req.InviteId, validation.Required),
+	)
+}
+
+func ValidateGetInviteRequest(req *notesv1.GetInviteRequest) error {
+	return validation.ValidateStruct(req,
+		validation.Field(&req.GroupId, validation.Required),
+		validation.Field(&req.InviteId, validation.Required),
+	)
+}
+
+func ValidateRevokeInviteRequest(req *notesv1.RevokeInviteRequest) error {
+	return validation.ValidateStruct(req,
+		validation.Field(&req.GroupId, validation.Required),
+		validation.Field(&req.InviteId, validation.Required),
+	)
+}
+
+func ValidateListInvitesRequest(req *notesv1.ListInvitesRequest) error {
+	return validation.ValidateStruct(req)
+}

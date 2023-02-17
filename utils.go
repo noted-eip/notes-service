@@ -110,6 +110,32 @@ type testBlock struct {
 	ID   string
 }
 
+type testInvite struct {
+	recipient *testAccount
+	sender    *testAccount
+	group     *testGroup
+	ID        string
+}
+
+func (account *testAccount) SendInvite(t *testing.T, tu *testUtils, recipient *testAccount, group *testGroup) *testInvite {
+	sendInviteRes, err := tu.groups.SendInvite(account.Context, &notesv1.SendInviteRequest{GroupId: group.ID, RecipientAccountId: recipient.ID})
+	require.NoError(t, err)
+	require.NotNil(t, sendInviteRes)
+
+	return &testInvite{
+		recipient: recipient,
+		sender:    account,
+		group:     group,
+		ID:        sendInviteRes.Invite.Id,
+	}
+}
+
+func (account *testAccount) AcceptInvite(t *testing.T, tu *testUtils, invite *testInvite) {
+	sendInviteRes, err := tu.groups.AcceptInvite(account.Context, &notesv1.AcceptInviteRequest{InviteId: invite.ID, GroupId: invite.group.ID})
+	require.NoError(t, err)
+	require.NotNil(t, sendInviteRes)
+}
+
 func (note *testNote) InsertBlock(t *testing.T, tu *testUtils, block *notesv1.Block, index uint32) *testBlock {
 	res, err := tu.notes.InsertBlock(note.Author.Context, &notesv1.InsertBlockRequest{
 		GroupId: note.Group.ID,
@@ -184,4 +210,14 @@ func requireErrorHasGRPCCode(t *testing.T, code codes.Code, err error) {
 	s, ok := status.FromError(err)
 	require.True(t, ok, "expected grpc code %v got non-grpc error code", code)
 	require.Equal(t, code, s.Code(), "expected grpc code %v got %v: %v", code, s.Code(), err)
+}
+
+func listOptionsFromLimitOffset(limit int32, offset int32) *models.ListOptions {
+	if limit == 0 {
+		limit = 20
+	}
+	return &models.ListOptions{
+		Limit:  int64(limit),
+		Offset: int64(offset),
+	}
 }
