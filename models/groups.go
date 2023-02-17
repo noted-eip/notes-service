@@ -85,7 +85,7 @@ func (group *Group) FindInviteByRecipient(recipientAccountID string) *GroupInvit
 		return nil
 	}
 	for i := 0; i < len(*group.Invites); i++ {
-		if (*group.Invites)[i].SenderAccountID == recipientAccountID {
+		if (*group.Invites)[i].RecipientAccountID == recipientAccountID {
 			return &(*group.Invites)[i]
 		}
 	}
