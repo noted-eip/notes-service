@@ -31,3 +31,7 @@ TEST/
 __debug_bin
 
 .DS_Store
+
+# Grpc service test
+googleapis/*
+grpc-gateway/*

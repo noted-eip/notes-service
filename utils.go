@@ -55,9 +55,11 @@ func newTestUtilsOrDie(t *testing.T) *testUtils {
 	// require.NoError(t, err)
 	logger := zap.NewNop()
 	auth := &auth.TestService{}
+	randomChars, err := nanoid.CustomASCII("0123456789AZERTYUIOPMLKJHGFDSQWXCVBNazertyuiopmlkjhgfdsqwxcvbn", 5)
+	require.NoError(t, err)
 	ctx, cancel := context.WithTimeout(context.TODO(), time.Second)
 	defer cancel()
-	db, err := mongo.NewDatabase(ctx, "mongodb://localhost:27017", "notes-service-unit-test", logger)
+	db, err := mongo.NewDatabase(ctx, "mongodb://localhost:27017", "notes-service-unit-test-"+randomChars(), logger)
 	if err != nil {
 		t.Skip("skipping test, unable to connect to mongodb")
 	}

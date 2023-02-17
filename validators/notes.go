@@ -40,7 +40,8 @@ func ValidateDeleteNoteRequest(req *notespb.DeleteNoteRequest) error {
 
 func ValidateListNoteRequest(req *notespb.ListNotesRequest) error {
 	return validation.ValidateStruct(req,
-		validation.Field(&req.AuthorAccountId, validation.Required),
+		validation.Field(&req.AuthorAccountId, validation.When(req.GroupId == "", validation.Required)),
+		validation.Field(&req.GroupId, validation.When(req.AuthorAccountId == "", validation.Required)),
 	)
 }
 
