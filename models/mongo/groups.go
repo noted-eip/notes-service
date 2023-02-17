@@ -159,7 +159,7 @@ func (repo *groupsRepository) ListGroupsInternal(ctx context.Context, filter *mo
 		}})
 	}
 
-	requieredFields := bson.D{{"members", 0}}
+	requieredFields := bson.D{{"members", 0}, {"inviteLinks", 0}, {"invites", 0}, {"conversations", 0}}
 	opts := options.Find().SetProjection(requieredFields)
 
 	err := repo.find(ctx, query, &groups, lo, opts)
