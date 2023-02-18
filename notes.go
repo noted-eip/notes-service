@@ -174,7 +174,7 @@ func (srv *notesAPI) ListNotes(ctx context.Context, req *notesv1.ListNotesReques
 
 	notes, err := srv.notes.ListNotesInternal(ctx,
 		&models.ManyNotesFilter{GroupID: req.GroupId, AuthorAccountID: req.AuthorAccountId},
-		&models.ListOptions{Limit: req.Limit, Offset: req.Offset})
+		&models.ListOptions{Limit: int32(req.Limit), Offset: int32(req.Offset)})
 	if err != nil {
 		return nil, statusFromModelError(err)
 	}
