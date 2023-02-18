@@ -230,8 +230,8 @@ func listOptionsFromLimitOffset(limit int32, offset int32) *models.ListOptions {
 		limit = 20
 	}
 	return &models.ListOptions{
-		Limit:  int64(limit),
-		Offset: int64(offset),
+		Limit:  limit,
+		Offset: offset,
 	}
 }
 
