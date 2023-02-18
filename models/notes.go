@@ -112,8 +112,7 @@ type UpdateBlockPayload struct {
 }
 
 type UpdateNotePayload struct {
-	Title    string    `json:"title,omitempty" bson:"title,omitempty"`
-	Keywords []Keyword `json:"keywords" bson:"keywords"`
+	Title string `json:"title,omitempty" bson:"title,omitempty"`
 }
 
 type OneNoteFilter struct {
@@ -132,6 +131,7 @@ type NotesRepository interface {
 	CreateNote(ctx context.Context, payload *CreateNotePayload, accountID string) (*Note, error)
 	GetNote(ctx context.Context, filter *OneNoteFilter, accountID string) (*Note, error)
 	UpdateNote(ctx context.Context, filter *OneNoteFilter, payload *UpdateNotePayload, accountID string) (*Note, error)
+	UpdateNoteKeywords(ctx context.Context, filter *OneNoteFilter, keywords *[]Keyword, accountID string) error
 	DeleteNote(ctx context.Context, filter *OneNoteFilter, accountID string) error
 	ListNotesInternal(ctx context.Context, filter *ManyNotesFilter, opts *ListOptions) ([]*Note, error)
 
