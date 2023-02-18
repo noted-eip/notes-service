@@ -38,14 +38,15 @@ func (repo *notesRepository) CreateNote(ctx context.Context, payload *models.Cre
 		payload.Blocks[i].ID = repo.newUUID()
 	}
 
+	now := time.Now()
 	note := &models.Note{
 		ID:              repo.newUUID(),
 		Title:           payload.Title,
 		AuthorAccountID: accountID,
 		GroupID:         payload.GroupID,
-		CreatedAt:       time.Now(),
-		ModifiedAt:      time.Now(),
-		AnalyzedAt:      time.Now(),
+		CreatedAt:       now,
+		ModifiedAt:      nil,
+		AnalyzedAt:      nil,
 		Keywords:        []models.Keyword{},
 		Blocks:          payload.Blocks,
 	}
@@ -136,7 +137,7 @@ func (repo *notesRepository) ListNotesInternal(ctx context.Context, filter *mode
 			query = append(query, bson.E{Key: "groupId", Value: filter.GroupID})
 		}
 	}
-	requieredFields := bson.D{{"blocks", 0}, {"keywords", 0}}
+	requieredFields := bson.D{{Key: "blocks", Value: 0}, {Key: "keywords", Value: 0}}
 	opts := options.Find().SetProjection(requieredFields)
 
 	err := repo.find(ctx, query, &notes, lo, opts)

@@ -10,6 +10,6 @@ var (
 )
 
 type ListOptions struct {
-	Limit  int64
-	Offset int64
+	Limit  int32
+	Offset int32
 }

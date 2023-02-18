@@ -72,8 +72,8 @@ type Note struct {
 	AuthorAccountID string      `json:"authorAccountId" bson:"authorAccountId"`
 	GroupID         string      `json:"groupId" bson:"groupId"`
 	CreatedAt       time.Time   `json:"createdAt" bson:"createdAt"`
-	ModifiedAt      time.Time   `json:"modifiedAt" bson:"modifiedAt"`
-	AnalyzedAt      time.Time   `json:"AnalyzedAt" bson:"analyzedAt"`
+	ModifiedAt      *time.Time  `json:"modifiedAt" bson:"modifiedAt"`
+	AnalyzedAt      *time.Time  `json:"analyzedAt" bson:"analyzedAt"`
 	Keywords        []Keyword   `json:"keywords" bson:"keywords"`
 	Blocks          []NoteBlock `json:"blocks" bson:"blocks"`
 }

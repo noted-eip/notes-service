@@ -179,12 +179,19 @@ func (srv *notesAPI) ListNotes(ctx context.Context, req *notesv1.ListNotesReques
 		return nil, statusFromModelError(err)
 	}
 
+	return &notesv1.ListNotesResponse{Notes: modelsNotesToProtobufNotes(notes)}, nil
+}
+
+func modelsNotesToProtobufNotes(notes []*models.Note) []*notesv1.Note {
 	protobufNotes := make([]*notesv1.Note, len(notes))
 	for i := range notes {
 		protobufNotes[i] = modelsNoteToProtobufNote(notes[i])
+		// NOTE: List notes doesn't return the notes blocks but we
+		// must explicitely set it to nil to avoid sending an empty
+		// array.
+		protobufNotes[i].Blocks = nil
 	}
-
-	return &notesv1.ListNotesResponse{Notes: protobufNotes}, nil
+	return protobufNotes
 }
 
 func (srv *notesAPI) ExportNote(ctx context.Context, req *notesv1.ExportNoteRequest) (*notesv1.ExportNoteResponse, error) {
@@ -238,7 +245,7 @@ func (srv *notesAPI) UpdateKeywordsByNoteId(noteId string, groupId string, accou
 		return status.Errorf(codes.Internal, "failed to gen keywords for noteId : %s", note.ID)
 	}
 
-	note, err = srv.notes.UpdateNoteKeywords(context.TODO(),
+	_, err = srv.notes.UpdateNoteKeywords(context.TODO(),
 		&models.OneNoteFilter{GroupID: note.GroupID, NoteID: note.ID},
 		&note.Keywords,
 		accountID)
@@ -348,8 +355,8 @@ func modelsNoteToProtobufNote(note *models.Note) *notesv1.Note {
 		AuthorAccountId: note.AuthorAccountID,
 		Title:           note.Title,
 		CreatedAt:       timestamppb.New(note.CreatedAt),
-		ModifiedAt:      timestamppb.New(note.ModifiedAt),
-		AnalyzedAt:      timestamppb.New(note.AnalyzedAt),
+		ModifiedAt:      protobufTimestampOrNil(note.ModifiedAt),
+		AnalyzedAt:      protobufTimestampOrNil(note.AnalyzedAt),
 		Blocks:          make([]*notesv1.Block, len(note.Blocks)),
 	}
 

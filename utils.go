@@ -18,6 +18,7 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func statusFromModelError(err error) error {
@@ -37,6 +38,13 @@ func statusFromModelError(err error) error {
 		return status.Error(codes.PermissionDenied, "forbidden operation")
 	}
 	return status.Error(codes.Internal, "internal error")
+}
+
+func protobufTimestampOrNil(t *time.Time) *timestamppb.Timestamp {
+	if t == nil {
+		return nil
+	}
+	return timestamppb.New(*t)
 }
 
 type testUtils struct {
@@ -222,8 +230,8 @@ func listOptionsFromLimitOffset(limit int32, offset int32) *models.ListOptions {
 		limit = 20
 	}
 	return &models.ListOptions{
-		Limit:  int64(limit),
-		Offset: int64(offset),
+		Limit:  limit,
+		Offset: offset,
 	}
 }
 
