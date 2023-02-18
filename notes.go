@@ -245,11 +245,12 @@ func (srv *notesAPI) UpdateKeywordsByNoteId(noteId string, groupId string, accou
 		return status.Errorf(codes.Internal, "failed to gen keywords for noteId : %s", note.ID)
 	}
 
-	_, err = srv.notes.UpdateNoteKeywords(context.TODO(),
+	err = srv.notes.UpdateNoteKeywords(context.TODO(),
 		&models.OneNoteFilter{GroupID: note.GroupID, NoteID: note.ID},
 		&note.Keywords,
 		accountID)
 	if err != nil {
+		srv.logger.Warn("could not update keywords", zap.String("noteId", note.ID), zap.Error(err))
 		return statusFromModelError(err)
 	}
 
