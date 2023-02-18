@@ -93,6 +93,27 @@ func (repo *notesRepository) UpdateNote(ctx context.Context, filter *models.OneN
 	return note, nil
 }
 
+func (repo *notesRepository) UpdateNoteKeywords(ctx context.Context, filter *models.OneNoteFilter, keywords *[]models.Keyword, accountID string) (*models.Note, error) {
+	note := &models.Note{}
+	query := bson.D{
+		{Key: "_id", Value: filter.NoteID},
+		{Key: "groupId", Value: filter.GroupID},
+		{Key: "authorAccountId", Value: accountID},
+	}
+	update := bson.D{
+		{Key: "$set", Value: keywords},
+		{Key: "$set", Value: bson.D{
+			{Key: "AnalyzedAt", Value: time.Now()},
+		}}}
+
+	err := repo.findOneAndUpdate(ctx, query, update, note)
+	if err != nil {
+		return nil, err
+	}
+
+	return note, nil
+}
+
 func (repo *notesRepository) DeleteNote(ctx context.Context, filter *models.OneNoteFilter, accountID string) error {
 	query := bson.D{
 		{Key: "_id", Value: filter.NoteID},
