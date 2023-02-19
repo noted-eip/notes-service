@@ -36,3 +36,16 @@ func ValidateListGroupsRequest(req *notesv1.ListGroupsRequest) error {
 		validation.Field(&req.AccountId, validation.Required),
 	)
 }
+
+func ValidateListActivitiesRequest(req *notesv1.ListActivitiesRequest) error {
+	return validation.ValidateStruct(req,
+		validation.Field(&req.GroupId, validation.Required, validation.Required),
+	)
+}
+
+func ValidateGetActivityRequest(req *notesv1.GetActivityRequest) error {
+	return validation.ValidateStruct(req,
+		validation.Field(&req.GroupId, validation.Required),
+		validation.Field(&req.ActivityId, validation.Required),
+	)
+}

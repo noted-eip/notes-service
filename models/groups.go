@@ -308,7 +308,7 @@ type GroupsRepository interface {
 	UseInviteLink(ctx context.Context, filter *OneInviteLinkFilter, accountID string) (*GroupMember, error)
 
 	// Activities
-	ListActivities(ctx context.Context, filter *ManyActivitiesFilter) (*[]GroupActivity, error)
-	GetActivity(ctx context.Context, filter *OneActivityFilter) (*GroupActivity, error)
+	ListActivities(ctx context.Context, filter *ManyActivitiesFilter, accountID string) ([]*GroupActivity, error)
+	GetActivity(ctx context.Context, filter *OneActivityFilter, accountID string) (*GroupActivity, error)
 	CreateActivityInternal(ctx context.Context, payload *ActivityPayload) error
 }

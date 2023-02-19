@@ -539,11 +539,15 @@ func (repo *groupsRepository) UseInviteLink(ctx context.Context, filter *models.
 	return nil, nil
 }
 
-func (repo *groupsRepository) ListActivities(ctx context.Context, filter *models.ManyActivitiesFilter) (*[]models.GroupActivity, error) {
+func (repo *groupsRepository) ListActivities(ctx context.Context, filter *models.ManyActivitiesFilter, accountID string) ([]*models.GroupActivity, error) {
 	group := &models.Group{}
 
 	query := bson.D{
 		{Key: "_id", Value: filter.GroupID},
+		{Key: "$or", Value: bson.A{
+			bson.D{{Key: "members.accountId", Value: accountID}},
+			bson.D{{Key: "workspaceAccountId", Value: accountID}},
+		}},
 	}
 
 	err := repo.findOne(ctx, query, group)
@@ -554,14 +558,20 @@ func (repo *groupsRepository) ListActivities(ctx context.Context, filter *models
 		return nil, models.ErrNotFound
 	}
 
-	return group.Activities, nil
+	activities := make([]*models.GroupActivity, len(*group.Activities))
+
+	for i := range *group.Activities {
+		activities[i] = &(*group.Activities)[i]
+	}
+
+	return activities, nil
 }
 
-func (repo *groupsRepository) GetActivity(ctx context.Context, filter *models.OneActivityFilter) (*models.GroupActivity, error) {
+func (repo *groupsRepository) GetActivity(ctx context.Context, filter *models.OneActivityFilter, accountID string) (*models.GroupActivity, error) {
 	group := &models.Group{}
 	query := bson.D{
 		{Key: "_id", Value: filter.GroupID},
-		{Key: "$or", Value: bson.A{
+		{Key: "$and", Value: bson.A{
 			bson.D{
 				{Key: "activities", Value: bson.D{
 					{Key: "$elemMatch", Value: bson.D{
@@ -569,6 +579,10 @@ func (repo *groupsRepository) GetActivity(ctx context.Context, filter *models.On
 					}},
 				}},
 			},
+			bson.D{{Key: "$or", Value: bson.A{
+				bson.D{{Key: "members.accountId", Value: accountID}},
+				bson.D{{Key: "workspaceAccountId", Value: accountID}},
+			}}},
 		}},
 	}
 
