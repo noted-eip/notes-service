@@ -42,6 +42,14 @@ type GroupInviteLink struct {
 	ValidUntil           time.Time `json:"validUntil" bson:"validUntil"`
 }
 
+type GroupActivity struct {
+	ID        string    `json:"id" bson:"_id"`
+	GroupID   string    `json:"groupId" bson:"groupId"`
+	Type      string    `json:"type" bson:"type"`
+	Event     string    `json:"event" bson:"event"`
+	CreatedAt time.Time `json:"createdAt" bson:"createdAt"`
+}
+
 type Group struct {
 	ID                 string               `json:"id" bson:"_id"`
 	Name               string               `json:"name" bson:"name"`
@@ -54,6 +62,7 @@ type Group struct {
 	Members            *[]GroupMember       `json:"members,omitempty" bson:"members,omitempty"`
 	Invites            *[]GroupInvite       `json:"invites,omitempty" bson:"invites,omitempty"`
 	InviteLinks        *[]GroupInviteLink   `json:"inviteLinks,omitempty" bson:"inviteLinks,omitempty"`
+	Activities         *[]GroupActivity     `json:"activities,omitempty" bson:"activities,omitempty"`
 }
 
 func (group *Group) FindConversation(id string) *GroupConversation {
@@ -129,6 +138,18 @@ func (group *Group) FindInviteLinkByCode(code string) *GroupInviteLink {
 	return nil
 }
 
+func (group *Group) FindActivity(activityId string) *GroupActivity {
+	if group.Activities == nil {
+		return nil
+	}
+	for i := 0; i < len(*group.Activities); i++ {
+		if (*group.Activities)[i].ID == activityId {
+			return &(*group.Activities)[i]
+		}
+	}
+	return nil
+}
+
 type OneGroupFilter struct {
 	GroupID string
 }
@@ -170,6 +191,15 @@ type ManyInvitesFilter struct {
 	// (Optional) List all invites destined to this user.
 	RecipientAccountID string
 	// (Optional) List all invites in this group.
+	GroupID string
+}
+
+type OneActivityFilter struct {
+	GroupID    string
+	ActivityId string
+}
+
+type ManyActivitiesFilter struct {
 	GroupID string
 }
 
@@ -224,6 +254,12 @@ type UpdateGroupConversationMessagePayload struct {
 	Content string
 }
 
+type ActivityPayload struct {
+	GroupID string `json:"groupId" bson:"groupId"`
+	Type    string `json:"type" bson:"type"`
+	Event   string `json:"event" bson:"event"`
+}
+
 type ListInvitesResult struct {
 	GroupInvite `json:"inline" bson:"inline"`
 	GroupID     string `json:"groupId" bson:"groupId"`
@@ -270,4 +306,9 @@ type GroupsRepository interface {
 	GetInviteLink(ctx context.Context, filter *OneInviteLinkFilter, accountID string) (*GroupInviteLink, error)
 	RevokeInviteLink(ctx context.Context, filter *OneInviteLinkFilter, accountID string) error
 	UseInviteLink(ctx context.Context, filter *OneInviteLinkFilter, accountID string) (*GroupMember, error)
+
+	// Activities
+	ListActivities(ctx context.Context, filter *ManyActivitiesFilter) (*[]GroupActivity, error)
+	GetActivity(ctx context.Context, filter *OneActivityFilter) (*GroupActivity, error)
+	CreateActivityInternal(ctx context.Context, payload *ActivityPayload) error
 }

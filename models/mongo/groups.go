@@ -48,6 +48,7 @@ func (repo *groupsRepository) CreateGroup(ctx context.Context, payload *models.C
 		},
 		Invites:     &[]models.GroupInvite{},
 		InviteLinks: &[]models.GroupInviteLink{},
+		Activities:  &[]models.GroupActivity{},
 	}
 
 	err := repo.insertOne(ctx, group)
@@ -71,6 +72,7 @@ func (repo *groupsRepository) CreateWorkspace(ctx context.Context, payload *mode
 		Members:            nil,
 		Invites:            nil,
 		InviteLinks:        nil,
+		Activities:         nil,
 	}
 
 	err := repo.insertOne(ctx, workspace)
@@ -535,4 +537,75 @@ func (repo *groupsRepository) RevokeInviteLink(ctx context.Context, filter *mode
 
 func (repo *groupsRepository) UseInviteLink(ctx context.Context, filter *models.OneInviteLinkFilter, accountID string) (*models.GroupMember, error) {
 	return nil, nil
+}
+
+func (repo *groupsRepository) ListActivities(ctx context.Context, filter *models.ManyActivitiesFilter) (*[]models.GroupActivity, error) {
+	group := &models.Group{}
+
+	query := bson.D{
+		{Key: "_id", Value: filter.GroupID},
+	}
+
+	err := repo.findOne(ctx, query, group)
+	if err != nil {
+		return nil, err
+	}
+	if len(*group.Activities) == 0 {
+		return nil, models.ErrNotFound
+	}
+
+	return group.Activities, nil
+}
+
+func (repo *groupsRepository) GetActivity(ctx context.Context, filter *models.OneActivityFilter) (*models.GroupActivity, error) {
+	group := &models.Group{}
+	query := bson.D{
+		{Key: "_id", Value: filter.GroupID},
+		{Key: "$or", Value: bson.A{
+			bson.D{
+				{Key: "activities", Value: bson.D{
+					{Key: "$elemMatch", Value: bson.D{
+						{Key: "id", Value: filter.ActivityId},
+					}},
+				}},
+			},
+		}},
+	}
+
+	err := repo.findOne(ctx, query, group)
+	if err != nil {
+		return nil, err
+	}
+	if len(*group.Activities) == 0 {
+		return nil, models.ErrNotFound
+	}
+
+	return group.FindActivity(filter.ActivityId), nil
+}
+
+func (repo *groupsRepository) CreateActivityInternal(ctx context.Context, payload *models.ActivityPayload) error {
+	group := &models.Group{}
+	activityID := repo.newUUID()
+
+	query := bson.D{
+		{Key: "_id", Value: payload.GroupID},
+	}
+	update := bson.D{
+		{Key: "$push", Value: bson.D{
+			{Key: "activities", Value: &models.GroupActivity{
+				ID:        activityID,
+				GroupID:   payload.GroupID,
+				Type:      payload.Type,
+				Event:     payload.Event,
+				CreatedAt: time.Now(),
+			}},
+		}},
+	}
+
+	err := repo.findOneAndUpdate(ctx, query, update, group)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
