@@ -37,7 +37,7 @@ type Activity struct {
 }
 
 type ActivitiesRepository interface {
-	ListActivitiesInternal(ctx context.Context, filter *ManyActivitiesFilter, lo *ListOptions, accountID string) ([]*Activity, error)
-	GetActivityInternal(ctx context.Context, filter *OneActivityFilter, accountID string) (*Activity, error)
+	ListActivitiesInternal(ctx context.Context, filter *ManyActivitiesFilter, lo *ListOptions) ([]*Activity, error)
+	GetActivityInternal(ctx context.Context, filter *OneActivityFilter) (*Activity, error)
 	CreateActivityInternal(ctx context.Context, payload *ActivityPayload) (*Activity, error)
 }

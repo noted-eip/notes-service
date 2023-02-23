@@ -30,7 +30,7 @@ func NewActivitiesRepository(db *mongo.Database, logger *zap.Logger) models.Acti
 	}
 }
 
-func (repo *activitiesRepository) ListActivitiesInternal(ctx context.Context, filter *models.ManyActivitiesFilter, lo *models.ListOptions, accountID string) ([]*models.Activity, error) {
+func (repo *activitiesRepository) ListActivitiesInternal(ctx context.Context, filter *models.ManyActivitiesFilter, lo *models.ListOptions) ([]*models.Activity, error) {
 	activities := make([]*models.Activity, 0)
 
 	query := bson.D{
@@ -45,7 +45,7 @@ func (repo *activitiesRepository) ListActivitiesInternal(ctx context.Context, fi
 	return activities, nil
 }
 
-func (repo *activitiesRepository) GetActivityInternal(ctx context.Context, filter *models.OneActivityFilter, accountID string) (*models.Activity, error) {
+func (repo *activitiesRepository) GetActivityInternal(ctx context.Context, filter *models.OneActivityFilter) (*models.Activity, error) {
 	activity := &models.Activity{}
 
 	query := bson.D{

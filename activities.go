@@ -30,8 +30,7 @@ func (srv *groupsAPI) ListActivities(ctx context.Context, req *notesv1.ListActiv
 
 	activities, err := srv.activities.ListActivitiesInternal(ctx,
 		&models.ManyActivitiesFilter{GroupID: req.GroupId},
-		&models.ListOptions{Limit: int32(req.Limit), Offset: int32(req.Offset)},
-		token.AccountID)
+		&models.ListOptions{Limit: int32(req.Limit), Offset: int32(req.Offset)})
 	if err != nil {
 		return nil, statusFromModelError(err)
 	}
@@ -56,7 +55,7 @@ func (srv *groupsAPI) GetActivity(ctx context.Context, req *notesv1.GetActivityR
 		return nil, statusFromModelError(err)
 	}
 
-	activity, err := srv.activities.GetActivityInternal(ctx, &models.OneActivityFilter{GroupID: req.GroupId, ActivityId: req.ActivityId}, token.AccountID)
+	activity, err := srv.activities.GetActivityInternal(ctx, &models.OneActivityFilter{GroupID: req.GroupId, ActivityId: req.ActivityId})
 	if err != nil {
 		return nil, statusFromModelError(err)
 	}
