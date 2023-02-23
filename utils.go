@@ -48,14 +48,15 @@ func protobufTimestampOrNil(t *time.Time) *timestamppb.Timestamp {
 }
 
 type testUtils struct {
-	logger           *zap.Logger
-	auth             *auth.TestService
-	db               *mongo.Database
-	notesRepository  models.NotesRepository
-	groupsRepository models.GroupsRepository
-	notes            notesv1.NotesAPIServer
-	groups           notesv1.GroupsAPIServer
-	newUUID          func() string
+	logger               *zap.Logger
+	auth                 *auth.TestService
+	db                   *mongo.Database
+	notesRepository      models.NotesRepository
+	groupsRepository     models.GroupsRepository
+	activitiesRepository models.ActivitiesRepository
+	notes                notesv1.NotesAPIServer
+	groups               notesv1.GroupsAPIServer
+	newUUID              func() string
 }
 
 func newTestUtilsOrDie(t *testing.T) *testUtils {
@@ -73,6 +74,7 @@ func newTestUtilsOrDie(t *testing.T) *testUtils {
 	}
 	notesRepository := mongo.NewNotesRepository(db.DB, logger)
 	groupsRepository := mongo.NewGroupsRepository(db.DB, logger)
+	activitiesRepository := mongo.NewActivitiesRepository(db.DB, logger)
 	language := &language.NaturalAPIService{}
 	background := background.NewService(logger)
 	require.NoError(t, language.Init())
@@ -80,25 +82,28 @@ func newTestUtilsOrDie(t *testing.T) *testUtils {
 	require.NoError(t, err)
 
 	return &testUtils{
-		logger:           logger,
-		auth:             auth,
-		db:               db,
-		newUUID:          newUUID,
-		notesRepository:  notesRepository,
-		groupsRepository: groupsRepository,
+		logger:               logger,
+		auth:                 auth,
+		db:                   db,
+		newUUID:              newUUID,
+		notesRepository:      notesRepository,
+		groupsRepository:     groupsRepository,
+		activitiesRepository: activitiesRepository,
 		notes: &notesAPI{
 			logger:     logger,
 			auth:       auth,
 			notes:      notesRepository,
 			groups:     groupsRepository,
+			activities: activitiesRepository,
 			language:   language,
 			background: background,
 		},
 		groups: &groupsAPI{
-			logger: logger,
-			auth:   auth,
-			notes:  notesRepository,
-			groups: groupsRepository,
+			logger:     logger,
+			auth:       auth,
+			notes:      notesRepository,
+			groups:     groupsRepository,
+			activities: activitiesRepository,
 		},
 	}
 }
@@ -250,4 +255,11 @@ func GetBlockContent(block *models.NoteBlock) (string, bool) {
 	default:
 		return "", false
 	}
+}
+
+func Terner(condition bool, consequent interface{}, alternative interface{}) interface{} {
+	if condition {
+		return consequent
+	}
+	return alternative
 }

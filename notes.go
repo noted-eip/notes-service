@@ -27,8 +27,9 @@ type notesAPI struct {
 	language   language.Service
 	background background.Service
 
-	notes  models.NotesRepository
-	groups models.GroupsRepository
+	notes      models.NotesRepository
+	groups     models.GroupsRepository
+	activities models.ActivitiesRepository
 }
 
 var _ notesv1.NotesAPIServer = &notesAPI{}
@@ -70,6 +71,12 @@ func (srv *notesAPI) CreateNote(ctx context.Context, req *notesv1.CreateNoteRequ
 		SecondsToDebounce:             900,
 		CancelProcessOnSameIdentifier: true,
 		RepeatProcess:                 false,
+	})
+
+	srv.activities.CreateActivityInternal(ctx, &models.ActivityPayload{
+		GroupID: note.GroupID,
+		Type:    models.NoteAdded,
+		Event:   "<userID:" + note.AuthorAccountID + "> has added the note <noteID:" + note.ID + "> in the folder <folderID" + "" + ">.",
 	})
 
 	return &notesv1.CreateNoteResponse{Note: modelsNoteToProtobufNote(note)}, nil

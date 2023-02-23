@@ -20,8 +20,9 @@ type groupsAPI struct {
 
 	auth auth.Service
 
-	groups models.GroupsRepository
-	notes  models.NotesRepository
+	groups     models.GroupsRepository
+	activities models.ActivitiesRepository
+	notes      models.NotesRepository
 }
 
 func (srv *groupsAPI) CreateGroup(ctx context.Context, req *notesv1.CreateGroupRequest) (*notesv1.CreateGroupResponse, error) {
@@ -160,70 +161,12 @@ func (srv *groupsAPI) ListGroups(ctx context.Context, req *notesv1.ListGroupsReq
 	return &notesv1.ListGroupsResponse{Groups: modelsGroupsToProtobufGroups(groups)}, nil
 }
 
-func (srv *groupsAPI) ListActivities(ctx context.Context, req *notesv1.ListActivitiesRequest) (*notesv1.ListActivitiesResponse, error) {
-	token, err := srv.authenticate(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	err = validators.ValidateListActivitiesRequest(req)
-	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
-	}
-
-	activities, err := srv.groups.ListActivities(ctx, &models.ManyActivitiesFilter{GroupID: req.GroupId}, token.AccountID)
-	if err != nil {
-		return nil, statusFromModelError(err)
-	}
-
-	return &notesv1.ListActivitiesResponse{Activities: modelsGroupActivitiesToProtobufGroupActivities(activities)}, nil
-}
-
-func (srv *groupsAPI) GetActivity(ctx context.Context, req *notesv1.GetActivityRequest) (*notesv1.GetActivityResponse, error) {
-	token, err := srv.authenticate(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	err = validators.ValidateGetActivityRequest(req)
-	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
-	}
-
-	activity, err := srv.groups.GetActivity(ctx, &models.OneActivityFilter{GroupID: req.GroupId, ActivityId: req.ActivityId}, token.AccountID)
-	if err != nil {
-		return nil, statusFromModelError(err)
-	}
-
-	return &notesv1.GetActivitiesResponse{Activity: modelsGroupActivityToProtobufGroupActivity(activity)}, nil
-}
-
 func (srv *groupsAPI) authenticate(ctx context.Context) (*auth.Token, error) {
 	token, err := srv.auth.TokenFromContext(ctx)
 	if err != nil {
 		return nil, status.Error(codes.Unauthenticated, "invalid token")
 	}
 	return token, nil
-}
-
-func modelsGroupActivitiesToProtobufGroupActivities(activities []*models.GroupActivity) []*notesv1.GroupActivity {
-	protoActivities := make([]*notesv1.GroupActivity, len(activities))
-
-	for i := range activities {
-		protoActivities[i] = modelsGroupActivityToProtobufGroupActivity(activities[i])
-	}
-
-	return protoActivities
-}
-
-func modelsGroupActivityToProtobufGroupActivity(activity *models.GroupActivity) *notesv1.GroupActivity {
-	return &notesv1.GroupActivity{
-		Id:        activity.ID,
-		GroupId:   activity.GroupID,
-		Type:      activity.Type,
-		Event:     activity.Event,
-		CreatedAt: timestamppb.New(activity.CreatedAt),
-	}
 }
 
 func modelsGroupToPublicProtobufGroup(group *models.Group) *notesv1.Group {
