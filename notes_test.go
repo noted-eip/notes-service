@@ -306,6 +306,84 @@ func TestNotesSuite(t *testing.T) {
 
 	maximeNote := newTestNote(t, tu, edouardGroup, maxime, nil)
 
+	t.Run("owner-can-update-note-blocks", func(t *testing.T) {
+		res, err := tu.notes.UpdateNote(edouard.Context, &notesv1.UpdateNoteRequest{
+			NoteId:  edouardNote.ID,
+			GroupId: edouardGroup.ID,
+			Note: &notesv1.Note{
+				Blocks: []*notesv1.Block{
+					{
+						Type: notesv1.Block_TYPE_HEADING_1,
+						Data: &notesv1.Block_Heading{
+							Heading: "Heading",
+						},
+					},
+					{
+						Type: notesv1.Block_TYPE_CODE,
+						Data: &notesv1.Block_Code_{
+							Code: &notesv1.Block_Code{
+								Lang:    "go",
+								Snippet: "package main",
+							},
+						},
+					},
+					{
+						Type: notesv1.Block_TYPE_IMAGE,
+						Data: &notesv1.Block_Image_{
+							Image: &notesv1.Block_Image{
+								Caption: "Image",
+								Url:     "https://example.com/image.png",
+							},
+						},
+					},
+				},
+			},
+			UpdateMask: &fieldmaskpb.FieldMask{
+				Paths: []string{"blocks"},
+			},
+		})
+		require.NoError(t, err)
+		require.NotNil(t, res)
+		require.Equal(t, "Heading", res.Note.Blocks[0].GetHeading())
+		require.Equal(t, "go", res.Note.Blocks[1].GetCode().Lang)
+		require.Equal(t, "package main", res.Note.Blocks[1].GetCode().Snippet)
+		require.Equal(t, "Image", res.Note.Blocks[2].GetImage().Caption)
+		require.Equal(t, "https://example.com/image.png", res.Note.Blocks[2].GetImage().Url)
+		require.Equal(t, "Brand New Title", res.Note.Title)
+		require.Len(t, res.Note.Blocks, 3)
+	})
+
+	t.Run("owner-can-update-note-blocks-with-empty-blocks-array", func(t *testing.T) {
+		res, err := tu.notes.UpdateNote(edouard.Context, &notesv1.UpdateNoteRequest{
+			NoteId:  edouardNote.ID,
+			GroupId: edouardGroup.ID,
+			Note: &notesv1.Note{
+				Blocks: []*notesv1.Block{},
+			},
+			UpdateMask: &fieldmaskpb.FieldMask{
+				Paths: []string{"blocks"},
+			},
+		})
+		require.NoError(t, err)
+		require.NotNil(t, res)
+		require.Len(t, res.Note.Blocks, 0)
+	})
+
+	t.Run("owner-cannot-update-note-with-invalid-field-mask", func(t *testing.T) {
+		res, err := tu.notes.UpdateNote(edouard.Context, &notesv1.UpdateNoteRequest{
+			NoteId:  edouardNote.ID,
+			GroupId: edouardGroup.ID,
+			Note: &notesv1.Note{
+				Title: "Brand New Title",
+			},
+			UpdateMask: &fieldmaskpb.FieldMask{
+				Paths: []string{"blocks"},
+			},
+		})
+		requireErrorHasGRPCCode(t, codes.InvalidArgument, err)
+		require.Nil(t, res)
+	})
+
 	t.Run("member-cannot-delete-note", func(t *testing.T) {
 		res, err := tu.notes.DeleteNote(edouard.Context, &notesv1.DeleteNoteRequest{
 			GroupId: maximeNote.Group.ID,
