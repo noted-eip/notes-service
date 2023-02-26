@@ -43,6 +43,8 @@ func ValidateUpdateNoteRequest(req *notespb.UpdateNoteRequest) error {
 			err = validation.Validate(&req.Note.Title, validation.Required, validation.Length(1, 64))
 		case "blocks":
 			err = validation.Validate(&req.Note.Blocks, validation.NotNil)
+		default:
+			return validation.NewError("update_mask", "update to "+path+" is forbidden")
 		}
 	}
 

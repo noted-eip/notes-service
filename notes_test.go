@@ -384,6 +384,21 @@ func TestNotesSuite(t *testing.T) {
 		require.Nil(t, res)
 	})
 
+	t.Run("owner-cannot-update-note-with-invalid-field-mask-path", func(t *testing.T) {
+		res, err := tu.notes.UpdateNote(edouard.Context, &notesv1.UpdateNoteRequest{
+			NoteId:  edouardNote.ID,
+			GroupId: edouardGroup.ID,
+			Note: &notesv1.Note{
+				Title: "Brand New Title",
+			},
+			UpdateMask: &fieldmaskpb.FieldMask{
+				Paths: []string{"invalid-field"},
+			},
+		})
+		requireErrorHasGRPCCode(t, codes.InvalidArgument, err)
+		require.Nil(t, res)
+	})
+
 	t.Run("member-cannot-delete-note", func(t *testing.T) {
 		res, err := tu.notes.DeleteNote(edouard.Context, &notesv1.DeleteNoteRequest{
 			GroupId: maximeNote.Group.ID,
