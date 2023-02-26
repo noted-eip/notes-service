@@ -24,11 +24,31 @@ func ValidateUpdateNoteRequest(req *notespb.UpdateNoteRequest) error {
 	err := validation.ValidateStruct(req,
 		validation.Field(&req.GroupId, validation.Required),
 		validation.Field(&req.NoteId, validation.Required),
+		validation.Field(&req.UpdateMask, validation.Required),
 	)
 	if err != nil {
 		return err
 	}
-	return validation.Validate(req.Note.Title, validation.Length(0, 64))
+
+	// Check update mask is not empty.
+	err = validation.Validate(&req.UpdateMask.Paths, validation.Required)
+	if err != nil {
+		return err
+	}
+
+	// Check update mask paths are set.
+	for _, path := range req.UpdateMask.Paths {
+		switch path {
+		case "title":
+			err = validation.Validate(&req.Note.Title, validation.Required, validation.Length(1, 64))
+		case "blocks":
+			err = validation.Validate(&req.Note.Blocks, validation.NotNil)
+		default:
+			return validation.NewError("update_mask", "update to "+path+" is forbidden")
+		}
+	}
+
+	return err
 }
 
 func ValidateDeleteNoteRequest(req *notespb.DeleteNoteRequest) error {

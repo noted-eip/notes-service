@@ -112,7 +112,10 @@ type UpdateBlockPayload struct {
 }
 
 type UpdateNotePayload struct {
-	Title    string    `json:"title,omitempty" bson:"title,omitempty"`
+	Title  string       `json:"title,omitempty" bson:"title,omitempty"`
+	Blocks *[]NoteBlock `json:"blocks,omitempty" bson:"blocks,omitempty"`
+
+	// TODO: Remove
 	Keywords []Keyword `json:"keywords" bson:"keywords"`
 }
 
