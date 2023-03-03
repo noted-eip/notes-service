@@ -126,13 +126,29 @@ func (srv *notesAPI) UpdateNote(ctx context.Context, req *notesv1.UpdateNoteRequ
 
 	note, err := srv.notes.UpdateNote(ctx,
 		&models.OneNoteFilter{GroupID: req.GroupId, NoteID: req.NoteId},
-		&models.UpdateNotePayload{Title: req.Note.Title},
+		updateNotePayloadFromUpdateNoteRequest(req),
 		token.AccountID)
 	if err != nil {
 		return nil, statusFromModelError(err)
 	}
 
 	return &notesv1.UpdateNoteResponse{Note: modelsNoteToProtobufNote(note)}, nil
+}
+
+func updateNotePayloadFromUpdateNoteRequest(req *notesv1.UpdateNoteRequest) *models.UpdateNotePayload {
+	payload := &models.UpdateNotePayload{}
+
+	for _, path := range req.UpdateMask.Paths {
+		switch path {
+		case "title":
+			payload.Title = req.Note.Title
+		case "blocks":
+			blocks := protobufBlocksToModelsBlocks(req.Note.Blocks)
+			payload.Blocks = &blocks
+		}
+	}
+
+	return payload
 }
 
 func (srv *notesAPI) DeleteNote(ctx context.Context, req *notesv1.DeleteNoteRequest) (*notesv1.DeleteNoteResponse, error) {
@@ -300,6 +316,10 @@ var protobufFormatToFormatter = map[notesv1.NoteExportFormat]func(*notesv1.Note)
 }
 
 func protobufBlocksToModelsBlocks(blocks []*notesv1.Block) []models.NoteBlock {
+	if blocks == nil {
+		return nil
+	}
+
 	modelsBlocks := make([]models.NoteBlock, len(blocks))
 
 	for i := range blocks {
