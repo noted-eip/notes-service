@@ -20,8 +20,9 @@ type groupsAPI struct {
 
 	auth auth.Service
 
-	groups models.GroupsRepository
-	notes  models.NotesRepository
+	groups     models.GroupsRepository
+	activities models.ActivitiesRepository
+	notes      models.NotesRepository
 }
 
 func (srv *groupsAPI) CreateGroup(ctx context.Context, req *notesv1.CreateGroupRequest) (*notesv1.CreateGroupResponse, error) {
@@ -194,6 +195,7 @@ func modelsGroupToProtobufGroup(group *models.Group) *notesv1.Group {
 	var invites []*notesv1.GroupInvite = nil
 	var inviteLinks []*notesv1.GroupInviteLink = nil
 	var conversations []*notesv1.GroupConversation = nil
+	/*activities*/
 
 	if group.Members != nil {
 		members = make([]*notesv1.GroupMember, len(*group.Members))

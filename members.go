@@ -74,6 +74,12 @@ func (srv *groupsAPI) RemoveMember(ctx context.Context, req *notesv1.RemoveMembe
 		return nil, statusFromModelError(err)
 	}
 
+	srv.activities.CreateActivityInternal(ctx, &models.ActivityPayload{
+		GroupID: req.GroupId,
+		Type:    models.MemberRemoved,
+		Event:   "<userID:" + req.AccountId + "> leaved the group <groupID:" + req.GroupId + ">.",
+	})
+
 	return &notesv1.RemoveMemberResponse{}, nil
 }
 

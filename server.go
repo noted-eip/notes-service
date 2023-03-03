@@ -35,8 +35,9 @@ type server struct {
 
 	mongoDB *mongo.Database
 
-	notesRepository  models.NotesRepository
-	groupsRepository models.GroupsRepository
+	notesRepository      models.NotesRepository
+	groupsRepository     models.GroupsRepository
+	activitiesRepository models.ActivitiesRepository
 
 	notesAPI  notesv1.NotesAPIServer
 	groupsAPI notesv1.GroupsAPIServer
@@ -132,10 +133,11 @@ func (s *server) initBackgroundService() {
 
 func (s *server) initGroupsAPI() {
 	s.groupsAPI = &groupsAPI{
-		auth:   s.authService,
-		logger: s.logger,
-		notes:  s.notesRepository,
-		groups: s.groupsRepository,
+		auth:       s.authService,
+		logger:     s.logger,
+		notes:      s.notesRepository,
+		groups:     s.groupsRepository,
+		activities: s.activitiesRepository,
 	}
 }
 
@@ -145,6 +147,7 @@ func (s *server) initNotesAPI() {
 		logger:     s.logger,
 		notes:      s.notesRepository,
 		groups:     s.groupsRepository,
+		activities: s.activitiesRepository,
 		language:   s.languageService,
 		background: s.backgroundService,
 	}
@@ -162,6 +165,7 @@ func (s *server) initRepositories() {
 	must(err, "could not instantiate mongo database")
 	s.notesRepository = mongo.NewNotesRepository(s.mongoDB.DB, s.logger)
 	s.groupsRepository = mongo.NewGroupsRepository(s.mongoDB.DB, s.logger)
+	s.activitiesRepository = mongo.NewActivitiesRepository(s.mongoDB.DB, s.logger)
 }
 
 func must(err error, msg string) {
