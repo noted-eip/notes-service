@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"notes-service/auth"
+	"notes-service/background"
 	"notes-service/exports"
 	"notes-service/models"
 	notesv1 "notes-service/protorepo/noted/notes/v1"
@@ -22,11 +23,13 @@ type notesAPI struct {
 
 	logger *zap.Logger
 
-	auth     auth.Service
-	language language.Service
+	auth       auth.Service
+	language   language.Service
+	background background.Service
 
-	notes  models.NotesRepository
-	groups models.GroupsRepository
+	notes      models.NotesRepository
+	groups     models.GroupsRepository
+	activities models.ActivitiesRepository
 }
 
 var _ notesv1.NotesAPIServer = &notesAPI{}
@@ -58,6 +61,23 @@ func (srv *notesAPI) CreateNote(ctx context.Context, req *notesv1.CreateNoteRequ
 	if err != nil {
 		return nil, statusFromModelError(err)
 	}
+
+	srv.background.AddProcess(&background.Process{
+		Identifier: models.NoteIdentifier{NoteId: note.ID, ActionType: models.NoteUpdateKeyword},
+		CallBackFct: func() error {
+			err := srv.UpdateKeywordsByNoteId(note.ID, req.GroupId, token.AccountID)
+			return err
+		},
+		SecondsToDebounce:             900,
+		CancelProcessOnSameIdentifier: true,
+		RepeatProcess:                 false,
+	})
+
+	srv.activities.CreateActivityInternal(ctx, &models.ActivityPayload{
+		GroupID: note.GroupID,
+		Type:    models.NoteAdded,
+		Event:   "<userID:" + note.AuthorAccountID + "> has added the note <noteID:" + note.ID + "> in the folder <folderID" + "" + ">.",
+	})
 
 	return &notesv1.CreateNoteResponse{Note: modelsNoteToProtobufNote(note)}, nil
 }
@@ -106,13 +126,29 @@ func (srv *notesAPI) UpdateNote(ctx context.Context, req *notesv1.UpdateNoteRequ
 
 	note, err := srv.notes.UpdateNote(ctx,
 		&models.OneNoteFilter{GroupID: req.GroupId, NoteID: req.NoteId},
-		&models.UpdateNotePayload{Title: req.Note.Title},
+		updateNotePayloadFromUpdateNoteRequest(req),
 		token.AccountID)
 	if err != nil {
 		return nil, statusFromModelError(err)
 	}
 
 	return &notesv1.UpdateNoteResponse{Note: modelsNoteToProtobufNote(note)}, nil
+}
+
+func updateNotePayloadFromUpdateNoteRequest(req *notesv1.UpdateNoteRequest) *models.UpdateNotePayload {
+	payload := &models.UpdateNotePayload{}
+
+	for _, path := range req.UpdateMask.Paths {
+		switch path {
+		case "title":
+			payload.Title = req.Note.Title
+		case "blocks":
+			blocks := protobufBlocksToModelsBlocks(req.Note.Blocks)
+			payload.Blocks = &blocks
+		}
+	}
+
+	return payload
 }
 
 func (srv *notesAPI) DeleteNote(ctx context.Context, req *notesv1.DeleteNoteRequest) (*notesv1.DeleteNoteResponse, error) {
@@ -148,22 +184,37 @@ func (srv *notesAPI) ListNotes(ctx context.Context, req *notesv1.ListNotesReques
 	}
 
 	// Check user is part of the group
-	_, err = srv.groups.GetGroup(ctx, &models.OneGroupFilter{GroupID: req.GroupId}, token.AccountID)
+	if req.GroupId == "" {
+		if token.AccountID != req.AuthorAccountId {
+			return nil, status.Error(codes.PermissionDenied, "could get note of another account")
+		}
+	} else {
+		_, err = srv.groups.GetGroup(ctx, &models.OneGroupFilter{GroupID: req.GroupId}, token.AccountID)
+		if err != nil {
+			return nil, statusFromModelError(err)
+		}
+	}
+
+	notes, err := srv.notes.ListNotesInternal(ctx,
+		&models.ManyNotesFilter{GroupID: req.GroupId, AuthorAccountID: req.AuthorAccountId},
+		&models.ListOptions{Limit: int32(req.Limit), Offset: int32(req.Offset)})
 	if err != nil {
 		return nil, statusFromModelError(err)
 	}
 
-	notes, err := srv.notes.ListNotesInternal(ctx, &models.ManyNotesFilter{AuthorAccountID: req.AuthorAccountId}, &models.ListOptions{Limit: 20, Offset: 0})
-	if err != nil {
-		return nil, statusFromModelError(err)
-	}
+	return &notesv1.ListNotesResponse{Notes: modelsNotesToProtobufNotes(notes)}, nil
+}
 
+func modelsNotesToProtobufNotes(notes []*models.Note) []*notesv1.Note {
 	protobufNotes := make([]*notesv1.Note, len(notes))
 	for i := range notes {
 		protobufNotes[i] = modelsNoteToProtobufNote(notes[i])
+		// NOTE: List notes doesn't return the notes blocks but we
+		// must explicitely set it to nil to avoid sending an empty
+		// array.
+		protobufNotes[i].Blocks = nil
 	}
-
-	return &notesv1.ListNotesResponse{Notes: protobufNotes}, nil
+	return protobufNotes
 }
 
 func (srv *notesAPI) ExportNote(ctx context.Context, req *notesv1.ExportNoteRequest) (*notesv1.ExportNoteResponse, error) {
@@ -223,6 +274,52 @@ func (srv *notesAPI) OnAccountDelete(ctx context.Context, req *notesv1.OnAccount
 	return &notesv1.OnAccountDeleteResponse{}, nil
 }
 
+func (srv *notesAPI) UpdateKeywordsByNoteId(noteId string, groupId string, accountID string) error {
+	note, err := srv.notes.GetNote(context.TODO(), &models.OneNoteFilter{GroupID: groupId, NoteID: noteId}, accountID)
+	if err != nil {
+		return statusFromModelError(err)
+	}
+
+	// TODDO : mettre un timeout sur le call google
+	err = generateNoteTagsToModelNote(srv.language, note)
+	if err != nil {
+		srv.logger.Error("failed to gen keywords", zap.Error(err))
+		return status.Errorf(codes.Internal, "failed to gen keywords for noteId : %s", note.ID)
+	}
+
+	_, err = srv.notes.UpdateNote(context.TODO(),
+		&models.OneNoteFilter{GroupID: note.GroupID, NoteID: note.ID},
+		&models.UpdateNotePayload{Keywords: note.Keywords},
+		accountID)
+	if err != nil {
+		return statusFromModelError(err)
+	}
+
+	return nil
+}
+
+func generateNoteTagsToModelNote(languageService language.Service, note *models.Note) error {
+	var fullNote string
+
+	for _, block := range note.Blocks {
+		if block.Type != "code" && block.Type != "image" {
+			content, ok := GetBlockContent(&block)
+			if ok {
+				fullNote += content + "\n"
+			}
+		}
+
+	}
+
+	keywords, err := languageService.GetKeywordsFromTextInput(fullNote)
+	if err != nil {
+		return status.Error(codes.Internal, err.Error())
+	}
+
+	note.Keywords = keywords
+	return nil
+}
+
 func (srv *notesAPI) authenticate(ctx context.Context) (*auth.Token, error) {
 	token, err := srv.auth.TokenFromContext(ctx)
 	if err != nil {
@@ -238,6 +335,10 @@ var protobufFormatToFormatter = map[notesv1.NoteExportFormat]func(*notesv1.Note)
 }
 
 func protobufBlocksToModelsBlocks(blocks []*notesv1.Block) []models.NoteBlock {
+	if blocks == nil {
+		return nil
+	}
+
 	modelsBlocks := make([]models.NoteBlock, len(blocks))
 
 	for i := range blocks {
@@ -300,8 +401,8 @@ func modelsNoteToProtobufNote(note *models.Note) *notesv1.Note {
 		AuthorAccountId: note.AuthorAccountID,
 		Title:           note.Title,
 		CreatedAt:       timestamppb.New(note.CreatedAt),
-		ModifiedAt:      timestamppb.New(note.ModifiedAt),
-		AnalyzedAt:      timestamppb.New(note.AnalyzedAt),
+		ModifiedAt:      protobufTimestampOrNil(note.ModifiedAt),
+		AnalyzedAt:      protobufTimestampOrNil(note.AnalyzedAt),
 		Blocks:          make([]*notesv1.Block, len(note.Blocks)),
 	}
 

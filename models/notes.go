@@ -5,6 +5,19 @@ import (
 	"time"
 )
 
+type Action uint
+
+type NoteIdentifier struct {
+	NoteId     string
+	ActionType Action
+}
+
+const (
+	NoteUpdateKeyword Action = 1
+	// Put in enum the other type of actions
+	//...
+)
+
 type NoteBlockImage struct {
 	Url     string `json:"url" bson:"url"`
 	Caption string `json:"caption" bson:"caption"`
@@ -59,8 +72,8 @@ type Note struct {
 	AuthorAccountID string      `json:"authorAccountId" bson:"authorAccountId"`
 	GroupID         string      `json:"groupId" bson:"groupId"`
 	CreatedAt       time.Time   `json:"createdAt" bson:"createdAt"`
-	ModifiedAt      time.Time   `json:"modifiedAt" bson:"modifiedAt"`
-	AnalyzedAt      time.Time   `json:"analyzedAt" bson:"analyzedAt"`
+	ModifiedAt      *time.Time  `json:"modifiedAt" bson:"modifiedAt"`
+	AnalyzedAt      *time.Time  `json:"analyzedAt" bson:"analyzedAt"`
 	Keywords        []Keyword   `json:"keywords" bson:"keywords"`
 	Blocks          []NoteBlock `json:"blocks" bson:"blocks"`
 }
@@ -99,7 +112,11 @@ type UpdateBlockPayload struct {
 }
 
 type UpdateNotePayload struct {
-	Title string `json:"title,omitempty" bson:"title,omitempty"`
+	Title  string       `json:"title,omitempty" bson:"title,omitempty"`
+	Blocks *[]NoteBlock `json:"blocks,omitempty" bson:"blocks,omitempty"`
+
+	// TODO: Remove
+	Keywords []Keyword `json:"keywords" bson:"keywords"`
 }
 
 type UpdateNoteGroupPayload struct {

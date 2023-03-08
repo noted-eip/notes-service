@@ -42,6 +42,11 @@ type GroupInviteLink struct {
 	ValidUntil           time.Time `json:"validUntil" bson:"validUntil"`
 }
 
+type ListInvitesResult struct {
+	GroupInvite `json:"inline" bson:"inline"`
+	GroupID     string `json:"groupId" bson:"groupId"`
+}
+
 type Group struct {
 	ID                 string               `json:"id" bson:"_id"`
 	Name               string               `json:"name" bson:"name"`
@@ -85,7 +90,7 @@ func (group *Group) FindInviteByRecipient(recipientAccountID string) *GroupInvit
 		return nil
 	}
 	for i := 0; i < len(*group.Invites); i++ {
-		if (*group.Invites)[i].SenderAccountID == recipientAccountID {
+		if (*group.Invites)[i].RecipientAccountID == recipientAccountID {
 			return &(*group.Invites)[i]
 		}
 	}
@@ -222,11 +227,6 @@ type UpdateGroupConversationPayload struct {
 
 type UpdateGroupConversationMessagePayload struct {
 	Content string
-}
-
-type ListInvitesResult struct {
-	GroupInvite `json:"inline" bson:"inline"`
-	GroupID     string `json:"groupId" bson:"groupId"`
 }
 
 // GroupsRepository encapsulates the persistence layer that stores groups.

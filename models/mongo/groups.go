@@ -8,6 +8,7 @@ import (
 	"github.com/jaevor/go-nanoid"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.uber.org/zap"
 )
 
@@ -119,9 +120,9 @@ func (repo *groupsRepository) GetGroupInternal(ctx context.Context, filter *mode
 
 	query := bson.D{{Key: "_id", Value: filter.GroupID}}
 
-	err := repo.coll.FindOne(ctx, query).Decode(group)
+	err := repo.findOne(ctx, query, group)
 	if err != nil {
-		return nil, repo.mongoFindOneErrorToModelsError(query, err)
+		return nil, err
 	}
 
 	return group, nil
@@ -173,7 +174,10 @@ func (repo *groupsRepository) ListGroupsInternal(ctx context.Context, filter *mo
 		}})
 	}
 
-	err := repo.find(ctx, query, &groups, lo)
+	requieredFields := bson.D{{Key: "members", Value: 0}, {Key: "inviteLinks", Value: 0}, {Key: "invites", Value: 0}, {Key: "conversations", Value: 0}}
+	opts := options.Find().SetProjection(requieredFields)
+
+	err := repo.find(ctx, query, &groups, lo, opts)
 	if err != nil {
 		return nil, err
 	}

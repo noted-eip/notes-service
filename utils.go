@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"notes-service/auth"
+	"notes-service/background"
 	"notes-service/language"
 	"notes-service/models"
 	"notes-service/models/mongo"
@@ -17,6 +18,7 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func statusFromModelError(err error) error {
@@ -38,15 +40,23 @@ func statusFromModelError(err error) error {
 	return status.Error(codes.Internal, "internal error")
 }
 
+func protobufTimestampOrNil(t *time.Time) *timestamppb.Timestamp {
+	if t == nil {
+		return nil
+	}
+	return timestamppb.New(*t)
+}
+
 type testUtils struct {
-	logger           *zap.Logger
-	auth             *auth.TestService
-	db               *mongo.Database
-	notesRepository  models.NotesRepository
-	groupsRepository models.GroupsRepository
-	notes            notesv1.NotesAPIServer
-	groups           notesv1.GroupsAPIServer
-	newUUID          func() string
+	logger               *zap.Logger
+	auth                 *auth.TestService
+	db                   *mongo.Database
+	notesRepository      models.NotesRepository
+	groupsRepository     models.GroupsRepository
+	activitiesRepository models.ActivitiesRepository
+	notes                notesv1.NotesAPIServer
+	groups               notesv1.GroupsAPIServer
+	newUUID              func() string
 }
 
 func newTestUtilsOrDie(t *testing.T) *testUtils {
@@ -54,38 +64,46 @@ func newTestUtilsOrDie(t *testing.T) *testUtils {
 	// require.NoError(t, err)
 	logger := zap.NewNop()
 	auth := &auth.TestService{}
+	randomChars, err := nanoid.CustomASCII("0123456789AZERTYUIOPMLKJHGFDSQWXCVBNazertyuiopmlkjhgfdsqwxcvbn", 5)
+	require.NoError(t, err)
 	ctx, cancel := context.WithTimeout(context.TODO(), time.Second)
 	defer cancel()
-	db, err := mongo.NewDatabase(ctx, "mongodb://localhost:27017", "notes-service-unit-test", logger)
+	db, err := mongo.NewDatabase(ctx, "mongodb://localhost:27017", "notes-service-unit-test-"+randomChars(), logger)
 	if err != nil {
 		t.Skip("skipping test, unable to connect to mongodb")
 	}
 	notesRepository := mongo.NewNotesRepository(db.DB, logger)
 	groupsRepository := mongo.NewGroupsRepository(db.DB, logger)
+	activitiesRepository := mongo.NewActivitiesRepository(db.DB, logger)
 	language := &language.NaturalAPIService{}
+	background := background.NewService(logger)
 	require.NoError(t, language.Init())
 	newUUID, err := nanoid.Standard(21)
 	require.NoError(t, err)
 
 	return &testUtils{
-		logger:           logger,
-		auth:             auth,
-		db:               db,
-		newUUID:          newUUID,
-		notesRepository:  notesRepository,
-		groupsRepository: groupsRepository,
+		logger:               logger,
+		auth:                 auth,
+		db:                   db,
+		newUUID:              newUUID,
+		notesRepository:      notesRepository,
+		groupsRepository:     groupsRepository,
+		activitiesRepository: activitiesRepository,
 		notes: &notesAPI{
-			logger:   logger,
-			auth:     auth,
-			language: language,
-			notes:    notesRepository,
-			groups:   groupsRepository,
+			logger:     logger,
+			auth:       auth,
+			notes:      notesRepository,
+			groups:     groupsRepository,
+			activities: activitiesRepository,
+			language:   language,
+			background: background,
 		},
 		groups: &groupsAPI{
-			logger: logger,
-			auth:   auth,
-			notes:  notesRepository,
-			groups: groupsRepository,
+			logger:     logger,
+			auth:       auth,
+			notes:      notesRepository,
+			groups:     groupsRepository,
+			activities: activitiesRepository,
 		},
 	}
 }
@@ -229,7 +247,31 @@ func listOptionsFromLimitOffset(limit int32, offset int32) *models.ListOptions {
 		limit = 20
 	}
 	return &models.ListOptions{
-		Limit:  int64(limit),
-		Offset: int64(offset),
+		Limit:  limit,
+		Offset: offset,
 	}
+}
+
+func GetBlockContent(block *models.NoteBlock) (string, bool) {
+	switch block.Type {
+	case "heading":
+		return *block.Heading, true
+	case "paragraph":
+		return *block.Paragraph, true
+	case "math":
+		return *block.Math, true
+	case "bulletpoint":
+		return *block.BulletPoint, true
+	case "numberpoint":
+		return *block.NumberPoint, true
+	default:
+		return "", false
+	}
+}
+
+func Terner(condition bool, consequent interface{}, alternative interface{}) interface{} {
+	if condition {
+		return consequent
+	}
+	return alternative
 }

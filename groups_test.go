@@ -56,7 +56,7 @@ func TestGroupsSuite(t *testing.T) {
 		daveWorkspace = res.Group
 	})
 
-	t.Run("create-group-invalid-name", func(t *testing.T) {
+	t.Run("cannot-create-group-invalid-name", func(t *testing.T) {
 		res, err := tu.groups.CreateGroup(jhon.Context, &notesv1.CreateGroupRequest{
 			Name:        "",
 			Description: "My Group Description",
@@ -65,7 +65,7 @@ func TestGroupsSuite(t *testing.T) {
 		require.Nil(t, res)
 	})
 
-	t.Run("get-group", func(t *testing.T) {
+	t.Run("member-can-get-group", func(t *testing.T) {
 		res, err := tu.groups.GetGroup(jhon.Context, &notesv1.GetGroupRequest{
 			GroupId: jhonGroup.Id,
 		})
@@ -74,7 +74,7 @@ func TestGroupsSuite(t *testing.T) {
 		require.Equal(t, jhonGroup.Name, res.Group.Name)
 	})
 
-	t.Run("get-workspace", func(t *testing.T) {
+	t.Run("owner-can-get-workspace", func(t *testing.T) {
 		res, err := tu.groups.GetGroup(dave.Context, &notesv1.GetGroupRequest{
 			GroupId: daveWorkspace.Id,
 		})
@@ -83,7 +83,7 @@ func TestGroupsSuite(t *testing.T) {
 		require.Equal(t, daveWorkspace.Name, res.Group.Name)
 	})
 
-	t.Run("get-group-permission-denied", func(t *testing.T) {
+	t.Run("stranger-cannot-get-group", func(t *testing.T) {
 		res, err := tu.groups.GetGroup(dave.Context, &notesv1.GetGroupRequest{
 			GroupId: jhonGroup.Id,
 		})
@@ -92,7 +92,7 @@ func TestGroupsSuite(t *testing.T) {
 		require.Nil(t, res)
 	})
 
-	t.Run("update-group-name", func(t *testing.T) {
+	t.Run("admin-can-update-group-name", func(t *testing.T) {
 		res, err := tu.groups.UpdateGroup(jhon.Context, &notesv1.UpdateGroupRequest{
 			GroupId: jhonGroup.Id,
 			Name:    "New Name",
@@ -105,7 +105,7 @@ func TestGroupsSuite(t *testing.T) {
 		jhonGroup = res.Group
 	})
 
-	t.Run("update-group-description", func(t *testing.T) {
+	t.Run("admin-can-update-group-description", func(t *testing.T) {
 		res, err := tu.groups.UpdateGroup(jhon.Context, &notesv1.UpdateGroupRequest{
 			GroupId:     jhonGroup.Id,
 			Description: "New Description",
@@ -118,7 +118,7 @@ func TestGroupsSuite(t *testing.T) {
 		jhonGroup = res.Group
 	})
 
-	t.Run("update-group-permission-denied", func(t *testing.T) {
+	t.Run("stranger-cannot-update-group", func(t *testing.T) {
 		res, err := tu.groups.UpdateGroup(dave.Context, &notesv1.UpdateGroupRequest{
 			GroupId:     jhonGroup.Id,
 			Description: "New Description",
@@ -127,23 +127,28 @@ func TestGroupsSuite(t *testing.T) {
 		require.Nil(t, res)
 	})
 
-	t.Run("list-one-group", func(t *testing.T) {
+	t.Run("member-can-list-group", func(t *testing.T) {
 		res, err := tu.groups.ListGroups(jhon.Context, &notesv1.ListGroupsRequest{AccountId: jhon.ID})
 		require.NoError(t, err)
 		require.NotNil(t, res)
 		require.Len(t, res.Groups, 1)
 	})
 
-	t.Run("delete-group-permission-denied", func(t *testing.T) {
+	t.Run("stranger-cannot-delete-group", func(t *testing.T) {
 		res, err := tu.groups.DeleteGroup(dave.Context, &notesv1.DeleteGroupRequest{GroupId: jhonGroup.Id})
 		requireErrorHasGRPCCode(t, codes.NotFound, err)
 		require.Nil(t, res)
 	})
 
-	t.Run("delete-group", func(t *testing.T) {
+	t.Run("admin-can-delete-group", func(t *testing.T) {
 		res, err := tu.groups.DeleteGroup(jhon.Context, &notesv1.DeleteGroupRequest{GroupId: jhonGroup.Id})
 		require.NoError(t, err)
 		require.NotNil(t, res)
+
+		// Make sure group is deleted.
+		group, err := tu.groupsRepository.GetGroupInternal(context.TODO(), &models.OneGroupFilter{GroupID: jhonGroup.Id})
+		require.Error(t, err)
+		require.Nil(t, group)
 	})
 
 	// We tested and it works, so let's create one for jhon
@@ -192,7 +197,7 @@ func TestGroupsSuite(t *testing.T) {
 		require.Nil(t, res)
 	})
 
-	t.Run("list-one-workspace", func(t *testing.T) {
+	t.Run("owner-can-list-one-workspace", func(t *testing.T) {
 		res, err := tu.groups.ListGroups(dave.Context, &notesv1.ListGroupsRequest{AccountId: dave.ID})
 		require.NoError(t, err)
 		require.NotNil(t, res)
@@ -211,6 +216,18 @@ func TestGroupsSuite(t *testing.T) {
 		note, err := tu.notes.GetNote(dave.Context, &notesv1.GetNoteRequest{NoteId: daveNote.ID, GroupId: daveWorkspace.Id})
 		require.NoError(t, err)
 		require.NotNil(t, note)
+	})
+
+	daveGroup = newTestGroup(t, tu, dave)
+	dave.SendInvite(t, tu, jhon, daveGroup)
+
+	t.Run("invitee-can-get-group-preview", func(t *testing.T) {
+		res, err := tu.groups.GetGroup(jhon.Context, &notesv1.GetGroupRequest{
+			GroupId: daveGroup.ID,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, res)
+		require.Equal(t, daveGroup.ID, res.Group.Id)
 	})
 
 	// OnAccountDelete is a repository function, no auth

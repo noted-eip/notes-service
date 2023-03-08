@@ -100,7 +100,7 @@ func (repo *repository) find(ctx context.Context, query interface{}, results int
 		lo = &models.ListOptions{Limit: 20, Offset: 0}
 	}
 
-	opts = append(opts, options.Find().SetLimit(lo.Limit).SetSkip(lo.Offset))
+	opts = append(opts, options.Find().SetLimit(int64(lo.Limit)).SetSkip(int64(lo.Offset)))
 
 	res, err := repo.coll.Find(ctx, query, opts...)
 	if err != nil {
@@ -182,7 +182,7 @@ func (repo *repository) mongoUpdateManyErrorToModelsError(query interface{}, upd
 }
 
 func (repo *repository) mongoFindErrorToModelsError(query interface{}, lo *models.ListOptions, err error) error {
-	repo.logger.Error("find failed", zap.Any("query", query), zap.Int64("limit", lo.Limit), zap.Int64("offset", lo.Offset), zap.Error(err))
+	repo.logger.Error("find failed", zap.Any("query", query), zap.Int32("limit", lo.Limit), zap.Int32("offset", lo.Offset), zap.Error(err))
 	return models.ErrUnknown
 }
 

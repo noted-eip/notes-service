@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"notes-service/background"
 	"notes-service/models"
 	notesv1 "notes-service/protorepo/noted/notes/v1"
 	"notes-service/validators"
@@ -21,12 +22,6 @@ func (srv *notesAPI) InsertBlock(ctx context.Context, req *notesv1.InsertBlockRe
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	// Check user is part of the group.
-	_, err = srv.groups.GetGroup(ctx, &models.OneGroupFilter{GroupID: req.GroupId}, token.AccountID)
-	if err != nil {
-		return nil, statusFromModelError(err)
-	}
-
 	block, err := srv.notes.InsertBlock(ctx,
 		&models.OneNoteFilter{GroupID: req.GroupId, NoteID: req.NoteId},
 		&models.InsertNoteBlockPayload{
@@ -37,6 +32,18 @@ func (srv *notesAPI) InsertBlock(ctx context.Context, req *notesv1.InsertBlockRe
 	if err != nil {
 		return nil, statusFromModelError(err)
 	}
+
+	// Launch process to generate keywords in 15minutes after the last modification
+	srv.background.AddProcess(&background.Process{
+		Identifier: models.NoteIdentifier{NoteId: req.NoteId, ActionType: models.NoteUpdateKeyword},
+		CallBackFct: func() error {
+			err := srv.UpdateKeywordsByNoteId(req.NoteId, req.GroupId, token.AccountID)
+			return err
+		},
+		SecondsToDebounce:             900,
+		CancelProcessOnSameIdentifier: true,
+		RepeatProcess:                 false,
+	})
 
 	return &notesv1.InsertBlockResponse{Block: modelsBlockToProtobufBlock(block)}, nil
 }
@@ -52,12 +59,6 @@ func (srv *notesAPI) UpdateBlock(ctx context.Context, req *notesv1.UpdateBlockRe
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	// Check user is part of the group.
-	_, err = srv.groups.GetGroup(ctx, &models.OneGroupFilter{GroupID: req.GroupId}, token.AccountID)
-	if err != nil {
-		return nil, statusFromModelError(err)
-	}
-
 	block, err := srv.notes.UpdateBlock(ctx,
 		&models.OneBlockFilter{GroupID: req.GroupId, NoteID: req.NoteId, BlockID: req.BlockId},
 		&models.UpdateBlockPayload{
@@ -67,6 +68,18 @@ func (srv *notesAPI) UpdateBlock(ctx context.Context, req *notesv1.UpdateBlockRe
 	if err != nil {
 		return nil, statusFromModelError(err)
 	}
+
+	// Launch process to generate keywords in 15minutes after the last modification
+	srv.background.AddProcess(&background.Process{
+		Identifier: models.NoteIdentifier{NoteId: req.NoteId, ActionType: models.NoteUpdateKeyword},
+		CallBackFct: func() error {
+			err := srv.UpdateKeywordsByNoteId(req.NoteId, req.GroupId, token.AccountID)
+			return err
+		},
+		SecondsToDebounce:             900,
+		CancelProcessOnSameIdentifier: true,
+		RepeatProcess:                 false,
+	})
 
 	return &notesv1.UpdateBlockResponse{Block: modelsBlockToProtobufBlock(block)}, nil
 }
@@ -82,18 +95,24 @@ func (srv *notesAPI) DeleteBlock(ctx context.Context, req *notesv1.DeleteBlockRe
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	// Check user is part of the group.
-	_, err = srv.groups.GetGroup(ctx, &models.OneGroupFilter{GroupID: req.GroupId}, token.AccountID)
-	if err != nil {
-		return nil, statusFromModelError(err)
-	}
-
 	err = srv.notes.DeleteBlock(ctx,
 		&models.OneBlockFilter{GroupID: req.GroupId, NoteID: req.NoteId, BlockID: req.BlockId},
 		token.AccountID)
 	if err != nil {
 		return nil, statusFromModelError(err)
 	}
+
+	// Launch process to generate keywords in 15minutes after the last modification
+	srv.background.AddProcess(&background.Process{
+		Identifier: models.NoteIdentifier{NoteId: req.NoteId, ActionType: models.NoteUpdateKeyword},
+		CallBackFct: func() error {
+			err := srv.UpdateKeywordsByNoteId(req.NoteId, req.GroupId, token.AccountID)
+			return err
+		},
+		SecondsToDebounce:             900,
+		CancelProcessOnSameIdentifier: true,
+		RepeatProcess:                 false,
+	})
 
 	return &notesv1.DeleteBlockResponse{}, nil
 }

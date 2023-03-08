@@ -13,6 +13,11 @@ require (
 )
 
 require (
+	github.com/asaskevich/govalidator v0.0.0-20200108200545-475eaeb16496 // indirect
+	github.com/bep/debounce v1.2.1
+)
+
+require (
 	cloud.google.com/go/language v1.8.0
 	google.golang.org/api v0.105.0
 )
