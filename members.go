@@ -28,7 +28,7 @@ func (srv *groupsAPI) GetMember(ctx context.Context, req *notesv1.GetMemberReque
 		return nil, statusFromModelError(err)
 	}
 
-	return &notesv1.GetMemberResponse{Member: modelsMemberToProtobufMember(group.FindMember(token.AccountID))}, nil
+	return &notesv1.GetMemberResponse{Member: modelsMemberToProtobufMember(group.FindMember(req.AccountId))}, nil
 }
 
 func (srv *groupsAPI) UpdateMember(ctx context.Context, req *notesv1.UpdateMemberRequest) (*notesv1.UpdateMemberResponse, error) {
@@ -67,6 +67,40 @@ func (srv *groupsAPI) RemoveMember(ctx context.Context, req *notesv1.RemoveMembe
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
+	// Get every notes in the group
+	notes, err := srv.notes.ListAllNotesInternal(ctx, &models.ManyNotesFilter{AuthorAccountID: req.AccountId, GroupID: req.GroupId})
+	if err != nil {
+		return nil, statusFromModelError(err)
+	}
+	memberWorkspace, err := srv.groups.GetWorkspaceInternal(ctx, req.AccountId)
+	processedUsersCache := make(map[string]struct{})
+	if err == nil {
+		for _, note := range notes {
+			if _, ok := processedUsersCache[note.AuthorAccountID]; ok {
+				continue
+			}
+			processedUsersCache[note.AuthorAccountID] = struct{}{}
+			_, err = srv.notes.UpdateNotesInternal(
+				ctx,
+				&models.ManyNotesFilter{GroupID: req.GroupId, AuthorAccountID: note.AuthorAccountID},
+				models.UpdateNoteGroupPayload{GroupID: memberWorkspace.ID},
+			)
+			if err != nil {
+				return nil, statusFromModelError(err) // NOTE: Should we stop everything ?
+			}
+		}
+	} else if err == models.ErrNotFound {
+		err = srv.notes.DeleteNotes(ctx, &models.ManyNotesFilter{
+			GroupID:         req.GroupId,
+			AuthorAccountID: req.AccountId,
+		})
+		if err != nil && err != models.ErrNotFound {
+			return nil, statusFromModelError(err)
+		}
+	} else {
+		return nil, statusFromModelError(err)
+	}
+
 	err = srv.groups.RemoveGroupMember(ctx,
 		&models.OneMemberFilter{GroupID: req.GroupId, AccountID: req.AccountId},
 		token.AccountID)
@@ -78,6 +112,9 @@ func (srv *groupsAPI) RemoveMember(ctx context.Context, req *notesv1.RemoveMembe
 }
 
 func modelsMemberToProtobufMember(member *models.GroupMember) *notesv1.GroupMember {
+	if member == nil {
+		return nil
+	}
 	return &notesv1.GroupMember{
 		AccountId: member.AccountID,
 		IsAdmin:   member.IsAdmin,

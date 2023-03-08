@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+	"notes-service/models"
 	notesv1 "notes-service/protorepo/noted/notes/v1"
 
 	"testing"
@@ -16,6 +18,7 @@ func TestNotesSuite(t *testing.T) {
 	gabriel := newTestAccount(t, tu)
 	maxime := newTestAccount(t, tu)
 	edouardGroup := newTestGroup(t, tu, edouard, maxime)
+	maximeGroup := newTestGroup(t, tu, maxime, edouard)
 
 	t.Run("create-note", func(t *testing.T) {
 		res, err := tu.notes.CreateNote(edouard.Context, &notesv1.CreateNoteRequest{
@@ -320,4 +323,73 @@ func TestNotesSuite(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, res)
 	})
+
+	// DeleteNote is a repository function, no auth
+	_ = newTestNote(t, tu, edouardGroup, edouard, []*notesv1.Block{})
+	_ = newTestNote(t, tu, edouardGroup, edouard, []*notesv1.Block{})
+	_ = newTestNote(t, tu, maximeGroup, edouard, []*notesv1.Block{})
+
+	t.Run("delete-notes-account", func(t *testing.T) {
+		err := tu.notesRepository.DeleteNotes(context.TODO(), &models.ManyNotesFilter{
+			AuthorAccountID: edouard.ID,
+		})
+		require.NoError(t, err)
+
+		notes, err := tu.notesRepository.ListAllNotesInternal(context.TODO(), &models.ManyNotesFilter{
+			AuthorAccountID: edouard.ID,
+		})
+		require.NoError(t, err)
+		require.Zero(t, len(notes))
+	})
+
+	_ = newTestNote(t, tu, edouardGroup, edouard, []*notesv1.Block{})
+	_ = newTestNote(t, tu, edouardGroup, edouard, []*notesv1.Block{})
+	_ = newTestNote(t, tu, edouardGroup, maxime, []*notesv1.Block{})
+	_ = newTestNote(t, tu, edouardGroup, maxime, []*notesv1.Block{})
+
+	t.Run("delete-notes-group", func(t *testing.T) {
+		err := tu.notesRepository.DeleteNotes(context.TODO(), &models.ManyNotesFilter{
+			GroupID: edouardGroup.ID,
+		})
+		require.NoError(t, err)
+
+		notes, err := tu.notesRepository.ListAllNotesInternal(context.TODO(), &models.ManyNotesFilter{
+			GroupID: edouardGroup.ID,
+		})
+		require.NoError(t, err)
+		require.Zero(t, len(notes))
+	})
+
+	_ = newTestNote(t, tu, edouardGroup, edouard, []*notesv1.Block{})
+	_ = newTestNote(t, tu, edouardGroup, edouard, []*notesv1.Block{})
+	_ = newTestNote(t, tu, edouardGroup, maxime, []*notesv1.Block{})
+	_ = newTestNote(t, tu, edouardGroup, maxime, []*notesv1.Block{})
+
+	t.Run("delete-notes-group-and-account", func(t *testing.T) {
+		err := tu.notesRepository.DeleteNotes(context.TODO(), &models.ManyNotesFilter{
+			GroupID:         edouardGroup.ID,
+			AuthorAccountID: edouard.ID,
+		})
+		require.NoError(t, err)
+
+		// Check that edouard doesn't have any notes left
+		notes, err := tu.notesRepository.ListAllNotesInternal(context.TODO(), &models.ManyNotesFilter{
+			AuthorAccountID: edouard.ID,
+			GroupID:         edouardGroup.ID,
+		})
+		require.NoError(t, err)
+		require.Zero(t, len(notes))
+
+		// Check that the only remaining notes in the group are from maxime
+		notes, err = tu.notesRepository.ListAllNotesInternal(context.TODO(), &models.ManyNotesFilter{
+			GroupID: edouardGroup.ID,
+		})
+		require.NoError(t, err)
+		require.Equal(t, len(notes), 2)
+
+		for _, note := range notes {
+			require.Equal(t, note.AuthorAccountID, maxime.ID)
+		}
+	})
+
 }

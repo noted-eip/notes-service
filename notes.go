@@ -204,6 +204,25 @@ func (srv *notesAPI) ExportNote(ctx context.Context, req *notesv1.ExportNoteRequ
 	return &notesv1.ExportNoteResponse{File: fileBytes}, nil
 }
 
+func (srv *notesAPI) OnAccountDelete(ctx context.Context, req *notesv1.OnAccountDeleteRequest) (*notesv1.OnAccountDeleteResponse, error) {
+	token, err := srv.authenticate(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	err = srv.notes.DeleteNotes(ctx, &models.ManyNotesFilter{AuthorAccountID: token.AccountID})
+	if err != nil {
+		return nil, err
+	}
+
+	err = srv.groups.OnAccountDelete(ctx, token.AccountID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &notesv1.OnAccountDeleteResponse{}, nil
+}
+
 func (srv *notesAPI) authenticate(ctx context.Context) (*auth.Token, error) {
 	token, err := srv.auth.TokenFromContext(ctx)
 	if err != nil {

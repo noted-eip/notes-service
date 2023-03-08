@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+	"notes-service/models"
 	notesv1 "notes-service/protorepo/noted/notes/v1"
 	"testing"
 
@@ -39,7 +41,7 @@ func TestGroupsSuite(t *testing.T) {
 	})
 
 	t.Run("create-workspace", func(t *testing.T) {
-		res, err := tu.groups.CreateWorkspace(dave.Context, &notesv1.CreateWorkspaceRequest{})
+		res, err := tu.groups.CreateWorkspace(context.TODO(), &notesv1.CreateWorkspaceRequest{AccountId: dave.ID})
 		require.NoError(t, err)
 		require.NotNil(t, res)
 
@@ -144,6 +146,44 @@ func TestGroupsSuite(t *testing.T) {
 		require.NotNil(t, res)
 	})
 
+	// We tested and it works, so let's create one for jhon
+	jhon.Workspace = newTestWorkspace(t, tu, jhon.ID)
+
+	t.Run("delete-group-should-move-notes-to-workspace", func(t *testing.T) {
+		jhonNewGroup := newTestGroup(t, tu, jhon)
+		jhonFirstNote := newTestNote(t, tu, jhonNewGroup, jhon, []*notesv1.Block{})
+		jhonSecondNote := newTestNote(t, tu, jhonNewGroup, jhon, []*notesv1.Block{})
+
+		res, err := tu.groups.DeleteGroup(jhon.Context, &notesv1.DeleteGroupRequest{GroupId: jhonNewGroup.ID})
+		require.NoError(t, err)
+		require.NotNil(t, res)
+
+		note, err := tu.notes.GetNote(jhon.Context, &notesv1.GetNoteRequest{NoteId: jhonFirstNote.ID, GroupId: jhon.Workspace.ID})
+		require.NoError(t, err)
+		require.NotNil(t, note)
+
+		note, err = tu.notes.GetNote(jhon.Context, &notesv1.GetNoteRequest{NoteId: jhonSecondNote.ID, GroupId: jhon.Workspace.ID})
+		require.NoError(t, err)
+		require.NotNil(t, note)
+	})
+
+	t.Run("delete-group-should-delete-notes-if-no-workspace", func(t *testing.T) {
+		jean := newTestAccount(t, tu)
+		jeanGroup := newTestGroup(t, tu, jean, jhon, dave)
+		_ = newTestNote(t, tu, jeanGroup, jean, []*notesv1.Block{})
+		_ = newTestNote(t, tu, jeanGroup, jean, []*notesv1.Block{})
+
+		res, err := tu.groups.DeleteGroup(jean.Context, &notesv1.DeleteGroupRequest{GroupId: jeanGroup.ID})
+		require.NoError(t, err)
+		require.NotNil(t, res)
+
+		notes, err := tu.notesRepository.ListAllNotesInternal(context.TODO(), &models.ManyNotesFilter{
+			AuthorAccountID: jean.ID,
+		})
+		require.NoError(t, err)
+		require.Zero(t, len(notes))
+	})
+
 	t.Run("group-is-not-foundable-after-being-deleted", func(t *testing.T) {
 		res, err := tu.groups.GetGroup(jhon.Context, &notesv1.GetGroupRequest{
 			GroupId: jhonGroup.Id,
@@ -171,6 +211,46 @@ func TestGroupsSuite(t *testing.T) {
 		note, err := tu.notes.GetNote(dave.Context, &notesv1.GetNoteRequest{NoteId: daveNote.ID, GroupId: daveWorkspace.Id})
 		require.NoError(t, err)
 		require.NotNil(t, note)
+	})
+
+	// OnAccountDelete is a repository function, no auth
+	// Env setting for OnAccountDelete tests:
+	jean := newTestAccount(t, tu)
+	bibi := newTestAccount(t, tu)
+	bibiSister := newTestAccount(t, tu)
+	bibiBrother := newTestAccount(t, tu)
+
+	bibi.Workspace = newTestWorkspace(t, tu, bibi.ID)
+	bibiGroup := newTestGroup(t, tu, bibi, jean)
+	bibiSchoolGroup := newTestGroup(t, tu, bibi, jean)
+	bibi.SendInvite(t, tu, bibiSister, bibiGroup)
+	bibi.SendInvite(t, tu, bibiBrother, bibiGroup)
+
+	t.Run("on-account-delete-should-return-no-error", func(t *testing.T) {
+		// OnAccountDelete will only return mongodb errors
+		err := tu.groupsRepository.OnAccountDelete(context.TODO(), bibi.ID)
+		require.NoError(t, err)
+	})
+
+	t.Run("on-account-delete-should-delete-member-references", func(t *testing.T) {
+		res, err := tu.groups.GetMember(jean.Context, &notesv1.GetMemberRequest{GroupId: bibiGroup.ID, AccountId: bibi.ID})
+		require.NoError(t, err)
+		require.Nil(t, res.Member)
+
+		res, err = tu.groups.GetMember(jean.Context, &notesv1.GetMemberRequest{GroupId: bibiSchoolGroup.ID, AccountId: bibi.ID})
+		require.NoError(t, err)
+		require.Nil(t, res.Member)
+	})
+
+	t.Run("on-account-delete-should-delete-member-invites", func(t *testing.T) {
+		res, err := tu.groups.ListInvites(bibi.Context, &notesv1.ListInvitesRequest{SenderAccountId: bibi.ID})
+		require.NoError(t, err)
+		require.Equal(t, len(res.Invites), 0)
+	})
+
+	t.Run("on-account-delete-should-delete-workspace", func(t *testing.T) {
+		_, err := tu.groups.GetGroup(bibi.Context, &notesv1.GetGroupRequest{GroupId: bibi.Workspace.ID})
+		require.Error(t, err)
 	})
 
 }

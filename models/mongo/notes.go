@@ -122,6 +122,20 @@ func (repo *notesRepository) DeleteNote(ctx context.Context, filter *models.OneN
 	return repo.deleteOne(ctx, query)
 }
 
+func (repo *notesRepository) DeleteNotes(ctx context.Context, filter *models.ManyNotesFilter) error {
+	query := bson.D{}
+	if filter != nil {
+		if filter.AuthorAccountID != "" {
+			query = append(query, bson.E{Key: "authorAccountId", Value: filter.AuthorAccountID})
+		}
+		if filter.GroupID != "" {
+			query = append(query, bson.E{Key: "groupId", Value: filter.GroupID})
+		}
+	}
+
+	return repo.deleteMany(ctx, query)
+}
+
 func (repo *notesRepository) ListNotesInternal(ctx context.Context, filter *models.ManyNotesFilter, lo *models.ListOptions) ([]*models.Note, error) {
 	notes := make([]*models.Note, 0)
 
@@ -136,6 +150,27 @@ func (repo *notesRepository) ListNotesInternal(ctx context.Context, filter *mode
 	}
 
 	err := repo.find(ctx, query, &notes, lo)
+	if err != nil {
+		return nil, err
+	}
+
+	return notes, nil
+}
+
+func (repo *notesRepository) ListAllNotesInternal(ctx context.Context, filter *models.ManyNotesFilter) ([]*models.Note, error) {
+	notes := make([]*models.Note, 0)
+
+	query := bson.D{}
+	if filter != nil {
+		if filter.AuthorAccountID != "" {
+			query = append(query, bson.E{Key: "authorAccountId", Value: filter.AuthorAccountID})
+		}
+		if filter.GroupID != "" {
+			query = append(query, bson.E{Key: "groupId", Value: filter.GroupID})
+		}
+	}
+
+	err := repo.findAll(ctx, query, &notes)
 	if err != nil {
 		return nil, err
 	}

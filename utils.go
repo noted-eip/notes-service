@@ -91,8 +91,9 @@ func newTestUtilsOrDie(t *testing.T) *testUtils {
 }
 
 type testAccount struct {
-	ID      string
-	Context context.Context
+	ID        string
+	Context   context.Context
+	Workspace *testGroup
 }
 
 type testGroup struct {
@@ -157,8 +158,9 @@ func newTestAccount(t *testing.T, tu *testUtils) *testAccount {
 	ctx, err := tu.auth.ContextWithToken(context.TODO(), &auth.Token{AccountID: aid})
 	require.NoError(t, err)
 	return &testAccount{
-		ID:      aid,
-		Context: ctx,
+		ID:        aid,
+		Context:   ctx,
+		Workspace: nil,
 	}
 }
 
@@ -184,6 +186,16 @@ func newTestGroup(t *testing.T, tu *testUtils, owner *testAccount, members ...*t
 		require.NoError(t, err)
 		require.NotNil(t, acceptInvite)
 	}
+
+	return &testGroup{
+		ID: res.Group.Id,
+	}
+}
+
+func newTestWorkspace(t *testing.T, tu *testUtils, accountId string) *testGroup {
+	res, err := tu.groups.CreateWorkspace(context.TODO(), &notesv1.CreateWorkspaceRequest{AccountId: accountId})
+	require.NoError(t, err)
+	require.NotNil(t, res)
 
 	return &testGroup{
 		ID: res.Group.Id,

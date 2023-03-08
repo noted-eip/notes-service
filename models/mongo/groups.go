@@ -608,7 +608,6 @@ func (repo *groupsRepository) deleteWorkspaces(ctx context.Context, accountID st
 	return repo.deleteOne(ctx, query)
 }
 
-// NOTE: Don't know where to put it so here it goes
 func (repo *groupsRepository) OnAccountDelete(ctx context.Context, accountID string) error {
 	err := repo.deleteEveryInviteOfAccount(ctx, accountID)
 	if err != nil {

@@ -271,4 +271,7 @@ type GroupsRepository interface {
 	GetInviteLink(ctx context.Context, filter *OneInviteLinkFilter, accountID string) (*GroupInviteLink, error)
 	RevokeInviteLink(ctx context.Context, filter *OneInviteLinkFilter, accountID string) error
 	UseInviteLink(ctx context.Context, filter *OneInviteLinkFilter, accountID string) (*GroupMember, error)
+
+	// OnAction
+	OnAccountDelete(ctx context.Context, accountID string) error
 }

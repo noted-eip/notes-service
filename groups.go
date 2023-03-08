@@ -47,17 +47,12 @@ func (srv *groupsAPI) CreateGroup(ctx context.Context, req *notesv1.CreateGroupR
 }
 
 func (srv *groupsAPI) CreateWorkspace(ctx context.Context, req *notesv1.CreateWorkspaceRequest) (*notesv1.CreateWorkspaceResponse, error) {
-	token, err := srv.authenticate(ctx)
-	if err != nil {
-		return nil, err
-	}
-
 	group, err := srv.groups.CreateWorkspace(ctx, &models.CreateWorkspacePayload{
 		Name:           "My Workspace",
 		Description:    "A space just for you",
 		AvatarUrl:      "",
-		OwnerAccountID: token.AccountID,
-	}, token.AccountID)
+		OwnerAccountID: req.AccountId,
+	}, req.AccountId)
 	if err != nil {
 		return nil, statusFromModelError(err)
 	}
@@ -134,21 +129,51 @@ func (srv *groupsAPI) DeleteGroup(ctx context.Context, req *notesv1.DeleteGroupR
 	}
 
 	// Get every notes in the group
-	notes, err := srv.notes.ListNotesInternal(ctx, &models.ManyNotesFilter{GroupID: req.GroupId}, &models.ListOptions{Limit: 1000, Offset: 0}) // NOTE: Arbitrary number to get all notes, can create "findAll" function aswell, don't make me do a for for loop that uses offset and limit :(
+	notes, err := srv.notes.ListAllNotesInternal(ctx, &models.ManyNotesFilter{GroupID: req.GroupId})
 	if err != nil {
 		return nil, statusFromModelError(err)
 	}
+
+	// NOTE: I just wanted to have fun
+	// This type will be used to make only one request to GetWorkspace
+	type workspaceCache struct {
+		workspace *models.Group
+		processed bool // This boolean will be used to delete all note at once and not one by one if somebody doesn't have a workspace
+	}
+	workspaceCacheMap := make(map[string]*workspaceCache)
 	// Change the note's group to the first user's workspace if it has one
 	for _, note := range notes {
-		memberWorkspace, err := srv.groups.GetWorkspaceInternal(ctx, note.AuthorAccountID)
-		if err != nil {
-			continue // NOTE: In case an account has no workspace
+		// Check if we already got the workspace in the cache
+		memberWorkspace, ok := workspaceCacheMap[note.AuthorAccountID]
+		// If not, try to get it
+		if !ok {
+			res, err := srv.groups.GetWorkspaceInternal(ctx, note.AuthorAccountID)
+			if err != nil && err != models.ErrNotFound {
+				return nil, err
+			}
+			memberWorkspace = &workspaceCache{workspace: res}
+			workspaceCacheMap[note.AuthorAccountID] = memberWorkspace
+		}
+		// If no workspace, continue the loop, if not processed aswell, delete every note from this user in this group and mark it processed
+		if memberWorkspace.workspace == nil {
+			if !memberWorkspace.processed {
+				err = srv.notes.DeleteNotes(ctx, &models.ManyNotesFilter{
+					GroupID:         req.GroupId,
+					AuthorAccountID: note.AuthorAccountID,
+				})
+				memberWorkspace.processed = true
+				if err != nil {
+					return nil, err
+				}
+			}
+			continue
+
 		}
 
 		_, err = srv.notes.UpdateNotesInternal(
 			ctx,
 			&models.ManyNotesFilter{GroupID: req.GroupId, AuthorAccountID: note.AuthorAccountID},
-			models.UpdateNoteGroupPayload{GroupID: memberWorkspace.ID},
+			models.UpdateNoteGroupPayload{GroupID: memberWorkspace.workspace.ID},
 		)
 		if err != nil {
 			return nil, statusFromModelError(err)
