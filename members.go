@@ -67,26 +67,11 @@ func (srv *groupsAPI) RemoveMember(ctx context.Context, req *notesv1.RemoveMembe
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	memberWorkspace, err := srv.groups.GetWorkspaceInternal(ctx, req.AccountId)
-	if err == nil {
-		_, err = srv.notes.UpdateNotesInternal(
-			ctx,
-			&models.ManyNotesFilter{GroupID: req.GroupId, AuthorAccountID: req.AccountId},
-			models.UpdateNoteGroupPayload{GroupID: memberWorkspace.ID},
-		)
-		if err != nil {
-			return nil, statusFromModelError(err)
-		}
-	} else if err == models.ErrNotFound {
-		err = srv.notes.DeleteNotes(ctx, &models.ManyNotesFilter{
-			GroupID:         req.GroupId,
-			AuthorAccountID: req.AccountId,
-		})
-		if err != nil && err != models.ErrNotFound {
-			return nil, statusFromModelError(err)
-		}
-	} else {
-		return nil, statusFromModelError(err)
+	err = srv.moveNotesToUserWorkspaceOrDeleteThem(ctx,
+		&models.ManyNotesFilter{AuthorAccountID: req.AccountId, GroupID: req.GroupId},
+	)
+	if err != nil {
+		return nil, err
 	}
 
 	err = srv.groups.RemoveGroupMember(ctx,

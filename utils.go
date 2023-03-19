@@ -275,3 +275,29 @@ func Terner(condition bool, consequent interface{}, alternative interface{}) int
 	}
 	return alternative
 }
+
+func (srv *groupsAPI) moveNotesToUserWorkspaceOrDeleteThem(ctx context.Context, filter *models.ManyNotesFilter) error {
+	if filter.AuthorAccountID == "" {
+		return errors.New("specify a user in order to move notes")
+	}
+
+	memberWorkspace, err := srv.groups.GetWorkspaceInternal(ctx, filter.AuthorAccountID)
+	if err == nil {
+		_, err = srv.notes.UpdateNotesInternal(
+			ctx,
+			filter,
+			models.UpdateNoteGroupPayload{GroupID: memberWorkspace.ID},
+		)
+		if err != nil {
+			return statusFromModelError(err)
+		}
+	} else if err == models.ErrNotFound {
+		err = srv.notes.DeleteNotes(ctx, filter)
+		if err != nil && err != models.ErrNotFound {
+			return statusFromModelError(err)
+		}
+	} else {
+		return statusFromModelError(err)
+	}
+	return nil
+}
