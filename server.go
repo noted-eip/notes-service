@@ -138,6 +138,7 @@ func (s *server) initGroupsAPI() {
 		notes:      s.notesRepository,
 		groups:     s.groupsRepository,
 		activities: s.activitiesRepository,
+		background: s.backgroundService,
 	}
 }
 

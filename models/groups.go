@@ -35,6 +35,20 @@ type GroupInvite struct {
 	ValidUntil         time.Time `json:"validUntil" bson:"validUntil"`
 }
 
+type InviteLinkAction uint
+
+type InviteLinkIdentifier struct {
+	Code    string
+	GroupId string
+	Action  InviteLinkAction
+}
+
+const (
+	InviteLinkRevoke InviteLinkAction = 1
+	// Put in enum the other type of actions
+	//...
+)
+
 type GroupInviteLink struct {
 	Code                 string    `json:"code" bson:"code"`
 	GeneratedByAccountID string    `json:"generatedByAccountId" bson:"generatedByAccountId"`

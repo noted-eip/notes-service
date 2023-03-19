@@ -5,15 +5,15 @@ import (
 	"time"
 )
 
-type Action uint
+type NoteAction uint
 
 type NoteIdentifier struct {
 	NoteId     string
-	ActionType Action
+	ActionType NoteAction
 }
 
 const (
-	NoteUpdateKeyword Action = 1
+	NoteUpdateKeyword NoteAction = 1
 	// Put in enum the other type of actions
 	//...
 )

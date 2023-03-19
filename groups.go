@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"notes-service/auth"
+	"notes-service/background"
 	"notes-service/models"
 	notesv1 "notes-service/protorepo/noted/notes/v1"
 	"notes-service/validators"
@@ -18,7 +19,8 @@ type groupsAPI struct {
 
 	logger *zap.Logger
 
-	auth auth.Service
+	auth       auth.Service
+	background background.Service
 
 	groups     models.GroupsRepository
 	activities models.ActivitiesRepository
