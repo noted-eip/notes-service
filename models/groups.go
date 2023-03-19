@@ -109,6 +109,18 @@ func (group *Group) FindInvite(inviteID string) *GroupInvite {
 	return nil
 }
 
+func (group *Group) FindInviteLink(inviteLinkCode string) *GroupInviteLink {
+	if group.InviteLinks == nil {
+		return nil
+	}
+	for i := 0; i < len(*group.InviteLinks); i++ {
+		if (*group.InviteLinks)[i].Code == inviteLinkCode {
+			return &(*group.InviteLinks)[i]
+		}
+	}
+	return nil
+}
+
 func (group *Group) FindInviteByAccountTuple(recipientAccountID string, senderAccountID string) *GroupInvite {
 	if group.Invites == nil {
 		return nil

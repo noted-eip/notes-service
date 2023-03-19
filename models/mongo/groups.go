@@ -511,6 +511,16 @@ func (repo *groupsRepository) RemoveGroupMember(ctx context.Context, filter *mod
 			{Key: "members", Value: bson.D{
 				{Key: "accountId", Value: filter.AccountID},
 			}},
+		}},
+		{Key: "$pull", Value: bson.D{
+			{Key: "invites", Value: bson.D{
+				{Key: "senderAccountId", Value: filter.AccountID},
+			}},
+		}},
+		{Key: "$pull", Value: bson.D{
+			{Key: "inviteLinks", Value: bson.D{
+				{Key: "generatedByAccountID", Value: filter.AccountID},
+			}},
 		}}}
 
 	err := repo.findOneAndUpdate(ctx, query, update, group)
@@ -522,17 +532,140 @@ func (repo *groupsRepository) RemoveGroupMember(ctx context.Context, filter *mod
 }
 
 func (repo *groupsRepository) GenerateGroupInviteLink(ctx context.Context, filter *models.OneGroupFilter, payload *models.GenerateGroupInviteLinkPayload, accountID string) (*models.GroupInviteLink, error) {
-	return nil, nil
+	group := &models.Group{}
+	query := bson.D{
+		{Key: "_id", Value: filter.GroupID},
+		{Key: "members.accountId", Value: accountID},
+		// Only one invite link per person.
+		{Key: "inviteLinks", Value: bson.D{
+			{Key: "$not", Value: bson.D{
+				{Key: "$elemMatch", Value: bson.D{
+					{Key: "generatedByAccountID", Value: accountID},
+				}},
+			}},
+		}},
+	}
+
+	// NOTE: Don't know if I should store it somewhere
+	newInviteLinkUUID, err := nanoid.Standard(8)
+	if err != nil {
+		return nil, err
+	}
+
+	inviteLinkCode := newInviteLinkUUID()
+
+	update := bson.D{
+		{Key: "$push", Value: bson.D{
+			{Key: "inviteLinks", Value: &models.GroupInviteLink{
+				GeneratedByAccountID: payload.GeneratedByAccountID,
+				CreatedAt:            time.Now(),
+				ValidUntil:           payload.ValidUntil,
+				Code:                 inviteLinkCode,
+			}}},
+		}}
+
+	err = repo.findOneAndUpdate(ctx, query, update, group)
+	if err != nil {
+		return nil, err
+	}
+
+	return group.FindInviteLink(inviteLinkCode), nil
 }
 
 func (repo *groupsRepository) GetInviteLink(ctx context.Context, filter *models.OneInviteLinkFilter, accountID string) (*models.GroupInviteLink, error) {
-	return nil, nil
+	group := &models.Group{}
+
+	query := bson.D{
+		{Key: "_id", Value: filter.GroupID},
+		{Key: "inviteLinks", Value: bson.D{
+			{Key: "$elemMatch", Value: bson.D{
+				{Key: "code", Value: filter.InviteLinkCode},
+				{Key: "generatedByAccountId", Value: accountID},
+			}},
+		}},
+	}
+
+	err := repo.findOne(ctx, query, group)
+	if err != nil {
+		return nil, err
+	}
+	if len(*group.InviteLinks) == 0 {
+		return nil, models.ErrNotFound
+	}
+
+	return group.FindInviteLink(filter.InviteLinkCode), nil
 }
 
 func (repo *groupsRepository) RevokeInviteLink(ctx context.Context, filter *models.OneInviteLinkFilter, accountID string) error {
+	group := &models.Group{}
+	query := bson.D{
+		{Key: "_id", Value: filter.GroupID},
+		{Key: "members.accountId", Value: accountID},
+		{Key: "inviteLinks", Value: bson.D{
+			{Key: "$elemMatch", Value: bson.D{
+				{Key: "generatedByAccountID", Value: accountID},
+				{Key: "code", Value: filter.InviteLinkCode},
+			}},
+		}},
+	}
+
+	update := bson.D{
+		{Key: "$pull", Value: bson.D{
+			{Key: "invites", Value: bson.D{
+				{Key: "code", Value: filter.InviteLinkCode},
+			}},
+		}},
+	}
+
+	err := repo.findOneAndUpdate(ctx, query, update, group)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
 func (repo *groupsRepository) UseInviteLink(ctx context.Context, filter *models.OneInviteLinkFilter, accountID string) (*models.GroupMember, error) {
-	return nil, nil
+	group := &models.Group{}
+	query := bson.D{
+		{Key: "_id", Value: filter.GroupID},
+		{Key: "members.accountId", Value: accountID},
+		{Key: "inviteLinks", Value: bson.D{
+			{Key: "$elemMatch", Value: bson.D{
+				{Key: "generatedByAccountID", Value: accountID},
+				{Key: "code", Value: filter.InviteLinkCode},
+			}},
+		}},
+		// Not usable if already in group
+		// NOTE: Dk if i do the check here or in the endpoint cause then it could have a custom error
+		{Key: "members", Value: bson.D{
+			{Key: "$not", Value: bson.D{
+				{Key: "$elemMatch", Value: bson.D{
+					{Key: "accountId", Value: accountID},
+				}},
+			}},
+		}},
+	}
+
+	update := bson.D{
+		{Key: "$pull", Value: bson.D{
+			{Key: "invites", Value: bson.D{
+				{Key: "code", Value: filter.InviteLinkCode},
+			}},
+		}},
+		{Key: "$push", Value: bson.D{
+			{Key: "members", Value: &models.GroupMember{
+				AccountID: accountID,
+				IsAdmin:   false,
+				JoinedAt:  time.Now(),
+			}},
+		}},
+	}
+
+	err := repo.findOneAndUpdate(ctx, query, update, group)
+	if err != nil {
+		return nil, err
+	}
+
+	return group.FindMember(accountID), nil
 }
