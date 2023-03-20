@@ -109,8 +109,9 @@ func newTestUtilsOrDie(t *testing.T) *testUtils {
 }
 
 type testAccount struct {
-	ID      string
-	Context context.Context
+	ID        string
+	Context   context.Context
+	Workspace *testGroup
 }
 
 type testGroup struct {
@@ -175,8 +176,9 @@ func newTestAccount(t *testing.T, tu *testUtils) *testAccount {
 	ctx, err := tu.auth.ContextWithToken(context.TODO(), &auth.Token{AccountID: aid})
 	require.NoError(t, err)
 	return &testAccount{
-		ID:      aid,
-		Context: ctx,
+		ID:        aid,
+		Context:   ctx,
+		Workspace: nil,
 	}
 }
 
@@ -202,6 +204,16 @@ func newTestGroup(t *testing.T, tu *testUtils, owner *testAccount, members ...*t
 		require.NoError(t, err)
 		require.NotNil(t, acceptInvite)
 	}
+
+	return &testGroup{
+		ID: res.Group.Id,
+	}
+}
+
+func newTestWorkspace(t *testing.T, tu *testUtils, accountId string) *testGroup {
+	res, err := tu.groups.CreateWorkspace(context.TODO(), &notesv1.CreateWorkspaceRequest{AccountId: accountId})
+	require.NoError(t, err)
+	require.NotNil(t, res)
 
 	return &testGroup{
 		ID: res.Group.Id,
@@ -262,4 +274,30 @@ func Terner(condition bool, consequent interface{}, alternative interface{}) int
 		return consequent
 	}
 	return alternative
+}
+
+func (srv *groupsAPI) moveNotesToUserWorkspaceOrDeleteThem(ctx context.Context, filter *models.ManyNotesFilter) error {
+	if filter.AuthorAccountID == "" {
+		return errors.New("specify a user in order to move notes")
+	}
+
+	memberWorkspace, err := srv.groups.GetWorkspaceInternal(ctx, filter.AuthorAccountID)
+	if err == nil {
+		_, err = srv.notes.UpdateNotesInternal(
+			ctx,
+			filter,
+			models.UpdateNoteGroupPayload{GroupID: memberWorkspace.ID},
+		)
+		if err != nil {
+			return statusFromModelError(err)
+		}
+	} else if err == models.ErrNotFound {
+		err = srv.notes.DeleteNotes(ctx, filter)
+		if err != nil && err != models.ErrNotFound {
+			return statusFromModelError(err)
+		}
+	} else {
+		return statusFromModelError(err)
+	}
+	return nil
 }

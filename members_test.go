@@ -1,7 +1,9 @@
 package main
 
 import (
+	"context"
 	"notes-service/models"
+	notesv1 "notes-service/protorepo/noted/notes/v1"
 	v1 "notes-service/protorepo/noted/notes/v1"
 	"testing"
 
@@ -175,4 +177,50 @@ func TestMembersSuite(t *testing.T) {
 		})
 		requireErrorHasGRPCCode(t, codes.PermissionDenied, err)
 	})
+
+	jhon := newTestAccount(t, tu)
+	jhonGroup := newTestGroup(t, tu, jhon, balthi)
+
+	t.Run("delete-group-should-move-notes-to-workspace", func(t *testing.T) {
+		balthi.Workspace = newTestWorkspace(t, tu, balthi.ID)
+		balthiFirstNote := newTestNote(t, tu, jhonGroup, balthi, []*notesv1.Block{})
+		balthiSecondNote := newTestNote(t, tu, jhonGroup, balthi, []*notesv1.Block{})
+
+		res, err := tu.groups.RemoveMember(jhon.Context, &v1.RemoveMemberRequest{
+			GroupId:   jhonGroup.ID,
+			AccountId: balthi.ID,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, res)
+
+		note, err := tu.notes.GetNote(balthi.Context, &notesv1.GetNoteRequest{NoteId: balthiFirstNote.ID, GroupId: balthi.Workspace.ID})
+		require.NoError(t, err)
+		require.NotNil(t, note)
+
+		note, err = tu.notes.GetNote(balthi.Context, &notesv1.GetNoteRequest{NoteId: balthiSecondNote.ID, GroupId: balthi.Workspace.ID})
+		require.NoError(t, err)
+		require.NotNil(t, note)
+	})
+
+	t.Run("delete-group-should-delete-notes-if-no-workspace", func(t *testing.T) {
+		jean := newTestAccount(t, tu)
+		jean.AcceptInvite(t, tu, jhon.SendInvite(t, tu, jean, jhonGroup))
+
+		_ = newTestNote(t, tu, jhonGroup, jean, []*notesv1.Block{})
+		_ = newTestNote(t, tu, jhonGroup, jean, []*notesv1.Block{})
+
+		res, err := tu.groups.RemoveMember(jhon.Context, &v1.RemoveMemberRequest{
+			GroupId:   jhonGroup.ID,
+			AccountId: jean.ID,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, res)
+
+		notes, err := tu.notesRepository.ListAllNotesInternal(context.TODO(), &models.ManyNotesFilter{
+			AuthorAccountID: jean.ID,
+		})
+		require.NoError(t, err)
+		require.Zero(t, len(notes))
+	})
+
 }

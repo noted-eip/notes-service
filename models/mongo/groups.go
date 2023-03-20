@@ -81,6 +81,21 @@ func (repo *groupsRepository) CreateWorkspace(ctx context.Context, payload *mode
 	return workspace, nil
 }
 
+func (repo *groupsRepository) GetWorkspaceInternal(ctx context.Context, accountID string) (*models.Group, error) {
+	group := &models.Group{}
+
+	query := bson.D{
+		{Key: "workspaceAccountId", Value: accountID},
+	}
+
+	err := repo.findOne(ctx, query, group)
+	if err != nil {
+		return nil, err
+	}
+
+	return group, nil
+}
+
 func (repo *groupsRepository) GetGroup(ctx context.Context, filter *models.OneGroupFilter, accountID string) (*models.Group, error) {
 	group := &models.Group{}
 
@@ -535,4 +550,83 @@ func (repo *groupsRepository) RevokeInviteLink(ctx context.Context, filter *mode
 
 func (repo *groupsRepository) UseInviteLink(ctx context.Context, filter *models.OneInviteLinkFilter, accountID string) (*models.GroupMember, error) {
 	return nil, nil
+}
+
+func (repo *groupsRepository) deleteEveryInviteOfAccount(ctx context.Context, accountID string) error {
+	query := bson.D{
+		{Key: "invites", Value: bson.D{
+			{Key: "$elemMatch", Value: bson.D{
+				{Key: "$or", Value: bson.A{
+					bson.D{{Key: "recipientAccountId", Value: accountID}},
+					bson.D{{Key: "senderAccountId", Value: accountID}},
+				}},
+			}},
+		}},
+	}
+
+	update := bson.D{
+		{Key: "$pull", Value: bson.D{
+			{Key: "invites", Value: bson.D{
+				{Key: "$or", Value: bson.A{
+					bson.D{{Key: "recipientAccountId", Value: accountID}},
+					bson.D{{Key: "senderAccountId", Value: accountID}},
+				}},
+			}},
+		}},
+	}
+
+	_, err := repo.updateMany(ctx, query, update)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (repo *groupsRepository) deleteEveryMemberReferenceOfAccount(ctx context.Context, accountID string) error {
+	query := bson.D{
+		{Key: "members.accountId", Value: accountID},
+	}
+
+	update := bson.D{
+		{Key: "$pull", Value: bson.D{
+			{Key: "members", Value: bson.D{
+				{Key: "accountId", Value: accountID},
+			}},
+		}},
+	}
+
+	_, err := repo.updateMany(ctx, query, update)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (repo *groupsRepository) deleteWorkspaces(ctx context.Context, accountID string) error {
+	query := bson.D{
+		{Key: "workspaceAccountId", Value: accountID},
+	}
+
+	return repo.deleteOne(ctx, query)
+}
+
+func (repo *groupsRepository) OnAccountDelete(ctx context.Context, accountID string) error {
+	err := repo.deleteEveryInviteOfAccount(ctx, accountID)
+	if err != nil {
+		return err
+	}
+
+	err = repo.deleteWorkspaces(ctx, accountID)
+	if err != nil {
+		return err
+	}
+
+	err = repo.deleteEveryMemberReferenceOfAccount(ctx, accountID)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

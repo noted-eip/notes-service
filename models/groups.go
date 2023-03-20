@@ -236,6 +236,7 @@ type GroupsRepository interface {
 	// Groups
 	CreateGroup(ctx context.Context, payload *CreateGroupPayload, accountID string) (*Group, error)
 	CreateWorkspace(ctx context.Context, payload *CreateWorkspacePayload, accountID string) (*Group, error)
+	GetWorkspaceInternal(ctx context.Context, accountID string) (*Group, error)
 	GetGroup(ctx context.Context, filter *OneGroupFilter, accountID string) (*Group, error)
 	GetGroupInternal(ctx context.Context, filter *OneGroupFilter) (*Group, error)
 	UpdateGroup(ctx context.Context, filter *OneGroupFilter, payload *UpdateGroupPayload, accountID string) (*Group, error)
@@ -270,4 +271,7 @@ type GroupsRepository interface {
 	GetInviteLink(ctx context.Context, filter *OneInviteLinkFilter, accountID string) (*GroupInviteLink, error)
 	RevokeInviteLink(ctx context.Context, filter *OneInviteLinkFilter, accountID string) error
 	UseInviteLink(ctx context.Context, filter *OneInviteLinkFilter, accountID string) (*GroupMember, error)
+
+	// OnAction
+	OnAccountDelete(ctx context.Context, accountID string) error
 }

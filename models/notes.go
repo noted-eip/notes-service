@@ -119,6 +119,10 @@ type UpdateNotePayload struct {
 	Keywords []Keyword `json:"keywords" bson:"keywords"`
 }
 
+type UpdateNoteGroupPayload struct {
+	GroupID string `json:"groupId" bson:"groupId"`
+}
+
 type OneNoteFilter struct {
 	GroupID string
 	NoteID  string
@@ -135,8 +139,11 @@ type NotesRepository interface {
 	CreateNote(ctx context.Context, payload *CreateNotePayload, accountID string) (*Note, error)
 	GetNote(ctx context.Context, filter *OneNoteFilter, accountID string) (*Note, error)
 	UpdateNote(ctx context.Context, filter *OneNoteFilter, payload *UpdateNotePayload, accountID string) (*Note, error)
+	UpdateNotesInternal(ctx context.Context, filter *ManyNotesFilter, payload interface{}) (*Note, error)
 	DeleteNote(ctx context.Context, filter *OneNoteFilter, accountID string) error
+	DeleteNotes(ctx context.Context, filter *ManyNotesFilter) error
 	ListNotesInternal(ctx context.Context, filter *ManyNotesFilter, opts *ListOptions) ([]*Note, error)
+	ListAllNotesInternal(ctx context.Context, filter *ManyNotesFilter) ([]*Note, error)
 
 	// Blocks
 	InsertBlock(ctx context.Context, filter *OneNoteFilter, payload *InsertNoteBlockPayload, accountID string) (*NoteBlock, error)
