@@ -35,6 +35,20 @@ type GroupInvite struct {
 	ValidUntil         time.Time `json:"validUntil" bson:"validUntil"`
 }
 
+type InviteLinkAction uint
+
+type InviteLinkIdentifier struct {
+	Code    string
+	GroupId string
+	Action  InviteLinkAction
+}
+
+const (
+	InviteLinkRevoke InviteLinkAction = 1
+	// Put in enum the other type of actions
+	//...
+)
+
 type GroupInviteLink struct {
 	Code                 string    `json:"code" bson:"code"`
 	GeneratedByAccountID string    `json:"generatedByAccountId" bson:"generatedByAccountId"`
@@ -104,6 +118,18 @@ func (group *Group) FindInvite(inviteID string) *GroupInvite {
 	for i := 0; i < len(*group.Invites); i++ {
 		if (*group.Invites)[i].ID == inviteID {
 			return &(*group.Invites)[i]
+		}
+	}
+	return nil
+}
+
+func (group *Group) FindInviteLink(inviteLinkCode string) *GroupInviteLink {
+	if group.InviteLinks == nil {
+		return nil
+	}
+	for i := 0; i < len(*group.InviteLinks); i++ {
+		if (*group.InviteLinks)[i].Code == inviteLinkCode {
+			return &(*group.InviteLinks)[i]
 		}
 	}
 	return nil
