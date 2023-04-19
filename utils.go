@@ -104,6 +104,7 @@ func newTestUtilsOrDie(t *testing.T) *testUtils {
 			notes:      notesRepository,
 			groups:     groupsRepository,
 			activities: activitiesRepository,
+			background: background,
 		},
 	}
 }

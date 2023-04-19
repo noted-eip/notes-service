@@ -519,7 +519,7 @@ func (repo *groupsRepository) RemoveGroupMember(ctx context.Context, filter *mod
 		}},
 		{Key: "$pull", Value: bson.D{
 			{Key: "inviteLinks", Value: bson.D{
-				{Key: "generatedByAccountID", Value: filter.AccountID},
+				{Key: "generatedByAccountId", Value: filter.AccountID},
 			}},
 		}}}
 
@@ -540,7 +540,7 @@ func (repo *groupsRepository) GenerateGroupInviteLink(ctx context.Context, filte
 		{Key: "inviteLinks", Value: bson.D{
 			{Key: "$not", Value: bson.D{
 				{Key: "$elemMatch", Value: bson.D{
-					{Key: "generatedByAccountID", Value: accountID},
+					{Key: "generatedByAccountId", Value: accountID},
 				}},
 			}},
 		}},
@@ -603,7 +603,7 @@ func (repo *groupsRepository) RevokeInviteLink(ctx context.Context, filter *mode
 		{Key: "members.accountId", Value: accountID},
 		{Key: "inviteLinks", Value: bson.D{
 			{Key: "$elemMatch", Value: bson.D{
-				{Key: "generatedByAccountID", Value: accountID},
+				{Key: "generatedByAccountId", Value: accountID},
 				{Key: "code", Value: filter.InviteLinkCode},
 			}},
 		}},
@@ -611,8 +611,9 @@ func (repo *groupsRepository) RevokeInviteLink(ctx context.Context, filter *mode
 
 	update := bson.D{
 		{Key: "$pull", Value: bson.D{
-			{Key: "invites", Value: bson.D{
+			{Key: "inviteLinks", Value: bson.D{
 				{Key: "code", Value: filter.InviteLinkCode},
+				{Key: "generatedByAccountId", Value: accountID},
 			}},
 		}},
 	}
@@ -629,10 +630,8 @@ func (repo *groupsRepository) UseInviteLink(ctx context.Context, filter *models.
 	group := &models.Group{}
 	query := bson.D{
 		{Key: "_id", Value: filter.GroupID},
-		{Key: "members.accountId", Value: accountID},
 		{Key: "inviteLinks", Value: bson.D{
 			{Key: "$elemMatch", Value: bson.D{
-				{Key: "generatedByAccountID", Value: accountID},
 				{Key: "code", Value: filter.InviteLinkCode},
 			}},
 		}},
@@ -648,11 +647,6 @@ func (repo *groupsRepository) UseInviteLink(ctx context.Context, filter *models.
 	}
 
 	update := bson.D{
-		{Key: "$pull", Value: bson.D{
-			{Key: "invites", Value: bson.D{
-				{Key: "code", Value: filter.InviteLinkCode},
-			}},
-		}},
 		{Key: "$push", Value: bson.D{
 			{Key: "members", Value: &models.GroupMember{
 				AccountID: accountID,
