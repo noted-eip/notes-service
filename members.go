@@ -28,7 +28,7 @@ func (srv *groupsAPI) GetMember(ctx context.Context, req *notesv1.GetMemberReque
 		return nil, statusFromModelError(err)
 	}
 
-	return &notesv1.GetMemberResponse{Member: modelsMemberToProtobufMember(group.FindMember(token.AccountID))}, nil
+	return &notesv1.GetMemberResponse{Member: modelsMemberToProtobufMember(group.FindMember(req.AccountId))}, nil
 }
 
 func (srv *groupsAPI) UpdateMember(ctx context.Context, req *notesv1.UpdateMemberRequest) (*notesv1.UpdateMemberResponse, error) {
@@ -67,6 +67,13 @@ func (srv *groupsAPI) RemoveMember(ctx context.Context, req *notesv1.RemoveMembe
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
+	err = srv.moveNotesToUserWorkspaceOrDeleteThem(ctx,
+		&models.ManyNotesFilter{AuthorAccountID: req.AccountId, GroupID: req.GroupId},
+	)
+	if err != nil {
+		return nil, err
+	}
+
 	err = srv.groups.RemoveGroupMember(ctx,
 		&models.OneMemberFilter{GroupID: req.GroupId, AccountID: req.AccountId},
 		token.AccountID)
@@ -84,6 +91,9 @@ func (srv *groupsAPI) RemoveMember(ctx context.Context, req *notesv1.RemoveMembe
 }
 
 func modelsMemberToProtobufMember(member *models.GroupMember) *notesv1.GroupMember {
+	if member == nil {
+		return nil
+	}
 	return &notesv1.GroupMember{
 		AccountId: member.AccountID,
 		IsAdmin:   member.IsAdmin,
