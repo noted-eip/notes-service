@@ -7,7 +7,10 @@ import (
 	"notes-service/background"
 	"notes-service/models"
 	notesv1 "notes-service/protorepo/noted/notes/v1"
+	"notes-service/validators"
 
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -15,6 +18,11 @@ func (srv *groupsAPI) GenerateInviteLink(ctx context.Context, req *notesv1.Gener
 	token, err := srv.authenticate(ctx)
 	if err != nil {
 		return nil, err
+	}
+
+	err = validators.ValidateGenerateInviteLinkRequest(req)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
 	// NOTE: for now 1 week
@@ -66,6 +74,11 @@ func (srv *groupsAPI) GetInviteLink(ctx context.Context, req *notesv1.GetInviteL
 		return nil, err
 	}
 
+	err = validators.ValidateGetInviteLinkRequest(req)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
 	inviteLink, err := srv.groups.GetInviteLink(ctx, &models.OneInviteLinkFilter{GroupID: req.GroupId, InviteLinkCode: req.InviteLinkCode}, token.AccountID)
 	if err != nil {
 		return nil, err
@@ -80,6 +93,11 @@ func (srv *groupsAPI) RevokeInviteLink(ctx context.Context, req *notesv1.RevokeI
 	token, err := srv.authenticate(ctx)
 	if err != nil {
 		return nil, err
+	}
+
+	err = validators.ValidateRevokeInviteLinkRequest(req)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
 	err = srv.groups.RevokeInviteLink(ctx, &models.OneInviteLinkFilter{GroupID: req.GroupId, InviteLinkCode: req.InviteLinkCode}, token.AccountID)
@@ -107,6 +125,11 @@ func (srv *groupsAPI) UseInviteLink(ctx context.Context, req *notesv1.UseInviteL
 	token, err := srv.authenticate(ctx)
 	if err != nil {
 		return nil, err
+	}
+
+	err = validators.ValidateUseInviteLinkRequest(req)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
 	_, err = srv.groups.UseInviteLink(ctx, &models.OneInviteLinkFilter{
