@@ -32,6 +32,16 @@ func (repo *repository) aggregate(ctx context.Context, pipeline interface{}, res
 	return nil
 }
 
+func (repo *repository) updateMany(ctx context.Context, query interface{}, update interface{}, opts ...*options.UpdateOptions) (int64, error) {
+	repo.logger.Debug("update many", zap.Any("query", query), zap.Any("update", update))
+	res, err := repo.coll.UpdateMany(ctx, query, update, opts...)
+
+	if err != nil {
+		return 0, repo.mongoUpdateManyErrorToModelsError(query, update, err)
+	}
+	return res.ModifiedCount, nil
+}
+
 func (repo *repository) findOneAndUpdate(ctx context.Context, query interface{}, update interface{}, result interface{}, opts ...*options.FindOneAndUpdateOptions) error {
 	repo.logger.Debug("find one and update", zap.Any("query", query), zap.Any("update", update))
 	opts = append(opts, options.FindOneAndUpdate().SetReturnDocument(options.After))
@@ -47,6 +57,18 @@ func (repo *repository) deleteOne(ctx context.Context, query interface{}, opts .
 	res, err := repo.coll.DeleteOne(ctx, query, opts...)
 	if err != nil {
 		return repo.mongoDeleteOneErrorToModelsError(query, err)
+	}
+	if res.DeletedCount == 0 {
+		return models.ErrNotFound
+	}
+	return nil
+}
+
+func (repo *repository) deleteMany(ctx context.Context, query interface{}, opts ...*options.DeleteOptions) error {
+	repo.logger.Debug("delete many", zap.Any("query", query))
+	res, err := repo.coll.DeleteMany(ctx, query, opts...)
+	if err != nil {
+		return repo.mongoDeleteManyErrorToModelsError(query, err)
 	}
 	if res.DeletedCount == 0 {
 		return models.ErrNotFound
@@ -93,6 +115,22 @@ func (repo *repository) find(ctx context.Context, query interface{}, results int
 	return nil
 }
 
+func (repo *repository) findAll(ctx context.Context, query interface{}, results interface{}, opts ...*options.FindOptions) error {
+	repo.logger.Debug("find", zap.Any("query", query))
+
+	res, err := repo.coll.Find(ctx, query, opts...)
+	if err != nil {
+		return repo.mongoFindAllErrorToModelsError(query, err)
+	}
+
+	err = res.All(ctx, results)
+	if err != nil {
+		return repo.mongoFindAllErrorToModelsError(query, err)
+	}
+
+	return nil
+}
+
 func (repo *repository) mongoAggregateErrorToModelsError(query interface{}, err error) error {
 	if errors.Is(err, mongo.ErrNoDocuments) {
 		return models.ErrNotFound
@@ -114,6 +152,11 @@ func (repo *repository) mongoDeleteOneErrorToModelsError(query interface{}, err 
 	return models.ErrUnknown
 }
 
+func (repo *repository) mongoDeleteManyErrorToModelsError(query interface{}, err error) error {
+	repo.logger.Error("delete many failed", zap.Any("query", query), zap.Error(err))
+	return models.ErrUnknown
+}
+
 func (repo *repository) mongoInsertOneErrorToModelsError(query interface{}, err error) error {
 	if mongo.IsDuplicateKeyError(err) {
 		return models.ErrAlreadyExists
@@ -130,7 +173,20 @@ func (repo *repository) mongoFindOneAndUpdateErrorToModelsError(query interface{
 	return models.ErrUnknown
 }
 
+func (repo *repository) mongoUpdateManyErrorToModelsError(query interface{}, update interface{}, err error) error {
+	if errors.Is(err, mongo.ErrNoDocuments) {
+		return models.ErrNotFound
+	}
+	repo.logger.Error("update many failed", zap.Any("query", query), zap.Any("update", update), zap.Error(err))
+	return models.ErrUnknown
+}
+
 func (repo *repository) mongoFindErrorToModelsError(query interface{}, lo *models.ListOptions, err error) error {
 	repo.logger.Error("find failed", zap.Any("query", query), zap.Int32("limit", lo.Limit), zap.Int32("offset", lo.Offset), zap.Error(err))
+	return models.ErrUnknown
+}
+
+func (repo *repository) mongoFindAllErrorToModelsError(query interface{}, err error) error {
+	repo.logger.Error("findAll failed", zap.Any("query", query), zap.Error(err))
 	return models.ErrUnknown
 }

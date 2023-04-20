@@ -35,6 +35,20 @@ type GroupInvite struct {
 	ValidUntil         time.Time `json:"validUntil" bson:"validUntil"`
 }
 
+type InviteLinkAction uint
+
+type InviteLinkIdentifier struct {
+	Code    string
+	GroupId string
+	Action  InviteLinkAction
+}
+
+const (
+	InviteLinkRevoke InviteLinkAction = 1
+	// Put in enum the other type of actions
+	//...
+)
+
 type GroupInviteLink struct {
 	Code                 string    `json:"code" bson:"code"`
 	GeneratedByAccountID string    `json:"generatedByAccountId" bson:"generatedByAccountId"`
@@ -104,6 +118,18 @@ func (group *Group) FindInvite(inviteID string) *GroupInvite {
 	for i := 0; i < len(*group.Invites); i++ {
 		if (*group.Invites)[i].ID == inviteID {
 			return &(*group.Invites)[i]
+		}
+	}
+	return nil
+}
+
+func (group *Group) FindInviteLink(inviteLinkCode string) *GroupInviteLink {
+	if group.InviteLinks == nil {
+		return nil
+	}
+	for i := 0; i < len(*group.InviteLinks); i++ {
+		if (*group.InviteLinks)[i].Code == inviteLinkCode {
+			return &(*group.InviteLinks)[i]
 		}
 	}
 	return nil
@@ -236,6 +262,7 @@ type GroupsRepository interface {
 	// Groups
 	CreateGroup(ctx context.Context, payload *CreateGroupPayload, accountID string) (*Group, error)
 	CreateWorkspace(ctx context.Context, payload *CreateWorkspacePayload, accountID string) (*Group, error)
+	GetWorkspaceInternal(ctx context.Context, accountID string) (*Group, error)
 	GetGroup(ctx context.Context, filter *OneGroupFilter, accountID string) (*Group, error)
 	GetGroupInternal(ctx context.Context, filter *OneGroupFilter) (*Group, error)
 	UpdateGroup(ctx context.Context, filter *OneGroupFilter, payload *UpdateGroupPayload, accountID string) (*Group, error)
@@ -270,4 +297,7 @@ type GroupsRepository interface {
 	GetInviteLink(ctx context.Context, filter *OneInviteLinkFilter, accountID string) (*GroupInviteLink, error)
 	RevokeInviteLink(ctx context.Context, filter *OneInviteLinkFilter, accountID string) error
 	UseInviteLink(ctx context.Context, filter *OneInviteLinkFilter, accountID string) (*GroupMember, error)
+
+	// OnAction
+	OnAccountDelete(ctx context.Context, accountID string) error
 }

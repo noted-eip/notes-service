@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"notes-service/auth"
+	"notes-service/background"
 	"notes-service/models"
 	notesv1 "notes-service/protorepo/noted/notes/v1"
 	"notes-service/validators"
@@ -18,7 +19,8 @@ type groupsAPI struct {
 
 	logger *zap.Logger
 
-	auth auth.Service
+	auth       auth.Service
+	background background.Service
 
 	groups     models.GroupsRepository
 	activities models.ActivitiesRepository
@@ -48,17 +50,12 @@ func (srv *groupsAPI) CreateGroup(ctx context.Context, req *notesv1.CreateGroupR
 }
 
 func (srv *groupsAPI) CreateWorkspace(ctx context.Context, req *notesv1.CreateWorkspaceRequest) (*notesv1.CreateWorkspaceResponse, error) {
-	token, err := srv.authenticate(ctx)
-	if err != nil {
-		return nil, err
-	}
-
 	group, err := srv.groups.CreateWorkspace(ctx, &models.CreateWorkspacePayload{
 		Name:           "My Workspace",
 		Description:    "A space just for you",
 		AvatarUrl:      "",
-		OwnerAccountID: token.AccountID,
-	}, token.AccountID)
+		OwnerAccountID: req.AccountId,
+	}, req.AccountId)
 	if err != nil {
 		return nil, statusFromModelError(err)
 	}
@@ -132,6 +129,21 @@ func (srv *groupsAPI) DeleteGroup(ctx context.Context, req *notesv1.DeleteGroupR
 	err = validators.ValidateDeleteGroupRequest(req)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	group, err := srv.groups.GetGroup(ctx, &models.OneGroupFilter{GroupID: req.GroupId}, token.AccountID)
+	if err != nil {
+		return nil, statusFromModelError(err)
+	}
+
+	// Change the note's group to the first user's workspace if it has one
+	for _, member := range *group.Members {
+		err = srv.moveNotesToUserWorkspaceOrDeleteThem(ctx,
+			&models.ManyNotesFilter{AuthorAccountID: member.AccountID, GroupID: req.GroupId},
+		)
+		if err != nil {
+			srv.logger.Error("could not move notes: " + err.Error())
+		}
 	}
 
 	err = srv.groups.DeleteGroup(ctx, &models.OneGroupFilter{GroupID: req.GroupId}, token.AccountID)
