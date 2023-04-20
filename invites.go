@@ -73,7 +73,7 @@ func (srv *groupsAPI) AcceptInvite(ctx context.Context, req *notesv1.AcceptInvit
 	srv.activities.CreateActivityInternal(ctx, &models.ActivityPayload{
 		GroupID: req.GroupId,
 		Type:    models.MemberJoined,
-		Event:   "<userId:" + member.AccountID + "> joined the group <groupID" + req.GroupId + ">.",
+		Event:   "<userId:" + member.AccountID + "> joined the group <groupID:" + req.GroupId + ">.",
 	})
 
 	return &notesv1.AcceptInviteResponse{Member: modelsMemberToProtobufMember(member)}, nil
