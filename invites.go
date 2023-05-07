@@ -33,17 +33,23 @@ func (srv *groupsAPI) SendInvite(ctx context.Context, req *notesv1.SendInviteReq
 		return nil, statusFromModelError(err)
 	}
 
-	group, err := srv.groups.GetGroupInternal(ctx, &models.OneGroupFilter{GroupID: req.GroupId})
-	if err != nil {
-		return nil, statusFromModelError(err)
+	if srv.accountsService != nil {
+		group, err := srv.groups.GetGroupInternal(ctx, &models.OneGroupFilter{GroupID: req.GroupId})
+		if err != nil {
+			return nil, statusFromModelError(err)
+		}
+		_, err = srv.accountsService.Accounts.SendGroupInviteMail(ctx, &accountsv1.SendGroupInviteMailRequest{
+			RecipientId: invite.RecipientAccountID,
+			SenderId:    invite.SenderAccountID,
+			GroupName:   group.Name,
+			ValidUntil:  timestamppb.New(invite.ValidUntil),
+		})
+		if err != nil {
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+	} else {
+		srv.logger.Warn("SendGroupInviteMail from accounts-service was not called due to the fact that the notes-service is not connected to the accounts one")
 	}
-
-	srv.accountsService.Accounts.SendGroupInviteMail(ctx, &accountsv1.SendGroupInviteMailRequest{
-		RecipientId: invite.RecipientAccountID,
-		SenderId:    invite.SenderAccountID,
-		GroupName:   group.Name,
-		ValidUntil:  timestamppb.New(invite.ValidUntil),
-	})
 
 	return &notesv1.SendInviteResponse{Invite: modelsInviteToProtobufInvite(invite, req.GroupId)}, nil
 }
