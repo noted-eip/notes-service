@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"notes-service/models"
+	accountsv1 "notes-service/protorepo/noted/accounts/v1"
 	notesv1 "notes-service/protorepo/noted/notes/v1"
 	"notes-service/validators"
 
@@ -31,6 +32,18 @@ func (srv *groupsAPI) SendInvite(ctx context.Context, req *notesv1.SendInviteReq
 	if err != nil {
 		return nil, statusFromModelError(err)
 	}
+
+	group, err := srv.groups.GetGroupInternal(ctx, &models.OneGroupFilter{GroupID: req.GroupId})
+	if err != nil {
+		return nil, statusFromModelError(err)
+	}
+
+	srv.accountsService.Accounts.SendGroupInviteMail(ctx, &accountsv1.SendGroupInviteMailRequest{
+		RecipientId: invite.RecipientAccountID,
+		SenderId:    invite.SenderAccountID,
+		GroupName:   group.Name,
+		ValidUntil:  timestamppb.New(invite.ValidUntil),
+	})
 
 	return &notesv1.SendInviteResponse{Invite: modelsInviteToProtobufInvite(invite, req.GroupId)}, nil
 }
