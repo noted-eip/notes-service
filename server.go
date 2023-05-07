@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"notes-service/auth"
 	"notes-service/background"
+	"notes-service/communication"
 	"notes-service/language"
 
 	"context"
@@ -32,6 +33,7 @@ type server struct {
 	authService       auth.Service
 	backgroundService background.Service
 	languageService   language.Service // NOTE: Could put directly service typed as NaturalAPIService, remove Init() from interface and just put it in NaturalAPIService
+	accountService    *communication.AccountsServiceClient
 
 	mongoDB *mongo.Database
 
@@ -51,6 +53,7 @@ func (s *server) Init(opt ...grpc.ServerOption) {
 	s.initRepositories()
 	s.initLanguageService()
 	s.initBackgroundService()
+	s.initAccountsServiceClient()
 	s.initGroupsAPI()
 	s.initNotesAPI()
 	s.initgrpcServer(opt...)
@@ -68,6 +71,7 @@ func (s *server) Run() {
 func (s *server) Close() {
 	s.logger.Info("shutdown")
 	s.mongoDB.Disconnect(context.Background())
+	s.accountService.Close()
 	s.logger.Sync()
 }
 
@@ -119,6 +123,17 @@ func (s *server) initLanguageService() {
 	must(err, "unable to instantiate language service")
 }
 
+func (s *server) initAccountsServiceClient() {
+	accountService, err := communication.NewAccountsServiceClient(*accountsServiceUrl)
+	if *environment == envIsDev && err != nil {
+		s.logger.Warn(fmt.Sprintf("could not instantiate accounts service connection: %v", err))
+		accountService = nil
+	} else {
+		must(err, "could not instantiate accounts service connection")
+	}
+	s.accountService = accountService
+}
+
 func (s *server) initAuthService() {
 	rawKey, err := base64.StdEncoding.DecodeString(*jwtPrivateKey)
 	must(err, "could not decode jwt private key")
@@ -133,12 +148,13 @@ func (s *server) initBackgroundService() {
 
 func (s *server) initGroupsAPI() {
 	s.groupsAPI = &groupsAPI{
-		auth:       s.authService,
-		logger:     s.logger,
-		notes:      s.notesRepository,
-		groups:     s.groupsRepository,
-		activities: s.activitiesRepository,
-		background: s.backgroundService,
+		auth:            s.authService,
+		accountsService: s.accountService,
+		logger:          s.logger,
+		notes:           s.notesRepository,
+		groups:          s.groupsRepository,
+		activities:      s.activitiesRepository,
+		background:      s.backgroundService,
 	}
 }
 
