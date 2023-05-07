@@ -4,6 +4,7 @@ import (
 	"context"
 	"notes-service/auth"
 	"notes-service/background"
+	"notes-service/communication"
 	"notes-service/models"
 	notesv1 "notes-service/protorepo/noted/notes/v1"
 	"notes-service/validators"
@@ -19,8 +20,9 @@ type groupsAPI struct {
 
 	logger *zap.Logger
 
-	auth       auth.Service
-	background background.Service
+	auth            auth.Service
+	background      background.Service
+	accountsService *communication.AccountsServiceClient
 
 	groups     models.GroupsRepository
 	activities models.ActivitiesRepository
