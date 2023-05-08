@@ -191,10 +191,11 @@ func (s *NaturalAPIService) GetKeywordsFromTextInput(input string) ([]models.Key
 			Type:    protobufEnumToKeywordType[entity.Type],
 		}
 
-		print(entity.Metadata)
-
 		if mid, ok := entity.Metadata["mid"]; ok {
-			s.fillWithKnowledgeGraph(&newKeyword, mid)
+			err = s.fillWithKnowledgeGraph(&newKeyword, mid)
+			if err != nil {
+				// TODO: log
+			}
 		} else if val, ok := entity.Metadata["wikipedia_url"]; ok {
 			newKeyword.URL = val
 		}
