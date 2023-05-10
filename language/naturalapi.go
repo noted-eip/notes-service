@@ -93,6 +93,10 @@ func (s *NaturalAPIService) doKnowledgeGraphSearch(keyword *models.Keyword, mid 
 		return nil, err
 	}
 
+	if len(response.ItemListElement) == 0 {
+		return nil, errors.New(keyword.Keyword + " (" + mid + ") has no french result in gkg")
+	}
+
 	responseMap, ok := response.ItemListElement[0].(map[string]interface{})
 	if !ok {
 		return nil, errors.New("gkg has an invalid response")
@@ -111,12 +115,12 @@ func (s *NaturalAPIService) doKnowledgeGraphSearch(keyword *models.Keyword, mid 
 	return entityResultMap, nil
 }
 
-func kgInterfaceToStruct[T any](i interface{}, s *T) error {
+func kgInterfaceToStruct(i interface{}, s interface{}) error {
 	asJson, err := json.Marshal(i)
 	if err != nil {
 		return err
 	}
-	err = json.Unmarshal(asJson, &s)
+	err = json.Unmarshal(asJson, s)
 	if err != nil {
 		return err
 	}
@@ -191,13 +195,15 @@ func (s *NaturalAPIService) GetKeywordsFromTextInput(input string) ([]models.Key
 			Type:    protobufEnumToKeywordType[entity.Type],
 		}
 
+		if val, ok := entity.Metadata["wikipedia_url"]; ok {
+			newKeyword.URL = val
+		}
+
 		if mid, ok := entity.Metadata["mid"]; ok {
 			err = s.fillWithKnowledgeGraph(&newKeyword, mid)
 			if err != nil {
 				// TODO: log
 			}
-		} else if val, ok := entity.Metadata["wikipedia_url"]; ok {
-			newKeyword.URL = val
 		}
 
 		keywords = append(keywords, newKeyword)

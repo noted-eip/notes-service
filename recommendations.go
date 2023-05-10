@@ -6,7 +6,6 @@ import (
 	"notes-service/language"
 	"notes-service/models"
 	notesv1 "notes-service/protorepo/noted/notes/v1"
-
 	"notes-service/validators"
 
 	"go.uber.org/zap"
@@ -47,6 +46,9 @@ func (srv *recommendationsAPI) GenerateWidgets(ctx context.Context, req *notesv1
 
 	for _, keyword := range note.Keywords {
 
+		if keyword.URL == "" {
+			continue
+		}
 		widgets = append(widgets, &notesv1.Widget{
 			Type: &notesv1.Widget_WebsiteWidget{
 				WebsiteWidget: &notesv1.WebsiteWidget{

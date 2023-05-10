@@ -68,7 +68,7 @@ func (srv *notesAPI) CreateNote(ctx context.Context, req *notesv1.CreateNoteRequ
 			err := srv.UpdateKeywordsByNoteId(note.ID, req.GroupId, token.AccountID)
 			return err
 		},
-		SecondsToDebounce:             900,
+		SecondsToDebounce:             60,
 		CancelProcessOnSameIdentifier: true,
 		RepeatProcess:                 false,
 	})
