@@ -7,6 +7,8 @@ import (
 	"notes-service/models"
 	notesv1 "notes-service/protorepo/noted/notes/v1"
 
+	"notes-service/validators"
+
 	"go.uber.org/zap"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -24,15 +26,18 @@ type recommendationsAPI struct {
 
 var _ notesv1.RecommendationsAPIServer = &recommendationsAPI{}
 
-func (srv *recommendationsAPI) GenerateWidgets(ctx context.Context, in *notesv1.GenerateWidgetsRequest) (*notesv1.GenerateWidgetsResponse, error) {
+func (srv *recommendationsAPI) GenerateWidgets(ctx context.Context, req *notesv1.GenerateWidgetsRequest) (*notesv1.GenerateWidgetsResponse, error) {
 	token, err := srv.authenticate(ctx)
 	if err != nil {
 		return nil, status.Error(codes.Unauthenticated, err.Error())
 	}
 
-	//validators
+	err = validators.ValidateGenerateWidgetsRequest(req)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
 
-	note, err := srv.notes.GetNote(ctx, &models.OneNoteFilter{NoteID: in.NoteId}, token.AccountID)
+	note, err := srv.notes.GetNote(ctx, &models.OneNoteFilter{NoteID: req.NoteId, GroupID: req.GroupId}, token.AccountID)
 	if err != nil {
 		srv.logger.Error("failed to get note", zap.Error(err))
 		return nil, status.Error(codes.NotFound, "could not get note.")
