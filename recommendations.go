@@ -42,19 +42,17 @@ func (srv *recommendationsAPI) GenerateWidgets(ctx context.Context, in *notesv1.
 
 	for _, keyWord := range note.Keywords {
 
-		if keyWord.URL != "" {
-			widgets = append(widgets, &notesv1.Widget{
-				Type: &notesv1.Widget_WebsiteWidget{
-					WebsiteWidget: &notesv1.WebsiteWidget{
-						Keyword:  keyWord.Keyword,
-						Type:     keyWord.Type,
-						Url:      keyWord.URL,
-						Summary:  keyWord.Summary,
-						ImageUrl: keyWord.ImageURL,
-					},
+		widgets = append(widgets, &notesv1.Widget{
+			Type: &notesv1.Widget_WebsiteWidget{
+				WebsiteWidget: &notesv1.WebsiteWidget{
+					Keyword:  keyWord.Keyword,
+					Type:     keyWord.Type,
+					Url:      keyWord.URL,
+					Summary:  keyWord.Summary,
+					ImageUrl: keyWord.ImageURL,
 				},
-			})
-		}
+			},
+		})
 	}
 
 	return &notesv1.GenerateWidgetsResponse{Widgets: widgets}, nil
