@@ -47,10 +47,10 @@ func (srv *recommendationsAPI) GenerateWidgets(ctx context.Context, in *notesv1.
 				Type: &notesv1.Widget_WebsiteWidget{
 					WebsiteWidget: &notesv1.WebsiteWidget{
 						Keyword:  keyWord.Keyword,
-						Type:     string(keyWord.Type),
+						Type:     keyWord.Type,
 						Url:      keyWord.URL,
-						Summary:  "zeub",
-						ImageUrl: "zeub",
+						Summary:  keyWord.Summary,
+						ImageUrl: keyWord.ImageURL,
 					},
 				},
 			})
