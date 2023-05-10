@@ -302,7 +302,7 @@ func generateNoteTagsToModelNote(languageService language.Service, note *models.
 	var fullNote string
 
 	for _, block := range note.Blocks {
-		if block.Type != "code" && block.Type != "image" {
+		if block.Type != "TYPE_CODE" && block.Type != "TYPE_IMAGE" {
 			content, ok := GetBlockContent(&block)
 			if ok {
 				fullNote += content + "\n"
