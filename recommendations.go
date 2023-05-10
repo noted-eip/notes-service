@@ -45,16 +45,16 @@ func (srv *recommendationsAPI) GenerateWidgets(ctx context.Context, req *notesv1
 
 	var widgets []*notesv1.Widget
 
-	for _, keyWord := range note.Keywords {
+	for _, keyword := range note.Keywords {
 
 		widgets = append(widgets, &notesv1.Widget{
 			Type: &notesv1.Widget_WebsiteWidget{
 				WebsiteWidget: &notesv1.WebsiteWidget{
-					Keyword:  keyWord.Keyword,
-					Type:     keyWord.Type,
-					Url:      keyWord.URL,
-					Summary:  keyWord.Summary,
-					ImageUrl: keyWord.ImageURL,
+					Keyword:  keyword.Keyword,
+					Type:     keyword.Type,
+					Url:      keyword.URL,
+					Summary:  keyword.Summary,
+					ImageUrl: keyword.ImageURL,
 				},
 			},
 		})
