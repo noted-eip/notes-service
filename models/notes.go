@@ -42,28 +42,28 @@ type NoteBlock struct {
 	Code        *NoteBlockCode  `json:"code,omitempty" bson:"code,omitempty"`
 }
 
-type KeywordType string
-
 const (
-	Unknown      KeywordType = "Unknown"
-	Person       KeywordType = "Person"
-	Location     KeywordType = "Location"
-	Organization KeywordType = "Organization"
-	Event        KeywordType = "Event"
-	WorkOfArt    KeywordType = "Work of art"
-	ConsumerGood KeywordType = "Consumer good"
-	Other        KeywordType = "Other"
-	PhoneNumber  KeywordType = "Phone number"
-	Address      KeywordType = "Address"
-	Date         KeywordType = "Date"
-	Number       KeywordType = "Number"
-	Price        KeywordType = "Price"
+	Unknown      string = "Unknown"
+	Person       string = "Person"
+	Location     string = "Location"
+	Organization string = "Organization"
+	Event        string = "Event"
+	WorkOfArt    string = "Work of art"
+	ConsumerGood string = "Consumer good"
+	Other        string = "Other"
+	PhoneNumber  string = "Phone number"
+	Address      string = "Address"
+	Date         string = "Date"
+	Number       string = "Number"
+	Price        string = "Price"
 )
 
 type Keyword struct {
-	Keyword string      `json:"keyword,omitempty" bson:"keyword,omitempty"`
-	Type    KeywordType `json:"type,omitempty" bson:"type,omitempty"`
-	URL     string      `json:"url,omitempty" bson:"url,omitempty"`
+	Keyword  string `json:"keyword,omitempty" bson:"keyword,omitempty"`
+	Type     string `json:"type,omitempty" bson:"type,omitempty"`
+	URL      string `json:"url,omitempty" bson:"url,omitempty"`
+	Summary  string `json:"summary,omitempty" bson:"summary,omitempty"`
+	ImageURL string `json:"imageUrl,omitempty" bson:"imageUrl,omitempty"`
 }
 
 type Note struct {
