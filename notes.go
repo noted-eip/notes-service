@@ -68,7 +68,7 @@ func (srv *notesAPI) CreateNote(ctx context.Context, req *notesv1.CreateNoteRequ
 			err := srv.UpdateKeywordsByNoteId(note.ID, req.GroupId, token.AccountID)
 			return err
 		},
-		SecondsToDebounce:             900,
+		SecondsToDebounce:             60,
 		CancelProcessOnSameIdentifier: true,
 		RepeatProcess:                 false,
 	})
@@ -302,7 +302,7 @@ func generateNoteTagsToModelNote(languageService language.Service, note *models.
 	var fullNote string
 
 	for _, block := range note.Blocks {
-		if block.Type != "code" && block.Type != "image" {
+		if block.Type != "TYPE_CODE" && block.Type != "TYPE_IMAGE" {
 			content, ok := GetBlockContent(&block)
 			if ok {
 				fullNote += content + "\n"

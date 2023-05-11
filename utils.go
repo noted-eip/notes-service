@@ -255,15 +255,15 @@ func listOptionsFromLimitOffset(limit int32, offset int32) *models.ListOptions {
 
 func GetBlockContent(block *models.NoteBlock) (string, bool) {
 	switch block.Type {
-	case "heading":
+	case "TYPE_HEADING":
 		return *block.Heading, true
-	case "paragraph":
+	case "TYPE_PARAGRAPH":
 		return *block.Paragraph, true
-	case "math":
+	case "TYPE_MATH":
 		return *block.Math, true
-	case "bulletpoint":
+	case "TYPE_BULLET_POINT":
 		return *block.BulletPoint, true
-	case "numberpoint":
+	case "TYPE_NUMBER_POINT":
 		return *block.NumberPoint, true
 	default:
 		return "", false

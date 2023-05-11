@@ -41,8 +41,9 @@ type server struct {
 	groupsRepository     models.GroupsRepository
 	activitiesRepository models.ActivitiesRepository
 
-	notesAPI  notesv1.NotesAPIServer
-	groupsAPI notesv1.GroupsAPIServer
+	notesAPI           notesv1.NotesAPIServer
+	groupsAPI          notesv1.GroupsAPIServer
+	recommendationsAPI notesv1.RecommendationsAPIServer
 
 	grpcServer *grpc.Server
 }
@@ -56,6 +57,7 @@ func (s *server) Init(opt ...grpc.ServerOption) {
 	s.initAccountsServiceClient()
 	s.initGroupsAPI()
 	s.initNotesAPI()
+	s.initRecommendationsAPI()
 	s.initgrpcServer(opt...)
 }
 
@@ -170,10 +172,20 @@ func (s *server) initNotesAPI() {
 	}
 }
 
+func (s *server) initRecommendationsAPI() {
+	s.recommendationsAPI = &recommendationsAPI{
+		auth:     s.authService,
+		logger:   s.logger,
+		notes:    s.notesRepository,
+		language: s.languageService,
+	}
+}
+
 func (s *server) initgrpcServer(opt ...grpc.ServerOption) {
 	s.grpcServer = grpc.NewServer(opt...)
 	notesv1.RegisterNotesAPIServer(s.grpcServer, s.notesAPI)
 	notesv1.RegisterGroupsAPIServer(s.grpcServer, s.groupsAPI)
+	notesv1.RegisterRecommendationsAPIServer(s.grpcServer, s.recommendationsAPI)
 }
 
 func (s *server) initRepositories() {
