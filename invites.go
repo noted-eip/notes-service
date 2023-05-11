@@ -47,12 +47,14 @@ func (srv *groupsAPI) SendInvite(ctx context.Context, req *notesv1.SendInviteReq
 		if err != nil {
 			return nil, statusFromModelError(err)
 		}
+
+		inviteLink := "https://noted-eip.vercel.app/groups/" + req.GroupId + "/invite/" + inviteGroup.Code
 		_, err = srv.accountsService.Accounts.SendGroupInviteMail(ctx, &accountsv1.SendGroupInviteMailRequest{
 			RecipientId: invite.RecipientAccountID,
 			SenderId:    invite.SenderAccountID,
 			GroupName:   group.Name,
 			ValidUntil:  timestamppb.New(invite.ValidUntil),
-			InviteLink:  inviteGroup.Code,
+			InviteLink:  inviteLink,
 		})
 
 		if err != nil {
