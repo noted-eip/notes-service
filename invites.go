@@ -38,17 +38,12 @@ func (srv *groupsAPI) SendInvite(ctx context.Context, req *notesv1.SendInviteReq
 		if err != nil {
 			return nil, statusFromModelError(err)
 		}
-		if err != nil {
-			return nil, statusFromModelError(err)
-		}
-
 		_, err = srv.accountsService.Accounts.SendGroupInviteMail(ctx, &accountsv1.SendGroupInviteMailRequest{
 			RecipientId: invite.RecipientAccountID,
 			SenderId:    invite.SenderAccountID,
 			GroupName:   group.Name,
 			ValidUntil:  timestamppb.New(invite.ValidUntil),
 		})
-
 		if err != nil {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
