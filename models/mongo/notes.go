@@ -47,7 +47,7 @@ func (repo *notesRepository) CreateNote(ctx context.Context, payload *models.Cre
 		CreatedAt:       now,
 		ModifiedAt:      nil,
 		AnalyzedAt:      nil,
-		Keywords:        []models.Keyword{},
+		Keywords:        []*models.Keyword{},
 		Blocks:          payload.Blocks,
 	}
 
