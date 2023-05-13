@@ -105,19 +105,18 @@ func (s *NaturalAPIService) doKnowledgeGraphSearch(keywords *[]KeywordWithMID) (
 	return response, nil
 }
 
-func kgInterfaceToStruct[T any](i interface{}, s *T) error {
+func kgInterfaceToStruct(i interface{}, s interface{}) error {
 	asJson, err := json.Marshal(i)
 	if err != nil {
 		return err
 	}
-	err = json.Unmarshal(asJson, &s)
+	err = json.Unmarshal(asJson, s)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-// NOTE: Would be smarter to do it all at once, might be a US for next sprint
 func (s *NaturalAPIService) fillWithKnowledgeGraph(keywords *[]KeywordWithMID) error {
 	entityResult, err := s.doKnowledgeGraphSearch(keywords)
 	if err != nil {
@@ -204,6 +203,10 @@ func (s *NaturalAPIService) GetKeywordsFromTextInput(input string) ([]*models.Ke
 		newKeyword := models.Keyword{
 			Keyword: entity.Name,
 			Type:    protobufEnumToKeywordType[entity.Type],
+		}
+
+		if val, ok := entity.Metadata["wikipedia_url"]; ok {
+			newKeyword.URL = val
 		}
 
 		if mid, ok := entity.Metadata["mid"]; ok {

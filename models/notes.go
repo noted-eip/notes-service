@@ -43,19 +43,19 @@ type NoteBlock struct {
 }
 
 const (
-	Unknown      string = "Unknown"
-	Person       string = "Person"
-	Location     string = "Location"
-	Organization string = "Organization"
-	Event        string = "Event"
-	WorkOfArt    string = "Work of art"
-	ConsumerGood string = "Consumer good"
-	Other        string = "Other"
-	PhoneNumber  string = "Phone number"
-	Address      string = "Address"
+	Unknown      string = "Inconnu"
+	Person       string = "Personne"
+	Location     string = "Lieu"
+	Organization string = "Organisation"
+	Event        string = "Evenement"
+	WorkOfArt    string = "Chef d'oeuvre"
+	ConsumerGood string = "Bien de consommation"
+	Other        string = "Autre"
+	PhoneNumber  string = "Numéro de téléphone"
+	Address      string = "Addresse"
 	Date         string = "Date"
-	Number       string = "Number"
-	Price        string = "Price"
+	Number       string = "Nombre"
+	Price        string = "Prix"
 )
 
 type Keyword struct {
