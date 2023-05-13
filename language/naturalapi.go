@@ -7,6 +7,7 @@ import (
 	"errors"
 	"notes-service/models"
 	"os"
+	"strings"
 
 	glanguage "cloud.google.com/go/language/apiv1"
 	"cloud.google.com/go/language/apiv1/languagepb"
@@ -30,11 +31,6 @@ var protobufEnumToKeywordType = map[languagepb.Entity_Type]string{
 	languagepb.Entity_DATE:          models.Date,
 	languagepb.Entity_NUMBER:        models.Number,
 	languagepb.Entity_PRICE:         models.Price,
-}
-
-type KeywordWithMID struct {
-	keyword *models.Keyword
-	mid     string
 }
 
 type KGDetailedDescription struct {
@@ -87,11 +83,11 @@ func (s *NaturalAPIService) Init() error {
 	return nil
 }
 
-func (s *NaturalAPIService) doKnowledgeGraphSearch(keywords *[]KeywordWithMID) (*kgsearch.SearchResponse, error) {
+func (s *NaturalAPIService) doKnowledgeGraphSearch(keywords *map[string]*models.Keyword) (*kgsearch.SearchResponse, error) {
 	mids := []string{}
 
-	for _, keyword := range *keywords {
-		mids = append(mids, keyword.mid)
+	for mid := range *keywords {
+		mids = append(mids, mid)
 	}
 
 	search := s.kgService.Entities.Search()
@@ -117,13 +113,13 @@ func kgInterfaceToStruct(i interface{}, s interface{}) error {
 	return nil
 }
 
-func (s *NaturalAPIService) fillWithKnowledgeGraph(keywords *[]KeywordWithMID) error {
+func (s *NaturalAPIService) fillWithKnowledgeGraph(keywords *map[string]*models.Keyword) error {
 	entityResult, err := s.doKnowledgeGraphSearch(keywords)
 	if err != nil {
 		return err
 	}
 
-	for idx, element := range entityResult.ItemListElement {
+	for _, element := range entityResult.ItemListElement {
 		responseMap, ok := element.(map[string]interface{})
 		if !ok {
 			return errors.New("gkg has an invalid response")
@@ -139,7 +135,10 @@ func (s *NaturalAPIService) fillWithKnowledgeGraph(keywords *[]KeywordWithMID) e
 			return errors.New("gkg response has no result for the keywords")
 		}
 
-		keyword := (*keywords)[idx].keyword
+		mid := entityResultMap["@id"].(string)
+		mid = strings.TrimPrefix(mid, "kg:")
+
+		keyword := (*keywords)[mid]
 
 		if detailedDescriptionInterface, ok := entityResultMap["detailedDescription"]; ok {
 			detailedDescription := KGDetailedDescription{}
@@ -197,7 +196,7 @@ func (s *NaturalAPIService) GetKeywordsFromTextInput(input string) ([]*models.Ke
 	}
 
 	var keywords []*models.Keyword
-	var keywordsWithMID []KeywordWithMID
+	keywordsWithMID := make(map[string]*models.Keyword)
 
 	for _, entity := range res.Entities {
 		newKeyword := models.Keyword{
@@ -210,11 +209,7 @@ func (s *NaturalAPIService) GetKeywordsFromTextInput(input string) ([]*models.Ke
 		}
 
 		if mid, ok := entity.Metadata["mid"]; ok {
-			keywordsWithMID = append(
-				keywordsWithMID, KeywordWithMID{
-					keyword: &newKeyword,
-					mid:     mid,
-				})
+			keywordsWithMID[mid] = &newKeyword
 		} else if val, ok := entity.Metadata["wikipedia_url"]; ok {
 			newKeyword.URL = val
 		}
