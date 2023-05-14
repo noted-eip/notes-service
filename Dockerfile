@@ -1,4 +1,4 @@
-FROM golang:1.18.1-alpine as build
+FROM golang:1.20.4-alpine as build
 WORKDIR /app
 COPY . .
 # Required for VCS stamping.
