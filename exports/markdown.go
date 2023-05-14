@@ -37,6 +37,10 @@ func imageBlockToMarkdown(b *notespb.Block) string {
 }
 
 func sanitizeNewLines(str *string) {
+	if len(*str) == 0 {
+		*str = "\n"
+		return
+	}
 	*str = strings.ReplaceAll(*str, "\r\n", "\n")
 	if (*str)[len(*str)-1] != '\n' {
 		*str = *str + "\n"
