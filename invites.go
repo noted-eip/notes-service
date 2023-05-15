@@ -35,6 +35,9 @@ func (srv *groupsAPI) SendInvite(ctx context.Context, req *notesv1.SendInviteReq
 
 	if srv.accountsService != nil {
 		group, err := srv.groups.GetGroupInternal(ctx, &models.OneGroupFilter{GroupID: req.GroupId})
+		if group.WorkspaceAccountID != nil {
+			return nil, status.Error(codes.PermissionDenied, "Cannot send invite from a workspace")
+		}
 		if err == nil {
 			_, err = srv.accountsService.Accounts.SendGroupInviteMail(ctx, &accountsv1.SendGroupInviteMailRequest{
 				RecipientId: invite.RecipientAccountID,
