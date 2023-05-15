@@ -38,6 +38,9 @@ func (srv *service) CancelProcess(process *Process) error {
 		return errors.New("Error : Identifier cannot be nil")
 	}
 	for index := range srv.processes {
+		if index >= len(srv.processes) {
+			break
+		}
 		if srv.processes[index].Identifier == process.Identifier {
 			// TODO cancel the goroutine by srv.processes.task
 			go srv.processes[index].debounced(func() { return })
