@@ -263,7 +263,7 @@ func (srv *notesAPI) OnAccountDelete(ctx context.Context, req *notesv1.OnAccount
 
 	err = srv.notes.DeleteNotes(ctx, &models.ManyNotesFilter{AuthorAccountID: token.AccountID})
 	if err != nil {
-		return nil, err
+		srv.logger.Warn("Could not delete notes of " + token.AccountID + " reason " + err.Error())
 	}
 
 	err = srv.groups.OnAccountDelete(ctx, token.AccountID)
