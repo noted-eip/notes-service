@@ -7,6 +7,7 @@ import (
 	"errors"
 	"notes-service/models"
 	"os"
+	"strings"
 
 	glanguage "cloud.google.com/go/language/apiv1"
 	"cloud.google.com/go/language/apiv1/languagepb"
@@ -82,37 +83,22 @@ func (s *NaturalAPIService) Init() error {
 	return nil
 }
 
-func (s *NaturalAPIService) doKnowledgeGraphSearch(keyword *models.Keyword, mid string) (map[string]interface{}, error) {
-	search := s.kgService.Entities.Search()
+func (s *NaturalAPIService) doKnowledgeGraphSearch(keywords *map[string]*models.Keyword) (*kgsearch.SearchResponse, error) {
+	mids := []string{}
 
-	search.Ids(mid)
+	for mid := range *keywords {
+		mids = append(mids, mid)
+	}
+
+	search := s.kgService.Entities.Search()
+	search.Ids(mids...)
 	search.Languages("fr")
 
 	response, err := search.Do()
 	if err != nil {
 		return nil, err
 	}
-
-	if len(response.ItemListElement) == 0 {
-		return nil, errors.New(keyword.Keyword + " (" + mid + ") has no french result in gkg")
-	}
-
-	responseMap, ok := response.ItemListElement[0].(map[string]interface{})
-	if !ok {
-		return nil, errors.New("gkg has an invalid response")
-	}
-
-	entityResult, ok := responseMap["result"]
-	if !ok {
-		return nil, errors.New("gkg response has no result for the keyword")
-	}
-
-	entityResultMap, ok := entityResult.(map[string]interface{})
-	if !ok {
-		return nil, errors.New("gkg response has no result for the keyword")
-	}
-
-	return entityResultMap, nil
+	return response, nil
 }
 
 func kgInterfaceToStruct(i interface{}, s interface{}) error {
@@ -127,50 +113,72 @@ func kgInterfaceToStruct(i interface{}, s interface{}) error {
 	return nil
 }
 
-// NOTE: Would be smarter to do it all at once, might be a US for next sprint
-func (s *NaturalAPIService) fillWithKnowledgeGraph(keyword *models.Keyword, mid string) error {
-	entityResult, err := s.doKnowledgeGraphSearch(keyword, mid)
+func (s *NaturalAPIService) fillWithKnowledgeGraph(keywords *map[string]*models.Keyword) error {
+	entityResult, err := s.doKnowledgeGraphSearch(keywords)
 	if err != nil {
-		return nil
+		return err
 	}
 
-	if detailedDescriptionInterface, ok := entityResult["detailedDescription"]; ok {
-		detailedDescription := KGDetailedDescription{}
-
-		err = kgInterfaceToStruct(detailedDescriptionInterface, &detailedDescription)
-		if err != nil {
-			// TODO : To log or not to log that is the question
-		} else {
-			keyword.Summary = detailedDescription.ArticleBody
-			keyword.URL = detailedDescription.URL
+	for _, element := range entityResult.ItemListElement {
+		responseMap, ok := element.(map[string]interface{})
+		if !ok {
+			return errors.New("gkg has an invalid response")
 		}
 
-	}
-
-	if imageInterface, ok := entityResult["image"]; ok {
-		image := KGImage{}
-
-		err = kgInterfaceToStruct(imageInterface, &image)
-		if err != nil {
-			// TODO : To log or not to log that is the question
-		} else {
-			keyword.ImageURL = image.URL
+		entityResult, ok := responseMap["result"]
+		if !ok {
+			return errors.New("gkg response has no result for the keywords")
 		}
-	}
 
-	if betterTypeInterface, ok := entityResult["description"]; ok {
-		betterType, ok := betterTypeInterface.(string)
-		if ok {
-			keyword.Type = betterType
-		} else {
-			// TODO : To log or not to log that is the question (this one should never fail for sure)
+		entityResultMap, ok := entityResult.(map[string]interface{})
+		if !ok {
+			return errors.New("gkg response has no result for the keywords")
 		}
+
+		mid := entityResultMap["@id"].(string)
+		mid = strings.TrimPrefix(mid, "kg:")
+
+		keyword := (*keywords)[mid]
+
+		if detailedDescriptionInterface, ok := entityResultMap["detailedDescription"]; ok {
+			detailedDescription := KGDetailedDescription{}
+
+			err = kgInterfaceToStruct(detailedDescriptionInterface, &detailedDescription)
+			if err != nil {
+				// TODO : To log or not to log that is the question
+			} else {
+				keyword.Summary = detailedDescription.ArticleBody
+				keyword.URL = detailedDescription.URL
+			}
+
+		}
+
+		if imageInterface, ok := entityResultMap["image"]; ok {
+			image := KGImage{}
+
+			err = kgInterfaceToStruct(imageInterface, &image)
+			if err != nil {
+				// TODO : To log or not to log that is the question
+			} else {
+				keyword.ImageURL = image.URL
+			}
+		}
+
+		if betterTypeInterface, ok := entityResultMap["description"]; ok {
+			betterType, ok := betterTypeInterface.(string)
+			if ok {
+				keyword.Type = betterType
+			} else {
+				// TODO : To log or not to log that is the question (this one should never fail for sure)
+			}
+		}
+
 	}
 
 	return nil
 }
 
-func (s *NaturalAPIService) GetKeywordsFromTextInput(input string) ([]models.Keyword, error) {
+func (s *NaturalAPIService) GetKeywordsFromTextInput(input string) ([]*models.Keyword, error) {
 	if s.lClient == nil || s.kgService == nil {
 		return nil, status.Error(codes.Unavailable, "credentials are not made for google's natural api or knowledge graph service")
 	}
@@ -187,7 +195,8 @@ func (s *NaturalAPIService) GetKeywordsFromTextInput(input string) ([]models.Key
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	var keywords []models.Keyword
+	var keywords []*models.Keyword
+	keywordsWithMID := make(map[string]*models.Keyword)
 
 	for _, entity := range res.Entities {
 		newKeyword := models.Keyword{
@@ -200,13 +209,17 @@ func (s *NaturalAPIService) GetKeywordsFromTextInput(input string) ([]models.Key
 		}
 
 		if mid, ok := entity.Metadata["mid"]; ok {
-			err = s.fillWithKnowledgeGraph(&newKeyword, mid)
-			if err != nil {
-				// TODO: log
-			}
+			keywordsWithMID[mid] = &newKeyword
+		} else if val, ok := entity.Metadata["wikipedia_url"]; ok {
+			newKeyword.URL = val
 		}
 
-		keywords = append(keywords, newKeyword)
+		keywords = append(keywords, &newKeyword)
+	}
+
+	err = s.fillWithKnowledgeGraph(&keywordsWithMID)
+	if err != nil {
+		// TODO: log
 	}
 
 	return keywords, nil
