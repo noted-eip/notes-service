@@ -74,7 +74,7 @@ type Note struct {
 	CreatedAt       time.Time   `json:"createdAt" bson:"createdAt"`
 	ModifiedAt      *time.Time  `json:"modifiedAt" bson:"modifiedAt"`
 	AnalyzedAt      *time.Time  `json:"analyzedAt" bson:"analyzedAt"`
-	Keywords        []Keyword   `json:"keywords" bson:"keywords"`
+	Keywords        []*Keyword  `json:"keywords" bson:"keywords"`
 	Blocks          []NoteBlock `json:"blocks" bson:"blocks"`
 }
 
@@ -116,7 +116,7 @@ type UpdateNotePayload struct {
 	Blocks *[]NoteBlock `json:"blocks,omitempty" bson:"blocks,omitempty"`
 
 	// TODO: Remove
-	Keywords []Keyword `json:"keywords" bson:"keywords"`
+	Keywords []*Keyword `json:"keywords" bson:"keywords"`
 }
 
 type UpdateNoteGroupPayload struct {
