@@ -37,14 +37,13 @@ func (srv *service) CancelProcess(process *Process) error {
 		srv.logger.Error("Cannot cancel background process if the identifier is nil")
 		return errors.New("Error : Identifier cannot be nil")
 	}
-	for index := range srv.processes {
-		if index >= len(srv.processes) {
-			break
-		}
+
+	for index := 0; index < len(srv.processes); index++ {
 		if srv.processes[index].Identifier == process.Identifier {
 			// TODO cancel the goroutine by srv.processes.task
 			go srv.processes[index].debounced(func() { return })
 			srv.processes = remove(srv.processes, index)
+			index--
 		}
 	}
 	return nil
