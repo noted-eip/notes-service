@@ -126,11 +126,13 @@ func (srv *notesAPI) UpdateNote(ctx context.Context, req *notesv1.UpdateNoteRequ
 	}
 	// check user can edit the note
 	noteCheck, err := srv.notes.GetNote(ctx, &models.OneNoteFilter{GroupID: req.GroupId, NoteID: req.NoteId}, token.AccountID)
+	if err != nil {
+		return nil, statusFromModelError(err)
+	}
 	err = HasEditPermission(noteCheck.AccountsWithEditPermissions, token.AccountID)
 	if err != nil {
 		return nil, status.Error(codes.PermissionDenied, err.Error())
 	}
-
 	note, err := srv.notes.UpdateNote(ctx,
 		&models.OneNoteFilter{GroupID: req.GroupId, NoteID: req.NoteId},
 		updateNotePayloadFromUpdateNoteRequest(req),
