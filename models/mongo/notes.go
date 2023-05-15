@@ -18,6 +18,26 @@ type notesRepository struct {
 	repository
 }
 
+func (repo *notesRepository) GrantNoteEditPermission(ctx context.Context, filter *models.OneNoteFilter, AccountID string, recipientAccountID string) error {
+	note := &models.Note{}
+	query := bson.D{
+		{Key: "_id", Value: filter.NoteID},
+		{Key: "groupId", Value: filter.GroupID},
+		{Key: "authorAccountId", Value: AccountID},
+	}
+	update := bson.D{
+		{Key: "$push", Value: bson.D{
+			{Key: "accountsWithEditPermissions", Value: recipientAccountID},
+		}},
+	}
+	err := repo.findOneAndUpdate(ctx, query, update, note)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func NewNotesRepository(db *mongo.Database, logger *zap.Logger) models.NotesRepository {
 	newUUID, err := nanoid.Standard(21)
 	if err != nil {
@@ -40,15 +60,16 @@ func (repo *notesRepository) CreateNote(ctx context.Context, payload *models.Cre
 
 	now := time.Now()
 	note := &models.Note{
-		ID:              repo.newUUID(),
-		Title:           payload.Title,
-		AuthorAccountID: accountID,
-		GroupID:         payload.GroupID,
-		CreatedAt:       now,
-		ModifiedAt:      nil,
-		AnalyzedAt:      nil,
-		Keywords:        []*models.Keyword{},
-		Blocks:          payload.Blocks,
+		ID:                          repo.newUUID(),
+		Title:                       payload.Title,
+		AuthorAccountID:             accountID,
+		GroupID:                     payload.GroupID,
+		CreatedAt:                   now,
+		ModifiedAt:                  nil,
+		AnalyzedAt:                  nil,
+		Keywords:                    []*models.Keyword{},
+		Blocks:                      payload.Blocks,
+		AccountsWithEditPermissions: []string{accountID},
 	}
 
 	err := repo.insertOne(ctx, note)

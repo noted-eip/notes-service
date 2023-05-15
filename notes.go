@@ -50,6 +50,7 @@ func (srv *notesAPI) CreateNote(ctx context.Context, req *notesv1.CreateNoteRequ
 	if err != nil {
 		return nil, statusFromModelError(err)
 	}
+	// check user can edit the note
 
 	note, err := srv.notes.CreateNote(ctx, &models.CreateNotePayload{
 		GroupID:         req.GroupId,
@@ -123,6 +124,12 @@ func (srv *notesAPI) UpdateNote(ctx context.Context, req *notesv1.UpdateNoteRequ
 	if err != nil {
 		return nil, statusFromModelError(err)
 	}
+	// check user can edit the note
+	noteCheck, err := srv.notes.GetNote(ctx, &models.OneNoteFilter{GroupID: req.GroupId, NoteID: req.NoteId}, token.AccountID)
+	err = HasEditPermission(noteCheck.AccountsWithEditPermissions, token.AccountID)
+	if err != nil {
+		return nil, status.Error(codes.PermissionDenied, err.Error())
+	}
 
 	note, err := srv.notes.UpdateNote(ctx,
 		&models.OneNoteFilter{GroupID: req.GroupId, NoteID: req.NoteId},
@@ -131,7 +138,6 @@ func (srv *notesAPI) UpdateNote(ctx context.Context, req *notesv1.UpdateNoteRequ
 	if err != nil {
 		return nil, statusFromModelError(err)
 	}
-
 	return &notesv1.UpdateNoteResponse{Note: modelsNoteToProtobufNote(note)}, nil
 }
 
@@ -482,4 +488,20 @@ func stringPtrValueOrFallback(ptr *string, fallback string) string {
 		return *ptr
 	}
 	return fallback
+}
+
+// Ajouter un recipient_account_id dans la variable contenu de la note
+
+func (srv *notesAPI) GrantNoteEditPermission(ctx context.Context, req *notesv1.GrantNoteEditPermissionRequest) (*notesv1.GrantNoteEditPermissionResponse, error) {
+	token, err := srv.authenticate(ctx)
+	if err != nil {
+		return nil, err
+	}
+	// verifié que grantNoteEditPermission c'est l'admin
+
+	err = srv.notes.GrantNoteEditPermission(ctx, &models.OneNoteFilter{GroupID: req.GroupId, NoteID: req.NoteId}, token.AccountID, req.RecipientAccountId)
+	if err != nil {
+		return nil, err
+	}
+	return &notesv1.GrantNoteEditPermissionResponse{}, nil
 }

@@ -67,15 +67,16 @@ type Keyword struct {
 }
 
 type Note struct {
-	ID              string      `json:"id" bson:"_id"`
-	Title           string      `json:"title" bson:"title"`
-	AuthorAccountID string      `json:"authorAccountId" bson:"authorAccountId"`
-	GroupID         string      `json:"groupId" bson:"groupId"`
-	CreatedAt       time.Time   `json:"createdAt" bson:"createdAt"`
-	ModifiedAt      *time.Time  `json:"modifiedAt" bson:"modifiedAt"`
-	AnalyzedAt      *time.Time  `json:"analyzedAt" bson:"analyzedAt"`
-	Keywords        []*Keyword  `json:"keywords" bson:"keywords"`
-	Blocks          []NoteBlock `json:"blocks" bson:"blocks"`
+	ID                          string      `json:"id" bson:"_id"`
+	Title                       string      `json:"title" bson:"title"`
+	AuthorAccountID             string      `json:"authorAccountId" bson:"authorAccountId"`
+	GroupID                     string      `json:"groupId" bson:"groupId"`
+	CreatedAt                   time.Time   `json:"createdAt" bson:"createdAt"`
+	ModifiedAt                  *time.Time  `json:"modifiedAt" bson:"modifiedAt"`
+	AnalyzedAt                  *time.Time  `json:"analyzedAt" bson:"analyzedAt"`
+	Keywords                    []*Keyword  `json:"keywords" bson:"keywords"`
+	Blocks                      []NoteBlock `json:"blocks" bson:"blocks"`
+	AccountsWithEditPermissions []string    `json:"accountsWithEditPermissions" bson:"accountsWithEditPermissions"`
 }
 
 func (note *Note) FindBlock(blockID string) *NoteBlock {
@@ -144,6 +145,9 @@ type NotesRepository interface {
 	DeleteNotes(ctx context.Context, filter *ManyNotesFilter) error
 	ListNotesInternal(ctx context.Context, filter *ManyNotesFilter, opts *ListOptions) ([]*Note, error)
 	ListAllNotesInternal(ctx context.Context, filter *ManyNotesFilter) ([]*Note, error)
+
+	// Permisions
+	GrantNoteEditPermission(ctx context.Context, filter *OneNoteFilter, AccountID string, RecipientAccountId string) error
 
 	// Blocks
 	InsertBlock(ctx context.Context, filter *OneNoteFilter, payload *InsertNoteBlockPayload, accountID string) (*NoteBlock, error)

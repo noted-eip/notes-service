@@ -302,3 +302,12 @@ func (srv *groupsAPI) moveNotesToUserWorkspaceOrDeleteThem(ctx context.Context, 
 	}
 	return nil
 }
+
+func HasEditPermission(AccountsWithEditPermissions *[]string, recipientAccountID string) error {
+	for _, accountID := range *AccountsWithEditPermissions {
+		if accountID == recipientAccountID {
+			return nil
+		}
+	}
+	return errors.New("You do not have permission to edit this note.")
+}
