@@ -742,17 +742,17 @@ func (repo *groupsRepository) deleteWorkspaces(ctx context.Context, accountID st
 func (repo *groupsRepository) OnAccountDelete(ctx context.Context, accountID string) error {
 	err := repo.deleteEveryInviteOfAccount(ctx, accountID)
 	if err != nil {
-		return err
+		repo.logger.Warn("Could not delete invites of " + accountID + " reason " + err.Error())
 	}
 
 	err = repo.deleteWorkspaces(ctx, accountID)
 	if err != nil {
-		return err
+		repo.logger.Warn("Could not delete workspace of " + accountID + " reason " + err.Error())
 	}
 
 	err = repo.deleteEveryMemberReferenceOfAccount(ctx, accountID)
 	if err != nil {
-		return err
+		repo.logger.Warn("Could not delete member reference of " + accountID + " reason " + err.Error())
 	}
 
 	return nil

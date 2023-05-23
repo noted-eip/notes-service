@@ -62,17 +62,6 @@ func (srv *notesAPI) CreateNote(ctx context.Context, req *notesv1.CreateNoteRequ
 		return nil, statusFromModelError(err)
 	}
 
-	srv.background.AddProcess(&background.Process{
-		Identifier: models.NoteIdentifier{NoteId: note.ID, ActionType: models.NoteUpdateKeyword},
-		CallBackFct: func() error {
-			err := srv.UpdateKeywordsByNoteId(note.ID, req.GroupId, token.AccountID)
-			return err
-		},
-		SecondsToDebounce:             0,
-		CancelProcessOnSameIdentifier: true,
-		RepeatProcess:                 false,
-	})
-
 	srv.activities.CreateActivityInternal(ctx, &models.ActivityPayload{
 		GroupID: note.GroupID,
 		Type:    models.NoteAdded,
@@ -274,7 +263,7 @@ func (srv *notesAPI) OnAccountDelete(ctx context.Context, req *notesv1.OnAccount
 
 	err = srv.notes.DeleteNotes(ctx, &models.ManyNotesFilter{AuthorAccountID: token.AccountID})
 	if err != nil {
-		return nil, err
+		srv.logger.Warn("Could not delete notes of " + token.AccountID + " reason " + err.Error())
 	}
 
 	err = srv.groups.OnAccountDelete(ctx, token.AccountID)
