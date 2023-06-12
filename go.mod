@@ -69,5 +69,6 @@ require (
 	github.com/go-ozzo/ozzo-validation/v4 v4.3.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.15.2
 	github.com/jaevor/go-nanoid v1.3.0
+	github.com/noted-eip/noted/background-service v0.0.0-20230612085710-bb82b35c9b96
 	google.golang.org/genproto v0.0.0-20230410155749-daa745c078e1
 )

@@ -4,7 +4,9 @@ import (
 	"context"
 
 	"notes-service/auth"
-	"notes-service/background"
+
+	background "github.com/noted-eip/noted/background-service"
+
 	"notes-service/exports"
 	"notes-service/models"
 	notesv1 "notes-service/protorepo/noted/notes/v1"

@@ -2,10 +2,11 @@ package main
 
 import (
 	"context"
+	"notes-service/models"
 	"time"
 
-	"notes-service/background"
-	"notes-service/models"
+	background "github.com/noted-eip/noted/background-service"
+
 	notesv1 "notes-service/protorepo/noted/notes/v1"
 	"notes-service/validators"
 

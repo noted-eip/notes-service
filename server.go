@@ -4,8 +4,9 @@ import (
 	"crypto/ed25519"
 	"encoding/base64"
 	"notes-service/auth"
-	"notes-service/background"
 	"notes-service/language"
+
+	background "github.com/noted-eip/noted/background-service"
 
 	"context"
 	"errors"

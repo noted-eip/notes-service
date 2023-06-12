@@ -4,10 +4,12 @@ import (
 	"context"
 	"errors"
 	"notes-service/auth"
-	"notes-service/background"
 	"notes-service/language"
 	"notes-service/models"
 	"notes-service/models/mongo"
+
+	background "github.com/noted-eip/noted/background-service"
+
 	notesv1 "notes-service/protorepo/noted/notes/v1"
 	"time"
 
