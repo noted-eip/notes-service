@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"notes-service/models"
+	accountsv1 "notes-service/protorepo/noted/accounts/v1"
 	notesv1 "notes-service/protorepo/noted/notes/v1"
 	"notes-service/validators"
 
@@ -31,6 +32,24 @@ func (srv *groupsAPI) SendInvite(ctx context.Context, req *notesv1.SendInviteReq
 	if err != nil {
 		return nil, statusFromModelError(err)
 	}
+
+	// SEND EMAIL
+	group, err := srv.groups.GetGroupInternal(ctx, &models.OneGroupFilter{GroupID: req.GroupId})
+	if err == nil {
+		emailInformation := SendGroupInviteMailContent(invite.RecipientAccountID, group.Name, timestamppb.New(invite.ValidUntil))
+
+		accountResponse, err := srv.accountsClient.Accounts.GetAccount(ctx, &accountsv1.GetAccountRequest{
+			AccountId: invite.SenderAccountID,
+		})
+
+		err = srv.mailing.SendEmails(ctx, emailInformation, []string{accountResponse.Account.Email})
+		if err != nil {
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+	} else {
+		srv.logger.Warn("GetGroupInternal returned an error : " + err.Error() + "from SendInvite method, could not send email")
+	}
+	// !SEND EMAIL
 
 	return &notesv1.SendInviteResponse{Invite: modelsInviteToProtobufInvite(invite, req.GroupId)}, nil
 }
