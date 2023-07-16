@@ -50,7 +50,7 @@ func (srv *groupsAPI) SendInvite(ctx context.Context, req *notesv1.SendInviteReq
 			return nil, status.Error(codes.Internal, err.Error())
 		}
 	} else {
-		srv.logger.Warn("SendEmail for invite returned an error because notes service is not connected with the accountsClients : " + err.Error())
+		srv.logger.Warn("SendEmail for invite returned an error because notes service is not connected with the accountsClients")
 	}
 
 	return &notesv1.SendInviteResponse{Invite: modelsInviteToProtobufInvite(invite, req.GroupId)}, nil
