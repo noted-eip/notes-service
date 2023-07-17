@@ -5,7 +5,10 @@ import (
 	"notes-service/auth"
 	"notes-service/models"
 
+	"notes-service/communication"
+
 	background "github.com/noted-eip/noted/background-service"
+	mailing "github.com/noted-eip/noted/mailing-service"
 
 	notesv1 "notes-service/protorepo/noted/notes/v1"
 	"notes-service/validators"
@@ -23,6 +26,9 @@ type groupsAPI struct {
 
 	auth       auth.Service
 	background background.Service
+	mailing    mailing.Service
+
+	accountsClient *communication.AccountsServiceClient
 
 	groups     models.GroupsRepository
 	activities models.ActivitiesRepository
