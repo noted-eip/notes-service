@@ -148,5 +148,6 @@ type NotesRepository interface {
 	// Blocks
 	InsertBlock(ctx context.Context, filter *OneNoteFilter, payload *InsertNoteBlockPayload, accountID string) (*NoteBlock, error)
 	UpdateBlock(ctx context.Context, filter *OneBlockFilter, payload *UpdateBlockPayload, accountID string) (*NoteBlock, error)
+	GetBlock(ctx context.Context, filter *OneBlockFilter, accountID string) (*NoteBlock, error)
 	DeleteBlock(ctx context.Context, filter *OneBlockFilter, accountID string) error
 }
