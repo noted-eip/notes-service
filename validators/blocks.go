@@ -24,6 +24,15 @@ func ValidateUpdateBlockRequest(req *notespb.UpdateBlockRequest) error {
 	)
 }
 
+func ValidateUpdateBlockIndexRequest(req *notespb.UpdateBlockIndexRequest) error {
+	return validation.ValidateStruct(req,
+		validation.Field(&req.GroupId, validation.Required),
+		validation.Field(&req.NoteId, validation.Required),
+		validation.Field(&req.BlockId, validation.Required),
+		validation.Field(&req.Index, validation.Required),
+	)
+}
+
 func ValidateDeleteBlockRequest(req *notespb.DeleteBlockRequest) error {
 	return validation.ValidateStruct(req,
 		validation.Field(&req.GroupId, validation.Required),

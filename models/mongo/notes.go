@@ -232,6 +232,21 @@ func (repo *notesRepository) UpdateBlock(ctx context.Context, filter *models.One
 	return note.FindBlock(filter.BlockID), nil
 }
 
+func (repo *notesRepository) GetBlock(ctx context.Context, filter *models.OneBlockFilter, accountID string) (*models.NoteBlock, error) {
+	note := &models.Note{}
+	query := bson.D{
+		{Key: "_id", Value: filter.NoteID},
+		{Key: "groupId", Value: filter.GroupID},
+	}
+
+	err := repo.findOne(ctx, query, note)
+	if err != nil {
+		return nil, err
+	}
+
+	return note.FindBlock(filter.BlockID), nil
+}
+
 func (repo *notesRepository) DeleteBlock(ctx context.Context, filter *models.OneBlockFilter, accountID string) error {
 	note := &models.Note{}
 
