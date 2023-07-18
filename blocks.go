@@ -42,7 +42,7 @@ func (srv *notesAPI) InsertBlock(ctx context.Context, req *notesv1.InsertBlockRe
 			err := srv.UpdateKeywordsByNoteId(req.NoteId, req.GroupId, token.AccountID)
 			return err
 		},
-		SecondsToDebounce:             900,
+		SecondsToDebounce:             5,
 		CancelProcessOnSameIdentifier: true,
 		RepeatProcess:                 false,
 	})
@@ -115,7 +115,7 @@ func (srv *notesAPI) UpdateBlock(ctx context.Context, req *notesv1.UpdateBlockRe
 			err := srv.UpdateKeywordsByNoteId(req.NoteId, req.GroupId, token.AccountID)
 			return err
 		},
-		SecondsToDebounce:             900,
+		SecondsToDebounce:             5,
 		CancelProcessOnSameIdentifier: true,
 		RepeatProcess:                 false,
 	})
@@ -148,7 +148,7 @@ func (srv *notesAPI) DeleteBlock(ctx context.Context, req *notesv1.DeleteBlockRe
 			err := srv.UpdateKeywordsByNoteId(req.NoteId, req.GroupId, token.AccountID)
 			return err
 		},
-		SecondsToDebounce:             900,
+		SecondsToDebounce:             5,
 		CancelProcessOnSameIdentifier: true,
 		RepeatProcess:                 false,
 	})

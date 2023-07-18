@@ -64,6 +64,17 @@ func (srv *notesAPI) CreateNote(ctx context.Context, req *notesv1.CreateNoteRequ
 		return nil, statusFromModelError(err)
 	}
 
+	srv.background.AddProcess(&background.Process{
+		Identifier: models.NoteIdentifier{NoteId: note.ID, ActionType: models.NoteUpdateKeyword},
+		CallBackFct: func() error {
+			err := srv.UpdateKeywordsByNoteId(note.ID, req.GroupId, token.AccountID)
+			return err
+		},
+		SecondsToDebounce:             5,
+		CancelProcessOnSameIdentifier: true,
+		RepeatProcess:                 false,
+	})
+
 	srv.activities.CreateActivityInternal(ctx, &models.ActivityPayload{
 		GroupID: note.GroupID,
 		Type:    models.NoteAdded,
@@ -129,7 +140,7 @@ func (srv *notesAPI) UpdateNote(ctx context.Context, req *notesv1.UpdateNoteRequ
 			err := srv.UpdateKeywordsByNoteId(note.ID, req.GroupId, token.AccountID)
 			return err
 		},
-		SecondsToDebounce:             0,
+		SecondsToDebounce:             5,
 		CancelProcessOnSameIdentifier: true,
 		RepeatProcess:                 false,
 	})
