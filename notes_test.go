@@ -21,6 +21,29 @@ func TestNotesSuite(t *testing.T) {
 	edouardGroup := newTestGroup(t, tu, edouard, maxime)
 	maximeGroup := newTestGroup(t, tu, maxime, edouard)
 
+	testUser := newTestAccount(t, tu)
+	testGroup := newTestGroup(t, tu, testUser)
+	note := newTestNote(t, tu, testGroup, testUser, []*notesv1.Block{
+		{
+			Type: notesv1.Block_TYPE_HEADING_1,
+			Data: &notesv1.Block_Heading{
+				Heading: "Ada Lovelace",
+			},
+		},
+		{ // TODO: Put placeholder texts in separate file
+			Type: notesv1.Block_TYPE_PARAGRAPH,
+			Data: &notesv1.Block_Paragraph{
+				Paragraph: "Ada Lovelace, de son nom complet Augusta Ada King, comtesse de Lovelace, née Ada Byron le 10 décembre 1815 à Londres et morte le 27 novembre 1852 à Marylebone dans la même ville, est une pionnière de la science informatique. Elle est principalement connue pour avoir réalisé le premier véritable programme informatique, lors de son travail sur un ancêtre de l'ordinateur : la machine analytique de Charles Babbage. Dans ses notes, on trouve en effet le premier programme publié, destiné à être exécuté par une machine, ce qui fait d'Ada Lovelace la première personne à avoir programmé au monde. Elle a également entrevu et décrit certaines possibilités offertes par les calculateurs universels, allant bien au-delà du calcul numérique et de ce qu'imaginaient Babbage et ses contemporains. ",
+			},
+		},
+		{
+			Type: notesv1.Block_TYPE_PARAGRAPH,
+			Data: &notesv1.Block_Paragraph{
+				Paragraph: "Ada était la seule fille légitime du poète George Gordon Byron et de son épouse Annabella Milbanke, une femme intelligente et cultivée, cousine de Caroline Lamb, dont la liaison avec Byron fut à l'origine d'un scandale. Le premier prénom d'Ada, Augusta, aurait été choisi en hommage à Augusta Leigh, la demi-sœur de Byron, avec qui ce dernier aurait eu des relations incestueusesSwade 1. Le prénom Ada aurait été choisi par Byron lui-mêmeStein 1, car il était « court, ancien et vocalique »Wolfram 1. C'est Augusta qui encouragea Byron à se marier pour éviter un scandale, et il épousa Annabella à contrecœur[réf. souhaitée], en janvier 1815. Ada naît en décembre de cette même année. À la suite de quatre tentatives de viol en état d'ivresse de la part de ByronSwade 1, Annabella quitte Byron le 16 janvier 1816, gardant Ada avec elle. Le 21 avril, Byron signe l'acte de séparation, puis quitte le Royaume-Uni pour toujours. Il ne les revit jamais.",
+			},
+		},
+	})
+
 	t.Run("create-note", func(t *testing.T) {
 		before := time.Now()
 		res, err := tu.notes.CreateNote(edouard.Context, &notesv1.CreateNoteRequest{
@@ -543,6 +566,36 @@ func TestNotesSuite(t *testing.T) {
 		for _, note := range notes {
 			require.Equal(t, note.AuthorAccountID, maxime.ID)
 		}
+	})
+
+	// Clean-up maximeGroup made notes
+	err := tu.notesRepository.DeleteNotes(context.TODO(), &models.ManyNotesFilter{
+		AuthorAccountID: maxime.ID,
+	})
+	require.NoError(t, err)
+
+	t.Run("generate-quiz-success", func(t *testing.T) {
+
+		res, err := tu.notes.GenerateQuiz(testUser.Context, &notesv1.GenerateQuizRequest{
+			GroupId: note.Group.ID,
+			NoteId:  note.ID,
+		})
+		require.NoError(t, err)
+
+		require.NotZero(t, len(res.Quiz.Questions))
+		for _, question := range res.Quiz.Questions {
+			require.NotZero(t, len(question.Question))
+			require.NotZero(t, len(question.Answers))
+			require.NotZero(t, len(question.Solutions))
+		}
+	})
+
+	t.Run("can-t-generate-quiz-on-other-s-notes", func(t *testing.T) {
+		_, err := tu.notes.GenerateQuiz(maxime.Context, &notesv1.GenerateQuizRequest{
+			GroupId: note.Group.ID,
+			NoteId:  note.ID,
+		})
+		require.Error(t, err)
 	})
 
 }

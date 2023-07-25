@@ -77,7 +77,7 @@ func newTestUtilsOrDie(t *testing.T) *testUtils {
 	notesRepository := mongo.NewNotesRepository(db.DB, logger)
 	groupsRepository := mongo.NewGroupsRepository(db.DB, logger)
 	activitiesRepository := mongo.NewActivitiesRepository(db.DB, logger)
-	language := &language.NaturalAPIService{}
+	language := &language.NotedLanguageService{}
 	background := background.NewService(logger)
 	require.NoError(t, language.Init())
 	newUUID, err := nanoid.Standard(21)

@@ -287,18 +287,51 @@ func (srv *notesAPI) OnAccountDelete(ctx context.Context, req *notesv1.OnAccount
 	return &notesv1.OnAccountDeleteResponse{}, nil
 }
 
+func (srv *notesAPI) GenerateQuiz(ctx context.Context, req *notesv1.GenerateQuizRequest) (*notesv1.GenerateQuizResponse, error) {
+	token, err := srv.authenticate(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO Validate
+
+	// Check user is part of the group.
+	_, err = srv.groups.GetGroup(ctx, &models.OneGroupFilter{GroupID: req.GroupId}, token.AccountID)
+	if err != nil {
+		return nil, statusFromModelError(err)
+	}
+
+	note, err := srv.notes.GetNote(ctx, &models.OneNoteFilter{GroupID: req.GroupId, NoteID: req.NoteId}, token.AccountID)
+	if err != nil {
+		return nil, statusFromModelError(err)
+	}
+
+	fullNote := noteModelToString(note)
+	quiz, err := srv.language.GenerateQuizFromTextInput(fullNote)
+	if err != nil {
+		srv.logger.Error("failed to generate quiz", zap.Error(err))
+		return nil, status.Errorf(codes.Internal, "failed to generate quiz for noteId : %s", note.ID)
+	}
+
+	return &notesv1.GenerateQuizResponse{Quiz: modelsQuizToProtobufQuiz(quiz)}, nil
+}
+
 func (srv *notesAPI) UpdateKeywordsByNoteId(noteId string, groupId string, accountID string) error {
 	note, err := srv.notes.GetNote(context.TODO(), &models.OneNoteFilter{GroupID: groupId, NoteID: noteId}, accountID)
 	if err != nil {
 		return statusFromModelError(err)
 	}
 
-	// TODDO : mettre un timeout sur le call google
-	err = generateNoteTagsToModelNote(srv.language, note)
+	// TODO : mettre un timeout sur le call google
+	fullNote := noteModelToString(note)
+
+	keywords, err := srv.language.GetKeywordsFromTextInput(fullNote)
 	if err != nil {
 		srv.logger.Error("failed to gen keywords", zap.Error(err))
 		return status.Errorf(codes.Internal, "failed to gen keywords for noteId : %s", note.ID)
 	}
+
+	note.Keywords = keywords
 
 	_, err = srv.notes.UpdateNote(context.TODO(),
 		&models.OneNoteFilter{GroupID: note.GroupID, NoteID: note.ID},
@@ -311,7 +344,16 @@ func (srv *notesAPI) UpdateKeywordsByNoteId(noteId string, groupId string, accou
 	return nil
 }
 
-func generateNoteTagsToModelNote(languageService language.Service, note *models.Note) error {
+func (srv *notesAPI) authenticate(ctx context.Context) (*auth.Token, error) {
+	token, err := srv.auth.TokenFromContext(ctx)
+	if err != nil {
+		srv.logger.Debug("could not authenticate request", zap.Error(err))
+		return nil, status.Error(codes.Unauthenticated, "invalid token")
+	}
+	return token, nil
+}
+
+func noteModelToString(note *models.Note) string {
 	var fullNote string
 
 	for _, block := range note.Blocks {
@@ -323,23 +365,7 @@ func generateNoteTagsToModelNote(languageService language.Service, note *models.
 		}
 
 	}
-
-	keywords, err := languageService.GetKeywordsFromTextInput(fullNote)
-	if err != nil {
-		return status.Error(codes.Internal, err.Error())
-	}
-
-	note.Keywords = keywords
-	return nil
-}
-
-func (srv *notesAPI) authenticate(ctx context.Context) (*auth.Token, error) {
-	token, err := srv.auth.TokenFromContext(ctx)
-	if err != nil {
-		srv.logger.Debug("could not authenticate request", zap.Error(err))
-		return nil, status.Error(codes.Unauthenticated, "invalid token")
-	}
-	return token, nil
+	return fullNote
 }
 
 var protobufFormatToFormatter = map[notesv1.NoteExportFormat]func(*notesv1.Note) ([]byte, error){
@@ -405,6 +431,19 @@ func protobufBlockToModelsBlock(block *notesv1.Block) *models.NoteBlock {
 		modelsBlock.NumberPoint = &val
 	}
 	return modelsBlock
+}
+
+func modelsQuizToProtobufQuiz(quiz *models.Quiz) *notesv1.Quiz {
+	res := &notesv1.Quiz{}
+
+	for _, question := range quiz.QuizQuestions {
+		res.Questions = append(res.Questions, &notesv1.QuizQuestion{
+			Question:  question.Question,
+			Answers:   question.Answers,
+			Solutions: question.Answers,
+		})
+	}
+	return res
 }
 
 func modelsNoteToProtobufNote(note *models.Note) *notesv1.Note {

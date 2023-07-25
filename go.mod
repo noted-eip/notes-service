@@ -50,6 +50,7 @@ require (
 	github.com/noted-eip/noted/mailing-service v0.0.0-20230612112126-a144d6b761c3 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/sashabaranov/go-openai v1.14.1 // indirect
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
 	github.com/xdg-go/scram v1.1.2 // indirect
 	github.com/xdg-go/stringprep v1.0.4 // indirect
