@@ -52,6 +52,8 @@ type NotedLanguageService struct {
 
 // TODO: To clean
 func (s *NotedLanguageService) Init() error {
+
+	// Get natural AI credentials
 	jsonCredentialBase64 := os.Getenv("JSON_GOOGLE_CREDS_B64")
 
 	if jsonCredentialBase64 == "" {
@@ -59,6 +61,7 @@ func (s *NotedLanguageService) Init() error {
 		return nil
 	}
 
+	// Get api key for knowledge graph
 	googleApiKey := os.Getenv("GOOGLE_API_KEY")
 	if googleApiKey == "" {
 		s.lClient = nil
@@ -71,23 +74,27 @@ func (s *NotedLanguageService) Init() error {
 		return err
 	}
 
+	// Initialize natural api client (google language)
 	client, err := glanguage.NewClient(context.Background(), option.WithCredentialsJSON(jsonCredential))
 	if err != nil {
 		return err
 	}
 	s.lClient = client
 
+	// Initialize knowledge graph service
 	service, err := kgsearch.NewService(context.Background(), option.WithAPIKey(googleApiKey))
 	if err != nil {
 		return err
 	}
 	s.kgService = service
 
+	// Get key for GPT (openai)
 	openaiAPIKey := os.Getenv("OPENAI_API_KEY")
 	if err != nil {
 		return err
 	}
 
+	// Init open ai client
 	s.openaiClient = openai.NewClient(openaiAPIKey)
 	if s.openaiClient == nil {
 		return errors.New("couldn't initialize openAI client")
