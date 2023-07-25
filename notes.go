@@ -293,7 +293,10 @@ func (srv *notesAPI) GenerateQuiz(ctx context.Context, req *notesv1.GenerateQuiz
 		return nil, err
 	}
 
-	// TODO Validate
+	err = validators.ValidateGenerateQuizzRequest(req)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
 
 	// Check user is part of the group.
 	_, err = srv.groups.GetGroup(ctx, &models.OneGroupFilter{GroupID: req.GroupId}, token.AccountID)
