@@ -257,6 +257,10 @@ func (s *NotedLanguageService) GenerateQuizFromTextInput(input string) (*models.
 		return nil, err
 	}
 
+	if len(res.Choices) == 0 {
+		return nil, errors.New("google answered badly to generate a quiz with gpt (res.Choices == 0)")
+	}
+
 	jsonMessage := res.Choices[0].Message.Content
 	quiz := &models.Quiz{}
 
