@@ -590,6 +590,7 @@ func TestNotesSuite(t *testing.T) {
 		}
 	})
 
+	// NOTE: This test takes 5 seconds
 	t.Run("can-t-generate-quiz-on-other-s-notes", func(t *testing.T) {
 		_, err := tu.notes.GenerateQuiz(maxime.Context, &notesv1.GenerateQuizRequest{
 			GroupId: note.Group.ID,
