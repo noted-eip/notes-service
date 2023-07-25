@@ -78,6 +78,16 @@ type Note struct {
 	Blocks          []NoteBlock `json:"blocks" bson:"blocks"`
 }
 
+type Quiz struct {
+	QuizQuestions []QuizQuestion `json:"questions,omitempty" bson:"questions,omitempty"`
+}
+
+type QuizQuestion struct {
+	Question  string   `json:"question,omitempty" bson:"question,omitempty"`
+	Answers   []string `json:"answers,omitempty" bson:"answers,omitempty"`
+	Solutions []string `json:"solutions,omitempty" bson:"solutions,omitempty"`
+}
+
 func (note *Note) FindBlock(blockID string) *NoteBlock {
 	for i := 0; i < len(note.Blocks); i++ {
 		if note.Blocks[i].ID == blockID {
