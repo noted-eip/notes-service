@@ -4,10 +4,12 @@ import (
 	"context"
 	"errors"
 	"notes-service/auth"
-	"notes-service/background"
 	"notes-service/language"
 	"notes-service/models"
 	"notes-service/models/mongo"
+
+	background "github.com/noted-eip/noted/background-service"
+
 	notesv1 "notes-service/protorepo/noted/notes/v1"
 	"time"
 
@@ -75,7 +77,8 @@ func newTestUtilsOrDie(t *testing.T) *testUtils {
 	notesRepository := mongo.NewNotesRepository(db.DB, logger)
 	groupsRepository := mongo.NewGroupsRepository(db.DB, logger)
 	activitiesRepository := mongo.NewActivitiesRepository(db.DB, logger)
-	language := &language.NaturalAPIService{}
+	language := &language.NotedLanguageService{}
+	language.Init()
 	background := background.NewService(logger)
 	require.NoError(t, language.Init())
 	newUUID, err := nanoid.Standard(21)

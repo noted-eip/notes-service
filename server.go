@@ -4,8 +4,12 @@ import (
 	"crypto/ed25519"
 	"encoding/base64"
 	"notes-service/auth"
-	"notes-service/background"
 	"notes-service/language"
+
+	"notes-service/communication"
+
+	background "github.com/noted-eip/noted/background-service"
+	mailing "github.com/noted-eip/noted/mailing-service"
 
 	"context"
 	"errors"
@@ -31,7 +35,9 @@ type server struct {
 
 	authService       auth.Service
 	backgroundService background.Service
+	mailingService    mailing.Service
 	languageService   language.Service // NOTE: Could put directly service typed as NaturalAPIService, remove Init() from interface and just put it in NaturalAPIService
+	accountsClient    *communication.AccountsServiceClient
 
 	mongoDB *mongo.Database
 
@@ -52,6 +58,8 @@ func (s *server) Init(opt ...grpc.ServerOption) {
 	s.initRepositories()
 	s.initLanguageService()
 	s.initBackgroundService()
+	s.initMailingService()
+	s.initAccountsClient()
 	s.initGroupsAPI()
 	s.initNotesAPI()
 	s.initRecommendationsAPI()
@@ -116,7 +124,7 @@ func (s *server) initLogger() {
 }
 
 func (s *server) initLanguageService() {
-	s.languageService = &language.NaturalAPIService{}
+	s.languageService = &language.NotedLanguageService{}
 	err := s.languageService.Init()
 	must(err, "unable to instantiate language service")
 }
@@ -133,14 +141,31 @@ func (s *server) initBackgroundService() {
 	s.backgroundService = background.NewService(s.logger)
 }
 
+func (s *server) initMailingService() {
+	s.mailingService = mailing.NewService(s.logger, *gmailSuperSecret)
+}
+
+func (s *server) initAccountsClient() {
+	accountsClient, err := communication.NewAccountsServiceClient(*accountsServiceUrl)
+	if *environment == envIsDev && err != nil {
+		s.logger.Warn(fmt.Sprintf("could not instantiate accounts service connection: %v", err))
+		accountsClient = nil
+	} else {
+		must(err, "could not instantiate accounts service connection")
+	}
+	s.accountsClient = accountsClient
+}
+
 func (s *server) initGroupsAPI() {
 	s.groupsAPI = &groupsAPI{
-		auth:       s.authService,
-		logger:     s.logger,
-		notes:      s.notesRepository,
-		groups:     s.groupsRepository,
-		activities: s.activitiesRepository,
-		background: s.backgroundService,
+		auth:           s.authService,
+		logger:         s.logger,
+		notes:          s.notesRepository,
+		groups:         s.groupsRepository,
+		activities:     s.activitiesRepository,
+		background:     s.backgroundService,
+		mailing:        s.mailingService,
+		accountsClient: s.accountsClient,
 	}
 }
 

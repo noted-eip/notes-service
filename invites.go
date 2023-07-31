@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"notes-service/models"
+	accountsv1 "notes-service/protorepo/noted/accounts/v1"
 	notesv1 "notes-service/protorepo/noted/notes/v1"
 	"notes-service/validators"
 
@@ -24,12 +25,36 @@ func (srv *groupsAPI) SendInvite(ctx context.Context, req *notesv1.SendInviteReq
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
+	group, err := srv.groups.GetGroupInternal(ctx, &models.OneGroupFilter{GroupID: req.GroupId})
+	if err != nil {
+		return nil, err
+	}
+	if group.WorkspaceAccountID != nil {
+		return nil, status.Error(codes.InvalidArgument, "Cannot send invitation to personal workspace")
+	}
+
 	invite, err := srv.groups.SendInvite(ctx, &models.OneGroupFilter{GroupID: req.GroupId}, &models.SendInvitePayload{
 		RecipientAccountID: req.RecipientAccountId,
 		ValidUntil:         time.Now().Add(time.Hour * 24 * 7),
 	}, token.AccountID)
 	if err != nil {
 		return nil, statusFromModelError(err)
+	}
+
+	if srv.accountsClient != nil {
+		emailInformation := SendGroupInviteMailContent(invite.RecipientAccountID, group.Name, timestamppb.New(invite.ValidUntil))
+		accountResponse, err := srv.accountsClient.Accounts.GetAccount(ctx, &accountsv1.GetAccountRequest{
+			AccountId: invite.SenderAccountID,
+		})
+		if err != nil {
+			return nil, err
+		}
+		err = srv.mailing.SendEmails(ctx, emailInformation, []string{accountResponse.Account.Email})
+		if err != nil {
+			return nil, status.Error(codes.Internal, err.Error())
+		}
+	} else {
+		srv.logger.Warn("SendEmail for invite returned an error because notes service is not connected with the accountsClients")
 	}
 
 	return &notesv1.SendInviteResponse{Invite: modelsInviteToProtobufInvite(invite, req.GroupId)}, nil
@@ -44,6 +69,14 @@ func (srv *groupsAPI) GetInvite(ctx context.Context, req *notesv1.GetInviteReque
 	err = validators.ValidateGetInviteRequest(req)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	group, err := srv.groups.GetGroupInternal(ctx, &models.OneGroupFilter{GroupID: req.GroupId})
+	if err != nil {
+		return nil, err
+	}
+	if group.WorkspaceAccountID != nil {
+		return nil, status.Error(codes.InvalidArgument, "Cannot get invitation from personal workspace")
 	}
 
 	invite, err := srv.groups.GetInvite(ctx, &models.OneInviteFilter{GroupID: req.GroupId, InviteID: req.InviteId}, token.AccountID)
@@ -131,9 +164,11 @@ func (srv *groupsAPI) ListInvites(ctx context.Context, req *notesv1.ListInvitesR
 	if token.AccountID != req.RecipientAccountId && token.AccountID != req.SenderAccountId {
 		if req.GroupId != "" {
 			group, err := srv.groups.GetGroupInternal(ctx, &models.OneGroupFilter{GroupID: req.GroupId})
-
 			if err != nil {
 				return nil, err
+			}
+			if group.WorkspaceAccountID != nil {
+				return nil, status.Error(codes.InvalidArgument, "Cannot list invitation from personal workspace")
 			}
 			member := group.FindMember(token.AccountID)
 			if member == nil {

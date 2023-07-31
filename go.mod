@@ -39,6 +39,7 @@ require (
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
+	github.com/gomarkdown/markdown v0.0.0-20230322041520-c84983bdbf2a // indirect
 	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/google/s2a-go v0.1.3 // indirect
 	github.com/google/uuid v1.3.0 // indirect
@@ -46,8 +47,10 @@ require (
 	github.com/googleapis/gax-go/v2 v2.8.0 // indirect
 	github.com/klauspost/compress v1.16.5 // indirect
 	github.com/montanaflynn/stats v0.7.1 // indirect
+	github.com/noted-eip/noted/mailing-service v0.0.0-20230612112126-a144d6b761c3 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/sashabaranov/go-openai v1.14.1 // indirect
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
 	github.com/xdg-go/scram v1.1.2 // indirect
 	github.com/xdg-go/stringprep v1.0.4 // indirect
@@ -69,5 +72,6 @@ require (
 	github.com/go-ozzo/ozzo-validation/v4 v4.3.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.15.2
 	github.com/jaevor/go-nanoid v1.3.0
+	github.com/noted-eip/noted/background-service v0.0.0-20230612085710-bb82b35c9b96
 	google.golang.org/genproto v0.0.0-20230410155749-daa745c078e1
 )
