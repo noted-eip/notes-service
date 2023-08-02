@@ -305,12 +305,3 @@ func (srv *groupsAPI) moveNotesToUserWorkspaceOrDeleteThem(ctx context.Context, 
 	}
 	return nil
 }
-
-func HasEditPermission(AccountsWithEditPermissions []string, recipientAccountID string) bool {
-	for _, accountID := range AccountsWithEditPermissions {
-		if accountID == recipientAccountID {
-			return true
-		}
-	}
-	return false
-}

@@ -133,7 +133,7 @@ func (srv *notesAPI) UpdateNote(ctx context.Context, req *notesv1.UpdateNoteRequ
 	}
 
 	// Check if the user has edit access (author or in the list)
-	if note.AuthorAccountID != token.AccountID || !HasEditPermission(note.AccountsWithEditPermissions, token.AccountID) {
+	if note.AuthorAccountID != token.AccountID || !hasEditPermission(note.AccountsWithEditPermissions, token.AccountID) {
 		return nil, status.Error(codes.PermissionDenied, "you do not have edit permissions on this note")
 	}
 
@@ -358,6 +358,7 @@ func (srv *notesAPI) UpdateKeywordsByNoteId(noteId string, groupId string, accou
 	return nil
 }
 
+// TODO(protorepo): Change it so we can grant and remove note edit permissions
 func (srv *notesAPI) GrantNoteEditPermission(ctx context.Context, req *notesv1.GrantNoteEditPermissionRequest) (*notesv1.GrantNoteEditPermissionResponse, error) {
 	token, err := srv.authenticate(ctx)
 	if err != nil {
@@ -378,6 +379,15 @@ func (srv *notesAPI) GrantNoteEditPermission(ctx context.Context, req *notesv1.G
 		return nil, err
 	}
 	return &notesv1.GrantNoteEditPermissionResponse{}, nil
+}
+
+func hasEditPermission(AccountsWithEditPermissions []string, recipientAccountID string) bool {
+	for _, accountID := range AccountsWithEditPermissions {
+		if accountID == recipientAccountID {
+			return true
+		}
+	}
+	return false
 }
 
 func (srv *notesAPI) authenticate(ctx context.Context) (*auth.Token, error) {
