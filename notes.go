@@ -133,7 +133,7 @@ func (srv *notesAPI) UpdateNote(ctx context.Context, req *notesv1.UpdateNoteRequ
 	}
 
 	// Check if the user has edit access (author or in the list)
-	if note.AuthorAccountID != token.AccountID && !hasEditPermission(note.AccountsWithEditPermissions, token.AccountID) {
+	if !hasEditPermission(note.AccountsWithEditPermissions, token.AccountID) {
 		return nil, status.Error(codes.PermissionDenied, "you do not have edit permissions on this note")
 	}
 
@@ -290,6 +290,11 @@ func (srv *notesAPI) OnAccountDelete(ctx context.Context, req *notesv1.OnAccount
 		srv.logger.Warn("Could not delete notes of " + token.AccountID + " reason " + err.Error())
 	}
 
+	err = srv.notes.RemoveEditPermissions(ctx, nil, token.AccountID)
+	if err != nil {
+		return nil, err
+	}
+
 	err = srv.groups.OnAccountDelete(ctx, token.AccountID)
 	if err != nil {
 		return nil, err
@@ -373,6 +378,16 @@ func (srv *notesAPI) GrantNoteEditPermission(ctx context.Context, req *notesv1.G
 
 	if note.AuthorAccountID != token.AccountID {
 		return nil, status.Error(codes.PermissionDenied, "you have to be the owner of the note to grant permissions")
+	}
+
+	// Check if recipient is part of the group
+	group, err := srv.groups.GetGroupInternal(ctx, &models.OneGroupFilter{GroupID: req.GroupId})
+	if err != nil {
+		return nil, statusFromModelError(err)
+	}
+
+	if group.FindMember(req.RecipientAccountId) == nil {
+		return nil, status.Error(codes.PermissionDenied, "you cannot grant permission to someone who is not part of the group")
 	}
 
 	err = srv.notes.GrantNoteEditPermission(ctx, &models.OneNoteFilter{GroupID: req.GroupId, NoteID: req.NoteId}, token.AccountID, req.RecipientAccountId)

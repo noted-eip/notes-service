@@ -560,21 +560,20 @@ func TestNotesSuite(t *testing.T) {
 	require.NoError(t, err)
 
 	// NOTE: This test takes at least 5 seconds
-	// t.Run("generate-quiz-success", func(t *testing.T) {
+	t.Run("generate-quiz-success", func(t *testing.T) {
+		res, err := tu.notes.GenerateQuiz(testUser.Context, &notesv1.GenerateQuizRequest{
+			GroupId: note.Group.ID,
+			NoteId:  note.ID,
+		})
+		require.NoError(t, err)
 
-	// 	res, err := tu.notes.GenerateQuiz(testUser.Context, &notesv1.GenerateQuizRequest{
-	// 		GroupId: note.Group.ID,
-	// 		NoteId:  note.ID,
-	// 	})
-	// 	require.NoError(t, err)
-
-	// 	require.NotZero(t, len(res.Quiz.Questions))
-	// 	for _, question := range res.Quiz.Questions {
-	// 		require.NotZero(t, len(question.Question))
-	// 		require.NotZero(t, len(question.Answers))
-	// 		require.NotZero(t, len(question.Solutions))
-	// 	}
-	// })
+		require.NotZero(t, len(res.Quiz.Questions))
+		for _, question := range res.Quiz.Questions {
+			require.NotZero(t, len(question.Question))
+			require.NotZero(t, len(question.Answers))
+			require.NotZero(t, len(question.Solutions))
+		}
+	})
 
 	invite := testUser.SendInvite(t, tu, maxime, testGroup)
 	maxime.AcceptInvite(t, tu, invite)
@@ -607,6 +606,16 @@ func TestNotesSuite(t *testing.T) {
 		require.NotNil(t, res)
 	})
 
+	t.Run("author-cannot-grant-edit-permissions-to-stranger", func(t *testing.T) {
+		res, err := tu.notes.GrantNoteEditPermission(note.Author.Context, &notesv1.GrantNoteEditPermissionRequest{
+			GroupId:            note.Group.ID,
+			NoteId:             note.ID,
+			RecipientAccountId: stranger.ID,
+		})
+		require.Error(t, err)
+		require.Nil(t, res)
+	})
+
 	t.Run("user-can-update-note-with-edit-permission", func(t *testing.T) {
 		newTitle := "Hacked by Maximator"
 
@@ -624,6 +633,31 @@ func TestNotesSuite(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, res.Note.Title, newTitle)
 
+	})
+
+	t.Run("remove-edit-permissions-when-leaving-a-group", func(t *testing.T) {
+		res, err := tu.notesRepository.GetNote(testUser.Context, &models.OneNoteFilter{
+			GroupID: testGroup.ID,
+			NoteID:  note.ID,
+		}, testUser.ID)
+
+		require.NoError(t, err)
+		require.Equal(t, len(res.AccountsWithEditPermissions), 2)
+
+		_, err = tu.groups.RemoveMember(testUser.Context,
+			&notesv1.RemoveMemberRequest{
+				GroupId:   testGroup.ID,
+				AccountId: maxime.ID,
+			})
+		require.NoError(t, err)
+
+		res, err = tu.notesRepository.GetNote(testUser.Context, &models.OneNoteFilter{
+			GroupID: testGroup.ID,
+			NoteID:  note.ID,
+		}, testUser.ID)
+
+		require.NoError(t, err)
+		require.Equal(t, len(res.AccountsWithEditPermissions), 1)
 	})
 
 }

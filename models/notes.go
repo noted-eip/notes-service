@@ -164,4 +164,7 @@ type NotesRepository interface {
 	UpdateBlock(ctx context.Context, filter *OneBlockFilter, payload *UpdateBlockPayload, accountID string) (*NoteBlock, error)
 	GetBlock(ctx context.Context, filter *OneBlockFilter, accountID string) (*NoteBlock, error)
 	DeleteBlock(ctx context.Context, filter *OneBlockFilter, accountID string) error
+
+	// Utils
+	RemoveEditPermissions(ctx context.Context, filter *OneNoteFilter, accountID string) error
 }

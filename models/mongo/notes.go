@@ -2,6 +2,7 @@ package mongo
 
 import (
 	"context"
+	"errors"
 	"notes-service/models"
 	"time"
 
@@ -285,6 +286,33 @@ func (repo *notesRepository) DeleteBlock(ctx context.Context, filter *models.One
 		}}}
 
 	return repo.findOneAndUpdate(ctx, query, update, note)
+}
+
+// If filter is set to nil, every edit permissions of his will be deleted on the db
+// If filter is not set to nil, GroupID is mandatory. To specify one note, fill NoteID
+func (repo *notesRepository) RemoveEditPermissions(ctx context.Context, filter *models.OneNoteFilter, accountID string) error {
+	query := bson.D{
+		{Key: "authorAccountId", Value: accountID},
+	}
+
+	if filter != nil {
+		if filter.GroupID != "" {
+			query = append(query, bson.E{Key: "groupId", Value: filter.GroupID})
+		} else {
+			return errors.New("when removing edit permissions with a filter, please specify a group id")
+		}
+		if filter.NoteID != "" {
+			query = append(query, bson.E{Key: "_id", Value: filter.NoteID})
+		}
+	}
+	update := bson.D{
+		{Key: "$pull", Value: bson.D{
+			{Key: "accountsWithEditPermissions", Value: accountID},
+		}},
+	}
+
+	_, err := repo.updateMany(ctx, query, update)
+	return err
 }
 
 func updateBlockPayloadToDocument(payload *models.UpdateBlockPayload) bson.E {
