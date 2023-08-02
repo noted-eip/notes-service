@@ -285,21 +285,6 @@ func TestNotesSuite(t *testing.T) {
 		require.LessOrEqual(t, res.Note.ModifiedAt.AsTime().Unix(), after.Unix())
 	})
 
-	t.Run("member-cannot-update-note-title", func(t *testing.T) {
-		res, err := tu.notes.UpdateNote(maxime.Context, &notesv1.UpdateNoteRequest{
-			GroupId: edouardGroup.ID,
-			NoteId:  edouardNote.ID,
-			Note: &notesv1.Note{
-				Title: "Brand New Title",
-			},
-			UpdateMask: &fieldmaskpb.FieldMask{
-				Paths: []string{"title"},
-			},
-		})
-		requireErrorHasGRPCCode(t, codes.NotFound, err)
-		require.Nil(t, res)
-	})
-
 	t.Run("stranger-cannot-update-note-title", func(t *testing.T) {
 		res, err := tu.notes.UpdateNote(stranger.Context, &notesv1.UpdateNoteRequest{
 			GroupId: edouardGroup.ID,
@@ -315,7 +300,7 @@ func TestNotesSuite(t *testing.T) {
 		require.Nil(t, res)
 	})
 
-	t.Run("member-cannot-update-note-title", func(t *testing.T) {
+	t.Run("member-no-edit-rights-cannot-update-note-title", func(t *testing.T) {
 		res, err := tu.notes.UpdateNote(maxime.Context, &notesv1.UpdateNoteRequest{
 			GroupId: edouardGroup.ID,
 			NoteId:  edouardNote.ID,
@@ -326,7 +311,7 @@ func TestNotesSuite(t *testing.T) {
 				Paths: []string{"title"},
 			},
 		})
-		requireErrorHasGRPCCode(t, codes.NotFound, err)
+		requireErrorHasGRPCCode(t, codes.PermissionDenied, err)
 		require.Nil(t, res)
 	})
 
@@ -568,7 +553,7 @@ func TestNotesSuite(t *testing.T) {
 		}
 	})
 
-	// Clean-up maximeGroup made notes
+	// Clean-up maximeGroup made notes (Because of background service bug)
 	err := tu.notesRepository.DeleteNotes(context.TODO(), &models.ManyNotesFilter{
 		AuthorAccountID: maxime.ID,
 	})
@@ -590,7 +575,7 @@ func TestNotesSuite(t *testing.T) {
 		}
 	})
 
-	// NOTE: This test takes 5 seconds
+	// NOTE: This test takes at least 5 seconds
 	t.Run("can-t-generate-quiz-on-other-s-notes", func(t *testing.T) {
 		_, err := tu.notes.GenerateQuiz(maxime.Context, &notesv1.GenerateQuizRequest{
 			GroupId: note.Group.ID,

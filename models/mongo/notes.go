@@ -119,7 +119,7 @@ func (repo *notesRepository) UpdateNote(ctx context.Context, filter *models.OneN
 	query := bson.D{
 		{Key: "_id", Value: filter.NoteID},
 		{Key: "groupId", Value: filter.GroupID},
-		{Key: "authorAccountId", Value: accountID},
+		// {Key: "authorAccountId", Value: accountID}, // NOTE: Removed to manage notes permissions
 	}
 	update := bson.D{
 		{Key: "$set", Value: payload},

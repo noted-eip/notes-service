@@ -126,16 +126,18 @@ func (srv *notesAPI) UpdateNote(ctx context.Context, req *notesv1.UpdateNoteRequ
 	if err != nil {
 		return nil, statusFromModelError(err)
 	}
-	// check user can edit the note
-	noteCheck, err := srv.notes.GetNote(ctx, &models.OneNoteFilter{GroupID: req.GroupId, NoteID: req.NoteId}, token.AccountID)
+
+	note, err := srv.notes.GetNote(ctx, &models.OneNoteFilter{GroupID: req.GroupId, NoteID: req.NoteId}, token.AccountID)
 	if err != nil {
 		return nil, statusFromModelError(err)
 	}
-	err = HasEditPermission(noteCheck.AccountsWithEditPermissions, token.AccountID)
-	if err != nil {
-		return nil, status.Error(codes.PermissionDenied, err.Error())
+
+	// Check if the user has edit access (author or in the list)
+	if note.AuthorAccountID != token.AccountID || !HasEditPermission(note.AccountsWithEditPermissions, token.AccountID) {
+		return nil, status.Error(codes.PermissionDenied, "you do not have edit permissions on this note")
 	}
-	note, err := srv.notes.UpdateNote(ctx,
+
+	updatedNote, err := srv.notes.UpdateNote(ctx,
 		&models.OneNoteFilter{GroupID: req.GroupId, NoteID: req.NoteId},
 		updateNotePayloadFromUpdateNoteRequest(req),
 		token.AccountID)
@@ -144,9 +146,9 @@ func (srv *notesAPI) UpdateNote(ctx context.Context, req *notesv1.UpdateNoteRequ
 	}
 
 	srv.background.AddProcess(&background.Process{
-		Identifier: models.NoteIdentifier{NoteId: note.ID, ActionType: models.NoteUpdateKeyword},
+		Identifier: models.NoteIdentifier{NoteId: updatedNote.ID, ActionType: models.NoteUpdateKeyword},
 		CallBackFct: func() error {
-			err := srv.UpdateKeywordsByNoteId(note.ID, req.GroupId, token.AccountID)
+			err := srv.UpdateKeywordsByNoteId(updatedNote.ID, req.GroupId, note.AuthorAccountID)
 			return err
 		},
 		SecondsToDebounce:             5,
@@ -154,7 +156,7 @@ func (srv *notesAPI) UpdateNote(ctx context.Context, req *notesv1.UpdateNoteRequ
 		RepeatProcess:                 false,
 	})
 
-	return &notesv1.UpdateNoteResponse{Note: modelsNoteToProtobufNote(note)}, nil
+	return &notesv1.UpdateNoteResponse{Note: modelsNoteToProtobufNote(updatedNote)}, nil
 }
 
 func updateNotePayloadFromUpdateNoteRequest(req *notesv1.UpdateNoteRequest) *models.UpdateNotePayload {
@@ -356,6 +358,28 @@ func (srv *notesAPI) UpdateKeywordsByNoteId(noteId string, groupId string, accou
 	return nil
 }
 
+func (srv *notesAPI) GrantNoteEditPermission(ctx context.Context, req *notesv1.GrantNoteEditPermissionRequest) (*notesv1.GrantNoteEditPermissionResponse, error) {
+	token, err := srv.authenticate(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	note, err := srv.notes.GetNote(ctx, &models.OneNoteFilter{GroupID: req.GroupId, NoteID: req.NoteId}, token.AccountID)
+	if err != nil {
+		return nil, statusFromModelError(err)
+	}
+
+	if note.AuthorAccountID != token.AccountID {
+		return nil, status.Error(codes.PermissionDenied, "you have to be the owner of the note to grant permissions")
+	}
+
+	err = srv.notes.GrantNoteEditPermission(ctx, &models.OneNoteFilter{GroupID: req.GroupId, NoteID: req.NoteId}, token.AccountID, req.RecipientAccountId)
+	if err != nil {
+		return nil, err
+	}
+	return &notesv1.GrantNoteEditPermissionResponse{}, nil
+}
+
 func (srv *notesAPI) authenticate(ctx context.Context) (*auth.Token, error) {
 	token, err := srv.auth.TokenFromContext(ctx)
 	if err != nil {
@@ -546,20 +570,4 @@ func stringPtrValueOrFallback(ptr *string, fallback string) string {
 		return *ptr
 	}
 	return fallback
-}
-
-// Ajouter un recipient_account_id dans la variable contenu de la note
-
-func (srv *notesAPI) GrantNoteEditPermission(ctx context.Context, req *notesv1.GrantNoteEditPermissionRequest) (*notesv1.GrantNoteEditPermissionResponse, error) {
-	token, err := srv.authenticate(ctx)
-	if err != nil {
-		return nil, err
-	}
-	// verifié que grantNoteEditPermission c'est l'admin
-
-	err = srv.notes.GrantNoteEditPermission(ctx, &models.OneNoteFilter{GroupID: req.GroupId, NoteID: req.NoteId}, token.AccountID, req.RecipientAccountId)
-	if err != nil {
-		return nil, err
-	}
-	return &notesv1.GrantNoteEditPermissionResponse{}, nil
 }
