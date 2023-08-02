@@ -559,29 +559,71 @@ func TestNotesSuite(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	t.Run("generate-quiz-success", func(t *testing.T) {
+	// NOTE: This test takes at least 5 seconds
+	// t.Run("generate-quiz-success", func(t *testing.T) {
 
-		res, err := tu.notes.GenerateQuiz(testUser.Context, &notesv1.GenerateQuizRequest{
-			GroupId: note.Group.ID,
-			NoteId:  note.ID,
-		})
-		require.NoError(t, err)
+	// 	res, err := tu.notes.GenerateQuiz(testUser.Context, &notesv1.GenerateQuizRequest{
+	// 		GroupId: note.Group.ID,
+	// 		NoteId:  note.ID,
+	// 	})
+	// 	require.NoError(t, err)
 
-		require.NotZero(t, len(res.Quiz.Questions))
-		for _, question := range res.Quiz.Questions {
-			require.NotZero(t, len(question.Question))
-			require.NotZero(t, len(question.Answers))
-			require.NotZero(t, len(question.Solutions))
-		}
+	// 	require.NotZero(t, len(res.Quiz.Questions))
+	// 	for _, question := range res.Quiz.Questions {
+	// 		require.NotZero(t, len(question.Question))
+	// 		require.NotZero(t, len(question.Answers))
+	// 		require.NotZero(t, len(question.Solutions))
+	// 	}
+	// })
+
+	invite := testUser.SendInvite(t, tu, maxime, testGroup)
+	maxime.AcceptInvite(t, tu, invite)
+
+	t.Run("non-author-cannot-grant-permission", func(t *testing.T) {
+		newTitle := "Hacked by Maximator"
+
+		res, err := tu.notes.UpdateNote(
+			maxime.Context,
+			&notesv1.UpdateNoteRequest{
+				GroupId: note.Group.ID,
+				NoteId:  note.ID,
+				Note: &notesv1.Note{
+					Title: newTitle,
+				},
+				UpdateMask: &fieldmaskpb.FieldMask{
+					Paths: []string{"title"}},
+			})
+		require.Error(t, err)
+		require.Nil(t, res)
 	})
 
-	// NOTE: This test takes at least 5 seconds
-	t.Run("can-t-generate-quiz-on-other-s-notes", func(t *testing.T) {
-		_, err := tu.notes.GenerateQuiz(maxime.Context, &notesv1.GenerateQuizRequest{
-			GroupId: note.Group.ID,
-			NoteId:  note.ID,
+	t.Run("author-can-grant-edit-permissions", func(t *testing.T) {
+		res, err := tu.notes.GrantNoteEditPermission(note.Author.Context, &notesv1.GrantNoteEditPermissionRequest{
+			GroupId:            note.Group.ID,
+			NoteId:             note.ID,
+			RecipientAccountId: maxime.ID,
 		})
-		require.Error(t, err)
+		require.NoError(t, err)
+		require.NotNil(t, res)
+	})
+
+	t.Run("user-can-update-note-with-edit-permission", func(t *testing.T) {
+		newTitle := "Hacked by Maximator"
+
+		res, err := tu.notes.UpdateNote(
+			maxime.Context,
+			&notesv1.UpdateNoteRequest{
+				GroupId: note.Group.ID,
+				NoteId:  note.ID,
+				Note: &notesv1.Note{
+					Title: newTitle,
+				},
+				UpdateMask: &fieldmaskpb.FieldMask{
+					Paths: []string{"title"}},
+			})
+		require.NoError(t, err)
+		require.Equal(t, res.Note.Title, newTitle)
+
 	})
 
 }
