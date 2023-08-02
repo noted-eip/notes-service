@@ -639,7 +639,6 @@ func TestNotesSuite(t *testing.T) {
 			GroupID: testGroup.ID,
 			NoteID:  note.ID,
 		}, testUser.ID)
-
 		require.NoError(t, err)
 		require.Equal(t, len(res.AccountsWithEditPermissions), 2)
 
