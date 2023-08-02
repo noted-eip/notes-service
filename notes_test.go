@@ -632,7 +632,6 @@ func TestNotesSuite(t *testing.T) {
 			})
 		require.NoError(t, err)
 		require.Equal(t, res.Note.Title, newTitle)
-
 	})
 
 	t.Run("remove-edit-permissions-when-leaving-a-group", func(t *testing.T) {
