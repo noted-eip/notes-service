@@ -19,26 +19,6 @@ type notesRepository struct {
 	repository
 }
 
-func (repo *notesRepository) GrantNoteEditPermission(ctx context.Context, filter *models.OneNoteFilter, AccountID string, recipientAccountID string) error {
-	note := &models.Note{}
-	query := bson.D{
-		{Key: "_id", Value: filter.NoteID},
-		{Key: "groupId", Value: filter.GroupID},
-		{Key: "authorAccountId", Value: AccountID},
-	}
-	update := bson.D{
-		{Key: "$push", Value: bson.D{
-			{Key: "accountsWithEditPermissions", Value: recipientAccountID},
-		}},
-	}
-	err := repo.findOneAndUpdate(ctx, query, update, note)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
 func NewNotesRepository(db *mongo.Database, logger *zap.Logger) models.NotesRepository {
 	newUUID, err := nanoid.Standard(21)
 	if err != nil {
@@ -288,11 +268,31 @@ func (repo *notesRepository) DeleteBlock(ctx context.Context, filter *models.One
 	return repo.findOneAndUpdate(ctx, query, update, note)
 }
 
+func (repo *notesRepository) GrantNoteEditPermission(ctx context.Context, filter *models.OneNoteFilter, AccountID string, recipientAccountID string) error {
+	note := &models.Note{}
+	query := bson.D{
+		{Key: "_id", Value: filter.NoteID},
+		{Key: "groupId", Value: filter.GroupID},
+		{Key: "authorAccountId", Value: AccountID},
+	}
+	update := bson.D{
+		{Key: "$push", Value: bson.D{
+			{Key: "accountsWithEditPermissions", Value: recipientAccountID},
+		}},
+	}
+	err := repo.findOneAndUpdate(ctx, query, update, note)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // If filter is set to nil, every edit permissions of his will be deleted on the db
 // If filter is not set to nil, GroupID is mandatory. To specify one note, fill NoteID
 func (repo *notesRepository) RemoveEditPermissions(ctx context.Context, filter *models.OneNoteFilter, accountID string) error {
 	query := bson.D{
-		{Key: "authorAccountId", Value: accountID},
+		{Key: "accountsWithEditPermissions", Value: accountID}, // NOTE: MongoDB model logic is not "safe" here - Who/What can call this function is decided in the endpoint's logic
 	}
 
 	if filter != nil {

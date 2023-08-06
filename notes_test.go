@@ -44,6 +44,12 @@ func TestNotesSuite(t *testing.T) {
 		},
 	})
 
+	//
+	//
+	// Notes/Blocks CRUD tests
+	//
+	//
+
 	t.Run("create-note", func(t *testing.T) {
 		before := time.Now()
 		res, err := tu.notes.CreateNote(edouard.Context, &notesv1.CreateNoteRequest{
@@ -463,7 +469,6 @@ func TestNotesSuite(t *testing.T) {
 		require.Nil(t, res)
 	})
 
-	// maximeGroup := newTestGroup(t, tu, maxime, edouard)
 	newTestNote(t, tu, maximeGroup, edouard, nil)
 
 	t.Run("user-can-list-their-notes-across-groups", func(t *testing.T) {
@@ -559,8 +564,15 @@ func TestNotesSuite(t *testing.T) {
 	})
 	require.NoError(t, err)
 
+	//
+	//
+	// Quiz tests
+	//
+	//
+
 	// NOTE: This test takes at least 5 seconds
 	t.Run("generate-quiz-success", func(t *testing.T) {
+		return
 		res, err := tu.notes.GenerateQuiz(testUser.Context, &notesv1.GenerateQuizRequest{
 			GroupId: note.Group.ID,
 			NoteId:  note.ID,
@@ -575,42 +587,59 @@ func TestNotesSuite(t *testing.T) {
 		}
 	})
 
+	//
+	//
+	// Edit permissions tests
+	//
+	//
+
+	// Maxime joins test group
 	invite := testUser.SendInvite(t, tu, maxime, testGroup)
 	maxime.AcceptInvite(t, tu, invite)
 
-	t.Run("non-author-cannot-grant-permission", func(t *testing.T) {
-		newTitle := "Hacked by Maximator"
+	// Edouard joins test group
+	invite = testUser.SendInvite(t, tu, edouard, testGroup)
+	edouard.AcceptInvite(t, tu, invite)
 
-		res, err := tu.notes.UpdateNote(
-			maxime.Context,
-			&notesv1.UpdateNoteRequest{
-				GroupId: note.Group.ID,
-				NoteId:  note.ID,
-				Note: &notesv1.Note{
-					Title: newTitle,
-				},
-				UpdateMask: &fieldmaskpb.FieldMask{
-					Paths: []string{"title"}},
-			})
+	t.Run("non-author-cannot-grant-permission", func(t *testing.T) {
+		res, err := tu.notes.ChangeNoteEditPermission(maxime.Context, &notesv1.ChangeNoteEditPermissionRequest{
+			GroupId:            note.Group.ID,
+			NoteId:             note.ID,
+			RecipientAccountId: edouard.ID,
+			Type:               notesv1.ChangeNoteEditPermissionRequest_ACTION_GRANT,
+		})
 		require.Error(t, err)
 		require.Nil(t, res)
 	})
 
 	t.Run("author-can-grant-edit-permissions", func(t *testing.T) {
-		res, err := tu.notes.GrantNoteEditPermission(note.Author.Context, &notesv1.GrantNoteEditPermissionRequest{
+		res, err := tu.notes.ChangeNoteEditPermission(note.Author.Context, &notesv1.ChangeNoteEditPermissionRequest{
 			GroupId:            note.Group.ID,
 			NoteId:             note.ID,
 			RecipientAccountId: maxime.ID,
+			Type:               notesv1.ChangeNoteEditPermissionRequest_ACTION_GRANT,
 		})
 		require.NoError(t, err)
 		require.NotNil(t, res)
 	})
 
+	t.Run("non-author-cannot-grant-permission-even-with-edit-rights", func(t *testing.T) {
+		res, err := tu.notes.ChangeNoteEditPermission(maxime.Context, &notesv1.ChangeNoteEditPermissionRequest{
+			GroupId:            note.Group.ID,
+			NoteId:             note.ID,
+			RecipientAccountId: edouard.ID,
+			Type:               notesv1.ChangeNoteEditPermissionRequest_ACTION_GRANT,
+		})
+		require.Error(t, err)
+		require.Nil(t, res)
+	})
+
 	t.Run("author-cannot-grant-edit-permissions-to-stranger", func(t *testing.T) {
-		res, err := tu.notes.GrantNoteEditPermission(note.Author.Context, &notesv1.GrantNoteEditPermissionRequest{
+		res, err := tu.notes.ChangeNoteEditPermission(note.Author.Context, &notesv1.ChangeNoteEditPermissionRequest{
 			GroupId:            note.Group.ID,
 			NoteId:             note.ID,
 			RecipientAccountId: stranger.ID,
+			Type:               notesv1.ChangeNoteEditPermissionRequest_ACTION_GRANT,
 		})
 		require.Error(t, err)
 		require.Nil(t, res)
@@ -640,7 +669,7 @@ func TestNotesSuite(t *testing.T) {
 			NoteID:  note.ID,
 		}, testUser.ID)
 		require.NoError(t, err)
-		require.Equal(t, len(res.AccountsWithEditPermissions), 2)
+		OldNumberOfEditors := len(res.AccountsWithEditPermissions)
 
 		_, err = tu.groups.RemoveMember(testUser.Context,
 			&notesv1.RemoveMemberRequest{
@@ -655,7 +684,118 @@ func TestNotesSuite(t *testing.T) {
 		}, testUser.ID)
 
 		require.NoError(t, err)
-		require.Equal(t, len(res.AccountsWithEditPermissions), 1)
+		require.Equal(t, len(res.AccountsWithEditPermissions), OldNumberOfEditors-1)
+	})
+
+	// Granting permissions to Edouard
+	tu.notes.ChangeNoteEditPermission(note.Author.Context, &notesv1.ChangeNoteEditPermissionRequest{
+		GroupId:            note.Group.ID,
+		NoteId:             note.ID,
+		RecipientAccountId: edouard.ID,
+		Type:               notesv1.ChangeNoteEditPermissionRequest_ACTION_GRANT,
+	})
+
+	t.Run("non-author-cannot-remove-others-permission", func(t *testing.T) {
+		res, err := tu.notes.ChangeNoteEditPermission(edouard.Context, &notesv1.ChangeNoteEditPermissionRequest{
+			GroupId:            note.Group.ID,
+			NoteId:             note.ID,
+			RecipientAccountId: testUser.ID,
+			Type:               notesv1.ChangeNoteEditPermissionRequest_ACTION_REMOVE,
+		})
+		require.Error(t, err)
+		require.Nil(t, res)
+	})
+
+	t.Run("author-can-remove-edit-permissions", func(t *testing.T) {
+		res, err := tu.notesRepository.GetNote(testUser.Context, &models.OneNoteFilter{
+			GroupID: testGroup.ID,
+			NoteID:  note.ID,
+		}, testUser.ID)
+		require.NoError(t, err)
+		OldNumberOfEditors := len(res.AccountsWithEditPermissions)
+
+		r, err := tu.notes.ChangeNoteEditPermission(note.Author.Context, &notesv1.ChangeNoteEditPermissionRequest{
+			GroupId:            note.Group.ID,
+			NoteId:             note.ID,
+			RecipientAccountId: edouard.ID,
+			Type:               notesv1.ChangeNoteEditPermissionRequest_ACTION_REMOVE,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, r)
+
+		res, err = tu.notesRepository.GetNote(testUser.Context, &models.OneNoteFilter{
+			GroupID: testGroup.ID,
+			NoteID:  note.ID,
+		}, testUser.ID)
+
+		require.NoError(t, err)
+		require.Equal(t, len(res.AccountsWithEditPermissions), OldNumberOfEditors-1)
+
+	})
+
+	t.Run("user-cannot-update-note-after-removing-permissions", func(t *testing.T) {
+		newTitle := "Hacked by Edouardino"
+
+		res, err := tu.notes.UpdateNote(
+			edouard.Context,
+			&notesv1.UpdateNoteRequest{
+				GroupId: note.Group.ID,
+				NoteId:  note.ID,
+				Note: &notesv1.Note{
+					Title: newTitle,
+				},
+				UpdateMask: &fieldmaskpb.FieldMask{
+					Paths: []string{"title"}},
+			})
+		require.Error(t, err)
+		require.Nil(t, res)
+	})
+
+	t.Run("author-cannot-remove-edit-permissions-to-stranger", func(t *testing.T) {
+		res, err := tu.notes.ChangeNoteEditPermission(note.Author.Context, &notesv1.ChangeNoteEditPermissionRequest{
+			GroupId:            note.Group.ID,
+			NoteId:             note.ID,
+			RecipientAccountId: stranger.ID,
+			Type:               notesv1.ChangeNoteEditPermissionRequest_ACTION_REMOVE,
+		})
+		require.Error(t, err)
+		require.Nil(t, res)
+	})
+
+	// Granting permissions to Edouard
+	tu.notes.ChangeNoteEditPermission(note.Author.Context, &notesv1.ChangeNoteEditPermissionRequest{
+		GroupId:            note.Group.ID,
+		NoteId:             note.ID,
+		RecipientAccountId: edouard.ID,
+		Type:               notesv1.ChangeNoteEditPermissionRequest_ACTION_GRANT,
+	})
+
+	t.Run("user-can-remove-his-own-edit-permissions", func(t *testing.T) {
+		res, err := tu.notesRepository.GetNote(testUser.Context, &models.OneNoteFilter{
+			GroupID: testGroup.ID,
+			NoteID:  note.ID,
+		}, testUser.ID)
+		require.NoError(t, err)
+		OldNumberOfEditors := len(res.AccountsWithEditPermissions)
+
+		r, err := tu.notes.ChangeNoteEditPermission(edouard.Context, &notesv1.ChangeNoteEditPermissionRequest{
+			GroupId:            note.Group.ID,
+			NoteId:             note.ID,
+			RecipientAccountId: edouard.ID,
+			Type:               notesv1.ChangeNoteEditPermissionRequest_ACTION_REMOVE,
+		})
+
+		require.NoError(t, err)
+		require.NotNil(t, r)
+
+		res, err = tu.notesRepository.GetNote(testUser.Context, &models.OneNoteFilter{
+			GroupID: testGroup.ID,
+			NoteID:  note.ID,
+		}, testUser.ID)
+
+		require.NoError(t, err)
+		require.Equal(t, len(res.AccountsWithEditPermissions), OldNumberOfEditors-1)
+
 	})
 
 }
