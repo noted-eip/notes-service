@@ -572,7 +572,6 @@ func TestNotesSuite(t *testing.T) {
 
 	// NOTE: This test takes at least 5 seconds
 	t.Run("generate-quiz-success", func(t *testing.T) {
-		return
 		res, err := tu.notes.GenerateQuiz(testUser.Context, &notesv1.GenerateQuizRequest{
 			GroupId: note.Group.ID,
 			NoteId:  note.ID,
