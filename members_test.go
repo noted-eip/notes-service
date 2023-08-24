@@ -4,7 +4,6 @@ import (
 	"context"
 	"notes-service/models"
 	notesv1 "notes-service/protorepo/noted/notes/v1"
-	v1 "notes-service/protorepo/noted/notes/v1"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -23,10 +22,10 @@ func TestMembersSuite(t *testing.T) {
 	balthiGroup := newTestGroup(t, tu, balthi, thomas, edouard, kilian, maxime)
 
 	t.Run("update-member-promote-to-admin", func(t *testing.T) {
-		res, err := tu.groups.UpdateMember(balthi.Context, &v1.UpdateMemberRequest{
+		res, err := tu.groups.UpdateMember(balthi.Context, &notesv1.UpdateMemberRequest{
 			GroupId:   balthiGroup.ID,
 			AccountId: thomas.ID,
-			Member: &v1.GroupMember{
+			Member: &notesv1.GroupMember{
 				IsAdmin: true,
 			},
 			UpdateMask: &fieldmaskpb.FieldMask{
@@ -44,10 +43,10 @@ func TestMembersSuite(t *testing.T) {
 	})
 
 	t.Run("update-member-non-admin-cannot-promote", func(t *testing.T) {
-		res, err := tu.groups.UpdateMember(edouard.Context, &v1.UpdateMemberRequest{
+		res, err := tu.groups.UpdateMember(edouard.Context, &notesv1.UpdateMemberRequest{
 			GroupId:   balthiGroup.ID,
 			AccountId: kilian.ID,
-			Member: &v1.GroupMember{
+			Member: &notesv1.GroupMember{
 				IsAdmin: true,
 			},
 			UpdateMask: &fieldmaskpb.FieldMask{
@@ -59,10 +58,10 @@ func TestMembersSuite(t *testing.T) {
 	})
 
 	t.Run("update-member-stranger-cannot-promote", func(t *testing.T) {
-		res, err := tu.groups.UpdateMember(stranger.Context, &v1.UpdateMemberRequest{
+		res, err := tu.groups.UpdateMember(stranger.Context, &notesv1.UpdateMemberRequest{
 			GroupId:   balthiGroup.ID,
 			AccountId: kilian.ID,
-			Member: &v1.GroupMember{
+			Member: &notesv1.GroupMember{
 				IsAdmin: true,
 			},
 			UpdateMask: &fieldmaskpb.FieldMask{
@@ -74,10 +73,10 @@ func TestMembersSuite(t *testing.T) {
 	})
 
 	t.Run("update-member-stranger-cannot-promote-admin", func(t *testing.T) {
-		res, err := tu.groups.UpdateMember(stranger.Context, &v1.UpdateMemberRequest{
+		res, err := tu.groups.UpdateMember(stranger.Context, &notesv1.UpdateMemberRequest{
 			GroupId:   balthiGroup.ID,
 			AccountId: balthi.ID,
-			Member: &v1.GroupMember{
+			Member: &notesv1.GroupMember{
 				IsAdmin: true,
 			},
 			UpdateMask: &fieldmaskpb.FieldMask{
@@ -89,10 +88,10 @@ func TestMembersSuite(t *testing.T) {
 	})
 
 	t.Run("update-member-non-admin-cannot-promote-itself", func(t *testing.T) {
-		res, err := tu.groups.UpdateMember(edouard.Context, &v1.UpdateMemberRequest{
+		res, err := tu.groups.UpdateMember(edouard.Context, &notesv1.UpdateMemberRequest{
 			GroupId:   balthiGroup.ID,
 			AccountId: edouard.ID,
-			Member: &v1.GroupMember{
+			Member: &notesv1.GroupMember{
 				IsAdmin: true,
 			},
 			UpdateMask: &fieldmaskpb.FieldMask{
@@ -104,10 +103,10 @@ func TestMembersSuite(t *testing.T) {
 	})
 
 	t.Run("update-member-admin-cannot-promote-itself", func(t *testing.T) {
-		res, err := tu.groups.UpdateMember(balthi.Context, &v1.UpdateMemberRequest{
+		res, err := tu.groups.UpdateMember(balthi.Context, &notesv1.UpdateMemberRequest{
 			GroupId:   balthiGroup.ID,
 			AccountId: balthi.ID,
-			Member: &v1.GroupMember{
+			Member: &notesv1.GroupMember{
 				IsAdmin: true,
 			},
 			UpdateMask: &fieldmaskpb.FieldMask{
@@ -119,7 +118,7 @@ func TestMembersSuite(t *testing.T) {
 	})
 
 	t.Run("remove-member-admin-can-leave-group", func(t *testing.T) {
-		res, err := tu.groups.RemoveMember(balthi.Context, &v1.RemoveMemberRequest{
+		res, err := tu.groups.RemoveMember(balthi.Context, &notesv1.RemoveMemberRequest{
 			GroupId:   balthiGroup.ID,
 			AccountId: balthi.ID,
 		})
@@ -127,14 +126,14 @@ func TestMembersSuite(t *testing.T) {
 		require.NotNil(t, res)
 
 		// Ensure user has no access to group anymore.
-		_, err = tu.groups.GetGroup(balthi.Context, &v1.GetGroupRequest{
+		_, err = tu.groups.GetGroup(balthi.Context, &notesv1.GetGroupRequest{
 			GroupId: balthiGroup.ID,
 		})
 		requireErrorHasGRPCCode(t, codes.PermissionDenied, err)
 	})
 
 	t.Run("remove-member-admin-can-remove-regular-user", func(t *testing.T) {
-		res, err := tu.groups.RemoveMember(edouard.Context, &v1.RemoveMemberRequest{
+		res, err := tu.groups.RemoveMember(edouard.Context, &notesv1.RemoveMemberRequest{
 			GroupId:   balthiGroup.ID,
 			AccountId: edouard.ID,
 		})
@@ -142,14 +141,14 @@ func TestMembersSuite(t *testing.T) {
 		require.NotNil(t, res)
 
 		// Ensure user has no access to group anymore.
-		_, err = tu.groups.GetGroup(edouard.Context, &v1.GetGroupRequest{
+		_, err = tu.groups.GetGroup(edouard.Context, &notesv1.GetGroupRequest{
 			GroupId: balthiGroup.ID,
 		})
 		requireErrorHasGRPCCode(t, codes.PermissionDenied, err)
 	})
 
 	t.Run("remove-member-regular-member-cannot-remove-regular-user", func(t *testing.T) {
-		res, err := tu.groups.RemoveMember(maxime.Context, &v1.RemoveMemberRequest{
+		res, err := tu.groups.RemoveMember(maxime.Context, &notesv1.RemoveMemberRequest{
 			GroupId:   balthiGroup.ID,
 			AccountId: kilian.ID,
 		})
@@ -157,14 +156,14 @@ func TestMembersSuite(t *testing.T) {
 		require.Nil(t, res)
 
 		// Ensure user has still access to group.
-		_, err = tu.groups.GetGroup(kilian.Context, &v1.GetGroupRequest{
+		_, err = tu.groups.GetGroup(kilian.Context, &notesv1.GetGroupRequest{
 			GroupId: balthiGroup.ID,
 		})
 		require.NoError(t, err)
 	})
 
 	t.Run("remove-member-regular-member-can-remove-itself", func(t *testing.T) {
-		res, err := tu.groups.RemoveMember(maxime.Context, &v1.RemoveMemberRequest{
+		res, err := tu.groups.RemoveMember(maxime.Context, &notesv1.RemoveMemberRequest{
 			GroupId:   balthiGroup.ID,
 			AccountId: maxime.ID,
 		})
@@ -172,7 +171,7 @@ func TestMembersSuite(t *testing.T) {
 		require.NotNil(t, res)
 
 		// Ensure user has no access to group anymore.
-		_, err = tu.groups.GetGroup(maxime.Context, &v1.GetGroupRequest{
+		_, err = tu.groups.GetGroup(maxime.Context, &notesv1.GetGroupRequest{
 			GroupId: balthiGroup.ID,
 		})
 		requireErrorHasGRPCCode(t, codes.PermissionDenied, err)
@@ -186,7 +185,7 @@ func TestMembersSuite(t *testing.T) {
 		balthiFirstNote := newTestNote(t, tu, jhonGroup, balthi, []*notesv1.Block{})
 		balthiSecondNote := newTestNote(t, tu, jhonGroup, balthi, []*notesv1.Block{})
 
-		res, err := tu.groups.RemoveMember(jhon.Context, &v1.RemoveMemberRequest{
+		res, err := tu.groups.RemoveMember(jhon.Context, &notesv1.RemoveMemberRequest{
 			GroupId:   jhonGroup.ID,
 			AccountId: balthi.ID,
 		})
@@ -209,7 +208,7 @@ func TestMembersSuite(t *testing.T) {
 		_ = newTestNote(t, tu, jhonGroup, jean, []*notesv1.Block{})
 		_ = newTestNote(t, tu, jhonGroup, jean, []*notesv1.Block{})
 
-		res, err := tu.groups.RemoveMember(jhon.Context, &v1.RemoveMemberRequest{
+		res, err := tu.groups.RemoveMember(jhon.Context, &notesv1.RemoveMemberRequest{
 			GroupId:   jhonGroup.ID,
 			AccountId: jean.ID,
 		})

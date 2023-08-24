@@ -536,7 +536,8 @@ func (repo *groupsRepository) RemoveGroupMember(ctx context.Context, filter *mod
 			{Key: "inviteLinks", Value: bson.D{
 				{Key: "generatedByAccountId", Value: filter.AccountID},
 			}},
-		}}}
+		}},
+	}
 
 	err := repo.findOneAndUpdate(ctx, query, update, group)
 	if err != nil {

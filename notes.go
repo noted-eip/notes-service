@@ -52,6 +52,7 @@ func (srv *notesAPI) CreateNote(ctx context.Context, req *notesv1.CreateNoteRequ
 	if err != nil {
 		return nil, statusFromModelError(err)
 	}
+	// check user can edit the note
 
 	note, err := srv.notes.CreateNote(ctx, &models.CreateNotePayload{
 		GroupID:         req.GroupId,
@@ -126,7 +127,17 @@ func (srv *notesAPI) UpdateNote(ctx context.Context, req *notesv1.UpdateNoteRequ
 		return nil, statusFromModelError(err)
 	}
 
-	note, err := srv.notes.UpdateNote(ctx,
+	note, err := srv.notes.GetNote(ctx, &models.OneNoteFilter{GroupID: req.GroupId, NoteID: req.NoteId}, token.AccountID)
+	if err != nil {
+		return nil, statusFromModelError(err)
+	}
+
+	// Check if the user has edit access (author or in the list)
+	if !hasEditPermission(note.AccountsWithEditPermissions, token.AccountID) {
+		return nil, status.Error(codes.PermissionDenied, "you do not have edit permissions on this note")
+	}
+
+	updatedNote, err := srv.notes.UpdateNote(ctx,
 		&models.OneNoteFilter{GroupID: req.GroupId, NoteID: req.NoteId},
 		updateNotePayloadFromUpdateNoteRequest(req),
 		token.AccountID)
@@ -135,9 +146,9 @@ func (srv *notesAPI) UpdateNote(ctx context.Context, req *notesv1.UpdateNoteRequ
 	}
 
 	srv.background.AddProcess(&background.Process{
-		Identifier: models.NoteIdentifier{NoteId: note.ID, ActionType: models.NoteUpdateKeyword},
+		Identifier: models.NoteIdentifier{NoteId: updatedNote.ID, ActionType: models.NoteUpdateKeyword},
 		CallBackFct: func() error {
-			err := srv.UpdateKeywordsByNoteId(note.ID, req.GroupId, token.AccountID)
+			err := srv.UpdateKeywordsByNoteId(updatedNote.ID, req.GroupId, note.AuthorAccountID)
 			return err
 		},
 		SecondsToDebounce:             5,
@@ -145,7 +156,7 @@ func (srv *notesAPI) UpdateNote(ctx context.Context, req *notesv1.UpdateNoteRequ
 		RepeatProcess:                 false,
 	})
 
-	return &notesv1.UpdateNoteResponse{Note: modelsNoteToProtobufNote(note)}, nil
+	return &notesv1.UpdateNoteResponse{Note: modelsNoteToProtobufNote(updatedNote)}, nil
 }
 
 func updateNotePayloadFromUpdateNoteRequest(req *notesv1.UpdateNoteRequest) *models.UpdateNotePayload {
@@ -279,6 +290,11 @@ func (srv *notesAPI) OnAccountDelete(ctx context.Context, req *notesv1.OnAccount
 		srv.logger.Warn("Could not delete notes of " + token.AccountID + " reason " + err.Error())
 	}
 
+	err = srv.notes.RemoveEditPermissions(ctx, nil, token.AccountID)
+	if err != nil {
+		return nil, err
+	}
+
 	err = srv.groups.OnAccountDelete(ctx, token.AccountID)
 	if err != nil {
 		return nil, err
@@ -345,6 +361,74 @@ func (srv *notesAPI) UpdateKeywordsByNoteId(noteId string, groupId string, accou
 	}
 
 	return nil
+}
+
+// TODO(protorepo): Change it so we can grant and remove note edit permissions
+func (srv *notesAPI) ChangeNoteEditPermission(ctx context.Context, req *notesv1.ChangeNoteEditPermissionRequest) (*notesv1.ChangeNoteEditPermissionResponse, error) {
+	token, err := srv.authenticate(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// Check if recipient is part of the group
+	group, err := srv.groups.GetGroupInternal(ctx, &models.OneGroupFilter{GroupID: req.GroupId})
+	if err != nil {
+		return nil, statusFromModelError(err)
+	}
+	if group.FindMember(req.RecipientAccountId) == nil {
+		return nil, status.Error(codes.PermissionDenied, "you cannot grant permission to someone who is not part of the group")
+	}
+
+	// Store note to do later checks
+	note, err := srv.notes.GetNote(ctx, &models.OneNoteFilter{GroupID: req.GroupId, NoteID: req.NoteId}, token.AccountID)
+	if err != nil {
+		return nil, statusFromModelError(err)
+	}
+
+	requesterIsAuthor := note.AuthorAccountID == token.AccountID
+	requesterIsRecipient := req.RecipientAccountId == token.AccountID
+
+	switch req.Type {
+	case notesv1.ChangeNoteEditPermissionRequest_ACTION_GRANT:
+		// Requester has to be note author to grant permissions
+		if !requesterIsAuthor {
+			return nil, status.Error(codes.PermissionDenied, "you have to be the owner of the note to grant edit permissions")
+		}
+
+		// Grant permissions to target
+		err = srv.notes.GrantNoteEditPermission(ctx, &models.OneNoteFilter{GroupID: req.GroupId, NoteID: req.NoteId}, token.AccountID, req.RecipientAccountId)
+		if err != nil {
+			return nil, statusFromModelError(err)
+		}
+	case notesv1.ChangeNoteEditPermissionRequest_ACTION_REMOVE:
+
+		// NOTE: I am very sad cause technically we could catch both errors with `requesterIsAuthor == requesterIsRecipient`
+		// But we can't do ternary so to have 2 different error msg we have to do `if-else` :(
+
+		if requesterIsAuthor && requesterIsRecipient {
+			// Author can't remove his own rights
+			return nil, status.Error(codes.PermissionDenied, "owner cannot remove his own editing rights")
+		} else if !requesterIsAuthor && !requesterIsRecipient {
+			// User can only remove his own rights
+			return nil, status.Error(codes.PermissionDenied, "as a non-author you can only remove your own editing rights")
+		}
+
+		err = srv.notes.RemoveEditPermissions(ctx, &models.OneNoteFilter{GroupID: req.GroupId, NoteID: req.NoteId}, req.RecipientAccountId)
+		if err != nil {
+			return nil, statusFromModelError(err)
+		}
+	}
+
+	return &notesv1.ChangeNoteEditPermissionResponse{}, nil
+}
+
+func hasEditPermission(AccountsWithEditPermissions []string, recipientAccountID string) bool {
+	for _, accountID := range AccountsWithEditPermissions {
+		if accountID == recipientAccountID {
+			return true
+		}
+	}
+	return false
 }
 
 func (srv *notesAPI) authenticate(ctx context.Context) (*auth.Token, error) {
