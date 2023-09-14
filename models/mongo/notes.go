@@ -40,17 +40,33 @@ func (repo *notesRepository) CreateNote(ctx context.Context, payload *models.Cre
 	}
 
 	now := time.Now()
-	note := &models.Note{
-		ID:                          repo.newUUID(),
-		Title:                       payload.Title,
-		AuthorAccountID:             accountID,
-		GroupID:                     payload.GroupID,
-		CreatedAt:                   now,
-		ModifiedAt:                  nil,
-		AnalyzedAt:                  nil,
-		Keywords:                    []*models.Keyword{},
-		Blocks:                      payload.Blocks,
-		AccountsWithEditPermissions: []string{accountID},
+	var note *models.Note
+
+	if len(payload.Blocks) <= 0 {
+		note = &models.Note{
+			ID:                          repo.newUUID(),
+			Title:                       payload.Title,
+			AuthorAccountID:             accountID,
+			GroupID:                     payload.GroupID,
+			CreatedAt:                   now,
+			ModifiedAt:                  nil,
+			AnalyzedAt:                  nil,
+			Keywords:                    []*models.Keyword{},
+			AccountsWithEditPermissions: []string{accountID},
+		}
+	} else {
+		note = &models.Note{
+			ID:                          repo.newUUID(),
+			Title:                       payload.Title,
+			AuthorAccountID:             accountID,
+			GroupID:                     payload.GroupID,
+			CreatedAt:                   now,
+			ModifiedAt:                  nil,
+			AnalyzedAt:                  nil,
+			Keywords:                    []*models.Keyword{},
+			Blocks:                      payload.Blocks,
+			AccountsWithEditPermissions: []string{accountID},
+		}
 	}
 
 	err := repo.insertOne(ctx, note)
@@ -95,6 +111,7 @@ func (repo *notesRepository) UpdateNotesInternal(ctx context.Context, filter *mo
 	return note, nil
 }
 
+// @todo: fix, les blocks sont update les BlockId sont mis a nil
 func (repo *notesRepository) UpdateNote(ctx context.Context, filter *models.OneNoteFilter, payload *models.UpdateNotePayload, accountID string) (*models.Note, error) {
 	note := &models.Note{}
 	query := bson.D{
