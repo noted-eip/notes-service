@@ -108,7 +108,7 @@ func (repo *notesRepository) UpdateNotesInternal(ctx context.Context, filter *mo
 	return note, nil
 }
 
-// les blocks sont update les BlockId sont tej
+// @todo: fix, les blocks sont update les BlockId sont mis a nil
 func (repo *notesRepository) UpdateNote(ctx context.Context, filter *models.OneNoteFilter, payload *models.UpdateNotePayload, accountID string) (*models.Note, error) {
 	note := &models.Note{}
 	query := bson.D{
