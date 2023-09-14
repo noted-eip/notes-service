@@ -39,16 +39,31 @@ func (repo *notesRepository) CreateNote(ctx context.Context, payload *models.Cre
 	}
 
 	now := time.Now()
-	note := &models.Note{
-		ID:              repo.newUUID(),
-		Title:           payload.Title,
-		AuthorAccountID: accountID,
-		GroupID:         payload.GroupID,
-		CreatedAt:       now,
-		ModifiedAt:      nil,
-		AnalyzedAt:      nil,
-		Keywords:        []*models.Keyword{},
-		Blocks:          payload.Blocks,
+	var note *models.Note
+
+	if len(payload.Blocks) <= 0 {
+		note = &models.Note{
+			ID:              repo.newUUID(),
+			Title:           payload.Title,
+			AuthorAccountID: accountID,
+			GroupID:         payload.GroupID,
+			CreatedAt:       now,
+			ModifiedAt:      nil,
+			AnalyzedAt:      nil,
+			Keywords:        []*models.Keyword{},
+		}
+	} else {
+		note = &models.Note{
+			ID:              repo.newUUID(),
+			Title:           payload.Title,
+			AuthorAccountID: accountID,
+			GroupID:         payload.GroupID,
+			CreatedAt:       now,
+			ModifiedAt:      nil,
+			AnalyzedAt:      nil,
+			Keywords:        []*models.Keyword{},
+			Blocks:          payload.Blocks,
+		}
 	}
 
 	err := repo.insertOne(ctx, note)
@@ -93,6 +108,7 @@ func (repo *notesRepository) UpdateNotesInternal(ctx context.Context, filter *mo
 	return note, nil
 }
 
+// les blocks sont update les BlockId sont tej
 func (repo *notesRepository) UpdateNote(ctx context.Context, filter *models.OneNoteFilter, payload *models.UpdateNotePayload, accountID string) (*models.Note, error) {
 	note := &models.Note{}
 	query := bson.D{
@@ -191,6 +207,8 @@ func (repo *notesRepository) InsertBlock(ctx context.Context, filter *models.One
 		{Key: "groupId", Value: filter.GroupID},
 		{Key: "authorAccountId", Value: accountID},
 	}
+	//Si le field "blocks" n'existe pas, ca push bien.
+	//La il est null ca fonctionne pas
 	update := bson.D{
 		{Key: "$push", Value: bson.D{
 			{Key: "blocks", Value: bson.D{
