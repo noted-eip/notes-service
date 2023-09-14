@@ -207,8 +207,6 @@ func (repo *notesRepository) InsertBlock(ctx context.Context, filter *models.One
 		{Key: "groupId", Value: filter.GroupID},
 		{Key: "authorAccountId", Value: accountID},
 	}
-	//Si le field "blocks" n'existe pas, ca push bien.
-	//La il est null ca fonctionne pas
 	update := bson.D{
 		{Key: "$push", Value: bson.D{
 			{Key: "blocks", Value: bson.D{
