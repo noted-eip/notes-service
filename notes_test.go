@@ -21,6 +21,35 @@ func TestNotesSuite(t *testing.T) {
 	edouardGroup := newTestGroup(t, tu, edouard, maxime)
 	maximeGroup := newTestGroup(t, tu, maxime, edouard)
 
+	testUser := newTestAccount(t, tu)
+	testGroup := newTestGroup(t, tu, testUser)
+	note := newTestNote(t, tu, testGroup, testUser, []*notesv1.Block{
+		{
+			Type: notesv1.Block_TYPE_HEADING_1,
+			Data: &notesv1.Block_Heading{
+				Heading: "Ada Lovelace",
+			},
+		},
+		{ // TODO: Put placeholder texts in separate file
+			Type: notesv1.Block_TYPE_PARAGRAPH,
+			Data: &notesv1.Block_Paragraph{
+				Paragraph: "Ada Lovelace, de son nom complet Augusta Ada King, comtesse de Lovelace, née Ada Byron le 10 décembre 1815 à Londres et morte le 27 novembre 1852 à Marylebone dans la même ville, est une pionnière de la science informatique. Elle est principalement connue pour avoir réalisé le premier véritable programme informatique, lors de son travail sur un ancêtre de l'ordinateur : la machine analytique de Charles Babbage. Dans ses notes, on trouve en effet le premier programme publié, destiné à être exécuté par une machine, ce qui fait d'Ada Lovelace la première personne à avoir programmé au monde. Elle a également entrevu et décrit certaines possibilités offertes par les calculateurs universels, allant bien au-delà du calcul numérique et de ce qu'imaginaient Babbage et ses contemporains. ",
+			},
+		},
+		{
+			Type: notesv1.Block_TYPE_PARAGRAPH,
+			Data: &notesv1.Block_Paragraph{
+				Paragraph: "Ada était la seule fille légitime du poète George Gordon Byron et de son épouse Annabella Milbanke, une femme intelligente et cultivée, cousine de Caroline Lamb, dont la liaison avec Byron fut à l'origine d'un scandale. Le premier prénom d'Ada, Augusta, aurait été choisi en hommage à Augusta Leigh, la demi-sœur de Byron, avec qui ce dernier aurait eu des relations incestueusesSwade 1. Le prénom Ada aurait été choisi par Byron lui-mêmeStein 1, car il était « court, ancien et vocalique »Wolfram 1. C'est Augusta qui encouragea Byron à se marier pour éviter un scandale, et il épousa Annabella à contrecœur[réf. souhaitée], en janvier 1815. Ada naît en décembre de cette même année. À la suite de quatre tentatives de viol en état d'ivresse de la part de ByronSwade 1, Annabella quitte Byron le 16 janvier 1816, gardant Ada avec elle. Le 21 avril, Byron signe l'acte de séparation, puis quitte le Royaume-Uni pour toujours. Il ne les revit jamais.",
+			},
+		},
+	})
+
+	//
+	//
+	// Notes/Blocks CRUD tests
+	//
+	//
+
 	t.Run("create-note", func(t *testing.T) {
 		before := time.Now()
 		res, err := tu.notes.CreateNote(edouard.Context, &notesv1.CreateNoteRequest{
@@ -262,21 +291,6 @@ func TestNotesSuite(t *testing.T) {
 		require.LessOrEqual(t, res.Note.ModifiedAt.AsTime().Unix(), after.Unix())
 	})
 
-	t.Run("member-cannot-update-note-title", func(t *testing.T) {
-		res, err := tu.notes.UpdateNote(maxime.Context, &notesv1.UpdateNoteRequest{
-			GroupId: edouardGroup.ID,
-			NoteId:  edouardNote.ID,
-			Note: &notesv1.Note{
-				Title: "Brand New Title",
-			},
-			UpdateMask: &fieldmaskpb.FieldMask{
-				Paths: []string{"title"},
-			},
-		})
-		requireErrorHasGRPCCode(t, codes.NotFound, err)
-		require.Nil(t, res)
-	})
-
 	t.Run("stranger-cannot-update-note-title", func(t *testing.T) {
 		res, err := tu.notes.UpdateNote(stranger.Context, &notesv1.UpdateNoteRequest{
 			GroupId: edouardGroup.ID,
@@ -292,7 +306,7 @@ func TestNotesSuite(t *testing.T) {
 		require.Nil(t, res)
 	})
 
-	t.Run("member-cannot-update-note-title", func(t *testing.T) {
+	t.Run("member-no-edit-rights-cannot-update-note-title", func(t *testing.T) {
 		res, err := tu.notes.UpdateNote(maxime.Context, &notesv1.UpdateNoteRequest{
 			GroupId: edouardGroup.ID,
 			NoteId:  edouardNote.ID,
@@ -303,7 +317,7 @@ func TestNotesSuite(t *testing.T) {
 				Paths: []string{"title"},
 			},
 		})
-		requireErrorHasGRPCCode(t, codes.NotFound, err)
+		requireErrorHasGRPCCode(t, codes.PermissionDenied, err)
 		require.Nil(t, res)
 	})
 
@@ -455,7 +469,6 @@ func TestNotesSuite(t *testing.T) {
 		require.Nil(t, res)
 	})
 
-	// maximeGroup := newTestGroup(t, tu, maxime, edouard)
 	newTestNote(t, tu, maximeGroup, edouard, nil)
 
 	t.Run("user-can-list-their-notes-across-groups", func(t *testing.T) {
@@ -543,6 +556,245 @@ func TestNotesSuite(t *testing.T) {
 		for _, note := range notes {
 			require.Equal(t, note.AuthorAccountID, maxime.ID)
 		}
+	})
+
+	// Clean-up maximeGroup made notes (Because of background service bug)
+	err := tu.notesRepository.DeleteNotes(context.TODO(), &models.ManyNotesFilter{
+		AuthorAccountID: maxime.ID,
+	})
+	require.NoError(t, err)
+
+	//
+	//
+	// Quiz tests
+	//
+	//
+
+	// NOTE: This test takes at least 5 seconds
+	t.Run("generate-quiz-success", func(t *testing.T) {
+		res, err := tu.notes.GenerateQuiz(testUser.Context, &notesv1.GenerateQuizRequest{
+			GroupId: note.Group.ID,
+			NoteId:  note.ID,
+		})
+		require.NoError(t, err)
+
+		require.NotZero(t, len(res.Quiz.Questions))
+		for _, question := range res.Quiz.Questions {
+			require.NotZero(t, len(question.Question))
+			require.NotZero(t, len(question.Answers))
+			require.NotZero(t, len(question.Solutions))
+		}
+	})
+
+	//
+	//
+	// Edit permissions tests
+	//
+	//
+
+	// Maxime joins test group
+	invite := testUser.SendInvite(t, tu, maxime, testGroup)
+	maxime.AcceptInvite(t, tu, invite)
+
+	// Edouard joins test group
+	invite = testUser.SendInvite(t, tu, edouard, testGroup)
+	edouard.AcceptInvite(t, tu, invite)
+
+	t.Run("non-author-cannot-grant-permission", func(t *testing.T) {
+		res, err := tu.notes.ChangeNoteEditPermission(maxime.Context, &notesv1.ChangeNoteEditPermissionRequest{
+			GroupId:            note.Group.ID,
+			NoteId:             note.ID,
+			RecipientAccountId: edouard.ID,
+			Type:               notesv1.ChangeNoteEditPermissionRequest_ACTION_GRANT,
+		})
+		require.Error(t, err)
+		require.Nil(t, res)
+	})
+
+	t.Run("author-can-grant-edit-permissions", func(t *testing.T) {
+		res, err := tu.notes.ChangeNoteEditPermission(note.Author.Context, &notesv1.ChangeNoteEditPermissionRequest{
+			GroupId:            note.Group.ID,
+			NoteId:             note.ID,
+			RecipientAccountId: maxime.ID,
+			Type:               notesv1.ChangeNoteEditPermissionRequest_ACTION_GRANT,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, res)
+	})
+
+	t.Run("non-author-cannot-grant-permission-even-with-edit-rights", func(t *testing.T) {
+		res, err := tu.notes.ChangeNoteEditPermission(maxime.Context, &notesv1.ChangeNoteEditPermissionRequest{
+			GroupId:            note.Group.ID,
+			NoteId:             note.ID,
+			RecipientAccountId: edouard.ID,
+			Type:               notesv1.ChangeNoteEditPermissionRequest_ACTION_GRANT,
+		})
+		require.Error(t, err)
+		require.Nil(t, res)
+	})
+
+	t.Run("author-cannot-grant-edit-permissions-to-stranger", func(t *testing.T) {
+		res, err := tu.notes.ChangeNoteEditPermission(note.Author.Context, &notesv1.ChangeNoteEditPermissionRequest{
+			GroupId:            note.Group.ID,
+			NoteId:             note.ID,
+			RecipientAccountId: stranger.ID,
+			Type:               notesv1.ChangeNoteEditPermissionRequest_ACTION_GRANT,
+		})
+		require.Error(t, err)
+		require.Nil(t, res)
+	})
+
+	t.Run("user-can-update-note-with-edit-permission", func(t *testing.T) {
+		newTitle := "Hacked by Maximator"
+
+		res, err := tu.notes.UpdateNote(
+			maxime.Context,
+			&notesv1.UpdateNoteRequest{
+				GroupId: note.Group.ID,
+				NoteId:  note.ID,
+				Note: &notesv1.Note{
+					Title: newTitle,
+				},
+				UpdateMask: &fieldmaskpb.FieldMask{
+					Paths: []string{"title"}},
+			})
+		require.NoError(t, err)
+		require.Equal(t, res.Note.Title, newTitle)
+	})
+
+	t.Run("remove-edit-permissions-when-leaving-a-group", func(t *testing.T) {
+		res, err := tu.notesRepository.GetNote(testUser.Context, &models.OneNoteFilter{
+			GroupID: testGroup.ID,
+			NoteID:  note.ID,
+		}, testUser.ID)
+		require.NoError(t, err)
+		OldNumberOfEditors := len(res.AccountsWithEditPermissions)
+
+		_, err = tu.groups.RemoveMember(testUser.Context,
+			&notesv1.RemoveMemberRequest{
+				GroupId:   testGroup.ID,
+				AccountId: maxime.ID,
+			})
+		require.NoError(t, err)
+
+		res, err = tu.notesRepository.GetNote(testUser.Context, &models.OneNoteFilter{
+			GroupID: testGroup.ID,
+			NoteID:  note.ID,
+		}, testUser.ID)
+
+		require.NoError(t, err)
+		require.Equal(t, len(res.AccountsWithEditPermissions), OldNumberOfEditors-1)
+	})
+
+	// Granting permissions to Edouard
+	tu.notes.ChangeNoteEditPermission(note.Author.Context, &notesv1.ChangeNoteEditPermissionRequest{
+		GroupId:            note.Group.ID,
+		NoteId:             note.ID,
+		RecipientAccountId: edouard.ID,
+		Type:               notesv1.ChangeNoteEditPermissionRequest_ACTION_GRANT,
+	})
+
+	t.Run("non-author-cannot-remove-others-permission", func(t *testing.T) {
+		res, err := tu.notes.ChangeNoteEditPermission(edouard.Context, &notesv1.ChangeNoteEditPermissionRequest{
+			GroupId:            note.Group.ID,
+			NoteId:             note.ID,
+			RecipientAccountId: testUser.ID,
+			Type:               notesv1.ChangeNoteEditPermissionRequest_ACTION_REMOVE,
+		})
+		require.Error(t, err)
+		require.Nil(t, res)
+	})
+
+	t.Run("author-can-remove-edit-permissions", func(t *testing.T) {
+		res, err := tu.notesRepository.GetNote(testUser.Context, &models.OneNoteFilter{
+			GroupID: testGroup.ID,
+			NoteID:  note.ID,
+		}, testUser.ID)
+		require.NoError(t, err)
+		OldNumberOfEditors := len(res.AccountsWithEditPermissions)
+
+		r, err := tu.notes.ChangeNoteEditPermission(note.Author.Context, &notesv1.ChangeNoteEditPermissionRequest{
+			GroupId:            note.Group.ID,
+			NoteId:             note.ID,
+			RecipientAccountId: edouard.ID,
+			Type:               notesv1.ChangeNoteEditPermissionRequest_ACTION_REMOVE,
+		})
+		require.NoError(t, err)
+		require.NotNil(t, r)
+
+		res, err = tu.notesRepository.GetNote(testUser.Context, &models.OneNoteFilter{
+			GroupID: testGroup.ID,
+			NoteID:  note.ID,
+		}, testUser.ID)
+
+		require.NoError(t, err)
+		require.Equal(t, len(res.AccountsWithEditPermissions), OldNumberOfEditors-1)
+
+	})
+
+	t.Run("user-cannot-update-note-after-removing-permissions", func(t *testing.T) {
+		newTitle := "Hacked by Edouardino"
+
+		res, err := tu.notes.UpdateNote(
+			edouard.Context,
+			&notesv1.UpdateNoteRequest{
+				GroupId: note.Group.ID,
+				NoteId:  note.ID,
+				Note: &notesv1.Note{
+					Title: newTitle,
+				},
+				UpdateMask: &fieldmaskpb.FieldMask{
+					Paths: []string{"title"}},
+			})
+		require.Error(t, err)
+		require.Nil(t, res)
+	})
+
+	t.Run("author-cannot-remove-edit-permissions-to-stranger", func(t *testing.T) {
+		res, err := tu.notes.ChangeNoteEditPermission(note.Author.Context, &notesv1.ChangeNoteEditPermissionRequest{
+			GroupId:            note.Group.ID,
+			NoteId:             note.ID,
+			RecipientAccountId: stranger.ID,
+			Type:               notesv1.ChangeNoteEditPermissionRequest_ACTION_REMOVE,
+		})
+		require.Error(t, err)
+		require.Nil(t, res)
+	})
+
+	// Granting permissions to Edouard
+	tu.notes.ChangeNoteEditPermission(note.Author.Context, &notesv1.ChangeNoteEditPermissionRequest{
+		GroupId:            note.Group.ID,
+		NoteId:             note.ID,
+		RecipientAccountId: edouard.ID,
+		Type:               notesv1.ChangeNoteEditPermissionRequest_ACTION_GRANT,
+	})
+
+	t.Run("user-can-remove-his-own-edit-permissions", func(t *testing.T) {
+		res, err := tu.notesRepository.GetNote(testUser.Context, &models.OneNoteFilter{
+			GroupID: testGroup.ID,
+			NoteID:  note.ID,
+		}, testUser.ID)
+		require.NoError(t, err)
+		OldNumberOfEditors := len(res.AccountsWithEditPermissions)
+
+		r, err := tu.notes.ChangeNoteEditPermission(edouard.Context, &notesv1.ChangeNoteEditPermissionRequest{
+			GroupId:            note.Group.ID,
+			NoteId:             note.ID,
+			RecipientAccountId: edouard.ID,
+			Type:               notesv1.ChangeNoteEditPermissionRequest_ACTION_REMOVE,
+		})
+
+		require.NoError(t, err)
+		require.NotNil(t, r)
+
+		res, err = tu.notesRepository.GetNote(testUser.Context, &models.OneNoteFilter{
+			GroupID: testGroup.ID,
+			NoteID:  note.ID,
+		}, testUser.ID)
+
+		require.NoError(t, err)
+		require.Equal(t, len(res.AccountsWithEditPermissions), OldNumberOfEditors-1)
+
 	})
 
 }

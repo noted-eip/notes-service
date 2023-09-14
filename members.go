@@ -81,6 +81,11 @@ func (srv *groupsAPI) RemoveMember(ctx context.Context, req *notesv1.RemoveMembe
 		return nil, statusFromModelError(err)
 	}
 
+	err = srv.notes.RemoveEditPermissions(ctx, &models.OneNoteFilter{GroupID: req.GroupId}, token.AccountID)
+	if err != nil {
+		return nil, statusFromModelError(err)
+	}
+
 	srv.activities.CreateActivityInternal(ctx, &models.ActivityPayload{
 		GroupID: req.GroupId,
 		Type:    models.MemberRemoved,

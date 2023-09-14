@@ -52,6 +52,7 @@ func (srv *notesAPI) CreateNote(ctx context.Context, req *notesv1.CreateNoteRequ
 	if err != nil {
 		return nil, statusFromModelError(err)
 	}
+	// check user can edit the note
 
 	note, err := srv.notes.CreateNote(ctx, &models.CreateNotePayload{
 		GroupID:         req.GroupId,
@@ -126,7 +127,17 @@ func (srv *notesAPI) UpdateNote(ctx context.Context, req *notesv1.UpdateNoteRequ
 		return nil, statusFromModelError(err)
 	}
 
-	note, err := srv.notes.UpdateNote(ctx,
+	note, err := srv.notes.GetNote(ctx, &models.OneNoteFilter{GroupID: req.GroupId, NoteID: req.NoteId}, token.AccountID)
+	if err != nil {
+		return nil, statusFromModelError(err)
+	}
+
+	// Check if the user has edit access (author or in the list)
+	if !hasEditPermission(note.AccountsWithEditPermissions, token.AccountID) {
+		return nil, status.Error(codes.PermissionDenied, "you do not have edit permissions on this note")
+	}
+
+	updatedNote, err := srv.notes.UpdateNote(ctx,
 		&models.OneNoteFilter{GroupID: req.GroupId, NoteID: req.NoteId},
 		updateNotePayloadFromUpdateNoteRequest(req),
 		token.AccountID)
@@ -135,9 +146,9 @@ func (srv *notesAPI) UpdateNote(ctx context.Context, req *notesv1.UpdateNoteRequ
 	}
 
 	srv.background.AddProcess(&background.Process{
-		Identifier: models.NoteIdentifier{NoteId: note.ID, ActionType: models.NoteUpdateKeyword},
+		Identifier: models.NoteIdentifier{NoteId: updatedNote.ID, ActionType: models.NoteUpdateKeyword},
 		CallBackFct: func() error {
-			err := srv.UpdateKeywordsByNoteId(note.ID, req.GroupId, token.AccountID)
+			err := srv.UpdateKeywordsByNoteId(updatedNote.ID, req.GroupId, note.AuthorAccountID)
 			return err
 		},
 		SecondsToDebounce:             5,
@@ -145,7 +156,7 @@ func (srv *notesAPI) UpdateNote(ctx context.Context, req *notesv1.UpdateNoteRequ
 		RepeatProcess:                 false,
 	})
 
-	return &notesv1.UpdateNoteResponse{Note: modelsNoteToProtobufNote(note)}, nil
+	return &notesv1.UpdateNoteResponse{Note: modelsNoteToProtobufNote(updatedNote)}, nil
 }
 
 func updateNotePayloadFromUpdateNoteRequest(req *notesv1.UpdateNoteRequest) *models.UpdateNotePayload {
@@ -279,6 +290,11 @@ func (srv *notesAPI) OnAccountDelete(ctx context.Context, req *notesv1.OnAccount
 		srv.logger.Warn("Could not delete notes of " + token.AccountID + " reason " + err.Error())
 	}
 
+	err = srv.notes.RemoveEditPermissions(ctx, nil, token.AccountID)
+	if err != nil {
+		return nil, err
+	}
+
 	err = srv.groups.OnAccountDelete(ctx, token.AccountID)
 	if err != nil {
 		return nil, err
@@ -287,18 +303,54 @@ func (srv *notesAPI) OnAccountDelete(ctx context.Context, req *notesv1.OnAccount
 	return &notesv1.OnAccountDeleteResponse{}, nil
 }
 
+func (srv *notesAPI) GenerateQuiz(ctx context.Context, req *notesv1.GenerateQuizRequest) (*notesv1.GenerateQuizResponse, error) {
+	token, err := srv.authenticate(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	err = validators.ValidateGenerateQuizzRequest(req)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	// Check user is part of the group.
+	_, err = srv.groups.GetGroup(ctx, &models.OneGroupFilter{GroupID: req.GroupId}, token.AccountID)
+	if err != nil {
+		return nil, statusFromModelError(err)
+	}
+
+	note, err := srv.notes.GetNote(ctx, &models.OneNoteFilter{GroupID: req.GroupId, NoteID: req.NoteId}, token.AccountID)
+	if err != nil {
+		return nil, statusFromModelError(err)
+	}
+
+	fullNote := noteModelToString(note)
+	quiz, err := srv.language.GenerateQuizFromTextInput(fullNote)
+	if err != nil {
+		srv.logger.Error("failed to generate quiz", zap.Error(err))
+		return nil, status.Errorf(codes.Internal, "failed to generate quiz for noteId : %s", note.ID)
+	}
+
+	return &notesv1.GenerateQuizResponse{Quiz: modelsQuizToProtobufQuiz(quiz)}, nil
+}
+
 func (srv *notesAPI) UpdateKeywordsByNoteId(noteId string, groupId string, accountID string) error {
 	note, err := srv.notes.GetNote(context.TODO(), &models.OneNoteFilter{GroupID: groupId, NoteID: noteId}, accountID)
 	if err != nil {
 		return statusFromModelError(err)
 	}
 
-	// TODDO : mettre un timeout sur le call google
-	err = generateNoteTagsToModelNote(srv.language, note)
+	// TODO : mettre un timeout sur le call google
+	fullNote := noteModelToString(note)
+
+	keywords, err := srv.language.GetKeywordsFromTextInput(fullNote)
 	if err != nil {
 		srv.logger.Error("failed to gen keywords", zap.Error(err))
 		return status.Errorf(codes.Internal, "failed to gen keywords for noteId : %s", note.ID)
 	}
+
+	note.Keywords = keywords
 
 	_, err = srv.notes.UpdateNote(context.TODO(),
 		&models.OneNoteFilter{GroupID: note.GroupID, NoteID: note.ID},
@@ -311,7 +363,84 @@ func (srv *notesAPI) UpdateKeywordsByNoteId(noteId string, groupId string, accou
 	return nil
 }
 
-func generateNoteTagsToModelNote(languageService language.Service, note *models.Note) error {
+// TODO(protorepo): Change it so we can grant and remove note edit permissions
+func (srv *notesAPI) ChangeNoteEditPermission(ctx context.Context, req *notesv1.ChangeNoteEditPermissionRequest) (*notesv1.ChangeNoteEditPermissionResponse, error) {
+	token, err := srv.authenticate(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// Check if recipient is part of the group
+	group, err := srv.groups.GetGroupInternal(ctx, &models.OneGroupFilter{GroupID: req.GroupId})
+	if err != nil {
+		return nil, statusFromModelError(err)
+	}
+	if group.FindMember(req.RecipientAccountId) == nil {
+		return nil, status.Error(codes.PermissionDenied, "you cannot grant permission to someone who is not part of the group")
+	}
+
+	// Store note to do later checks
+	note, err := srv.notes.GetNote(ctx, &models.OneNoteFilter{GroupID: req.GroupId, NoteID: req.NoteId}, token.AccountID)
+	if err != nil {
+		return nil, statusFromModelError(err)
+	}
+
+	requesterIsAuthor := note.AuthorAccountID == token.AccountID
+	requesterIsRecipient := req.RecipientAccountId == token.AccountID
+
+	switch req.Type {
+	case notesv1.ChangeNoteEditPermissionRequest_ACTION_GRANT:
+		// Requester has to be note author to grant permissions
+		if !requesterIsAuthor {
+			return nil, status.Error(codes.PermissionDenied, "you have to be the owner of the note to grant edit permissions")
+		}
+
+		// Grant permissions to target
+		err = srv.notes.GrantNoteEditPermission(ctx, &models.OneNoteFilter{GroupID: req.GroupId, NoteID: req.NoteId}, token.AccountID, req.RecipientAccountId)
+		if err != nil {
+			return nil, statusFromModelError(err)
+		}
+	case notesv1.ChangeNoteEditPermissionRequest_ACTION_REMOVE:
+
+		// NOTE: I am very sad cause technically we could catch both errors with `requesterIsAuthor == requesterIsRecipient`
+		// But we can't do ternary so to have 2 different error msg we have to do `if-else` :(
+
+		if requesterIsAuthor && requesterIsRecipient {
+			// Author can't remove his own rights
+			return nil, status.Error(codes.PermissionDenied, "owner cannot remove his own editing rights")
+		} else if !requesterIsAuthor && !requesterIsRecipient {
+			// User can only remove his own rights
+			return nil, status.Error(codes.PermissionDenied, "as a non-author you can only remove your own editing rights")
+		}
+
+		err = srv.notes.RemoveEditPermissions(ctx, &models.OneNoteFilter{GroupID: req.GroupId, NoteID: req.NoteId}, req.RecipientAccountId)
+		if err != nil {
+			return nil, statusFromModelError(err)
+		}
+	}
+
+	return &notesv1.ChangeNoteEditPermissionResponse{}, nil
+}
+
+func hasEditPermission(AccountsWithEditPermissions []string, recipientAccountID string) bool {
+	for _, accountID := range AccountsWithEditPermissions {
+		if accountID == recipientAccountID {
+			return true
+		}
+	}
+	return false
+}
+
+func (srv *notesAPI) authenticate(ctx context.Context) (*auth.Token, error) {
+	token, err := srv.auth.TokenFromContext(ctx)
+	if err != nil {
+		srv.logger.Debug("could not authenticate request", zap.Error(err))
+		return nil, status.Error(codes.Unauthenticated, "invalid token")
+	}
+	return token, nil
+}
+
+func noteModelToString(note *models.Note) string {
 	var fullNote string
 
 	for _, block := range note.Blocks {
@@ -323,23 +452,7 @@ func generateNoteTagsToModelNote(languageService language.Service, note *models.
 		}
 
 	}
-
-	keywords, err := languageService.GetKeywordsFromTextInput(fullNote)
-	if err != nil {
-		return status.Error(codes.Internal, err.Error())
-	}
-
-	note.Keywords = keywords
-	return nil
-}
-
-func (srv *notesAPI) authenticate(ctx context.Context) (*auth.Token, error) {
-	token, err := srv.auth.TokenFromContext(ctx)
-	if err != nil {
-		srv.logger.Debug("could not authenticate request", zap.Error(err))
-		return nil, status.Error(codes.Unauthenticated, "invalid token")
-	}
-	return token, nil
+	return fullNote
 }
 
 var protobufFormatToFormatter = map[notesv1.NoteExportFormat]func(*notesv1.Note) ([]byte, error){
@@ -405,6 +518,19 @@ func protobufBlockToModelsBlock(block *notesv1.Block) *models.NoteBlock {
 		modelsBlock.NumberPoint = &val
 	}
 	return modelsBlock
+}
+
+func modelsQuizToProtobufQuiz(quiz *models.Quiz) *notesv1.Quiz {
+	res := &notesv1.Quiz{}
+
+	for _, question := range quiz.QuizQuestions {
+		res.Questions = append(res.Questions, &notesv1.QuizQuestion{
+			Question:  question.Question,
+			Answers:   question.Answers,
+			Solutions: question.Answers,
+		})
+	}
+	return res
 }
 
 func modelsNoteToProtobufNote(note *models.Note) *notesv1.Note {

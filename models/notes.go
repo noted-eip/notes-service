@@ -67,15 +67,26 @@ type Keyword struct {
 }
 
 type Note struct {
-	ID              string      `json:"id" bson:"_id"`
-	Title           string      `json:"title" bson:"title"`
-	AuthorAccountID string      `json:"authorAccountId" bson:"authorAccountId"`
-	GroupID         string      `json:"groupId" bson:"groupId"`
-	CreatedAt       time.Time   `json:"createdAt" bson:"createdAt"`
-	ModifiedAt      *time.Time  `json:"modifiedAt" bson:"modifiedAt"`
-	AnalyzedAt      *time.Time  `json:"analyzedAt" bson:"analyzedAt"`
-	Keywords        []*Keyword  `json:"keywords" bson:"keywords"`
-	Blocks          []NoteBlock `json:"blocks" bson:"blocks"`
+	ID                          string      `json:"id" bson:"_id"`
+	Title                       string      `json:"title" bson:"title"`
+	AuthorAccountID             string      `json:"authorAccountId" bson:"authorAccountId"`
+	GroupID                     string      `json:"groupId" bson:"groupId"`
+	CreatedAt                   time.Time   `json:"createdAt" bson:"createdAt"`
+	ModifiedAt                  *time.Time  `json:"modifiedAt" bson:"modifiedAt"`
+	AnalyzedAt                  *time.Time  `json:"analyzedAt" bson:"analyzedAt"`
+	Keywords                    []*Keyword  `json:"keywords" bson:"keywords"`
+	Blocks                      []NoteBlock `json:"blocks" bson:"blocks"`
+	AccountsWithEditPermissions []string    `json:"accountsWithEditPermissions" bson:"accountsWithEditPermissions"`
+}
+
+type Quiz struct {
+	QuizQuestions []QuizQuestion `json:"questions,omitempty" bson:"questions,omitempty"`
+}
+
+type QuizQuestion struct {
+	Question  string   `json:"question,omitempty" bson:"question,omitempty"`
+	Answers   []string `json:"answers,omitempty" bson:"answers,omitempty"`
+	Solutions []string `json:"solutions,omitempty" bson:"solutions,omitempty"`
 }
 
 func (note *Note) FindBlock(blockID string) *NoteBlock {
@@ -145,9 +156,15 @@ type NotesRepository interface {
 	ListNotesInternal(ctx context.Context, filter *ManyNotesFilter, opts *ListOptions) ([]*Note, error)
 	ListAllNotesInternal(ctx context.Context, filter *ManyNotesFilter) ([]*Note, error)
 
+	// Permisions
+	GrantNoteEditPermission(ctx context.Context, filter *OneNoteFilter, AccountID string, RecipientAccountId string) error
+
 	// Blocks
 	InsertBlock(ctx context.Context, filter *OneNoteFilter, payload *InsertNoteBlockPayload, accountID string) (*NoteBlock, error)
 	UpdateBlock(ctx context.Context, filter *OneBlockFilter, payload *UpdateBlockPayload, accountID string) (*NoteBlock, error)
 	GetBlock(ctx context.Context, filter *OneBlockFilter, accountID string) (*NoteBlock, error)
 	DeleteBlock(ctx context.Context, filter *OneBlockFilter, accountID string) error
+
+	// Utils
+	RemoveEditPermissions(ctx context.Context, filter *OneNoteFilter, accountID string) error
 }

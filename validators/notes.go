@@ -72,3 +72,10 @@ func ValidateExportNoteRequest(req *notespb.ExportNoteRequest) error {
 		validation.Field(&req.ExportFormat, validation.Required),
 	)
 }
+
+func ValidateGenerateQuizzRequest(req *notespb.GenerateQuizRequest) error {
+	return validation.ValidateStruct(req,
+		validation.Field(&req.GroupId, validation.Required),
+		validation.Field(&req.NoteId, validation.Required),
+	)
+}
