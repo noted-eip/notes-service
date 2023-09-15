@@ -32,6 +32,19 @@ func (repo *repository) aggregate(ctx context.Context, pipeline interface{}, res
 	return nil
 }
 
+func (repo *repository) updateOne(ctx context.Context, query interface{}, update interface{}, opts ...*options.UpdateOptions) error {
+	repo.logger.Debug("update many", zap.Any("query", query), zap.Any("update", update))
+	res, err := repo.coll.UpdateOne(ctx, query, update, opts...)
+
+	if err != nil {
+		return repo.mongoUpdateOneErrorToModelsError(query, update, err)
+	}
+	if res.ModifiedCount == 0 {
+		return models.ErrNotFound
+	}
+	return nil
+}
+
 func (repo *repository) updateMany(ctx context.Context, query interface{}, update interface{}, opts ...*options.UpdateOptions) (int64, error) {
 	repo.logger.Debug("update many", zap.Any("query", query), zap.Any("update", update))
 	res, err := repo.coll.UpdateMany(ctx, query, update, opts...)
@@ -170,6 +183,14 @@ func (repo *repository) mongoFindOneAndUpdateErrorToModelsError(query interface{
 		return models.ErrNotFound
 	}
 	repo.logger.Error("find one and update failed", zap.Any("query", query), zap.Any("update", update), zap.Error(err))
+	return models.ErrUnknown
+}
+
+func (repo *repository) mongoUpdateOneErrorToModelsError(query interface{}, update interface{}, err error) error {
+	if errors.Is(err, mongo.ErrNoDocuments) {
+		return models.ErrNotFound
+	}
+	repo.logger.Error("update one failed", zap.Any("query", query), zap.Any("update", update), zap.Error(err))
 	return models.ErrUnknown
 }
 

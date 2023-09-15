@@ -40,36 +40,21 @@ func (repo *notesRepository) CreateNote(ctx context.Context, payload *models.Cre
 	}
 
 	now := time.Now()
-	var note *models.Note
 
-	if len(payload.Blocks) <= 0 {
-		note = &models.Note{
-			ID:                          repo.newUUID(),
-			Title:                       payload.Title,
-			AuthorAccountID:             accountID,
-			GroupID:                     payload.GroupID,
-			CreatedAt:                   now,
-			ModifiedAt:                  nil,
-			AnalyzedAt:                  nil,
-			Keywords:                    []*models.Keyword{},
-			AccountsWithEditPermissions: []string{accountID},
-		}
-	} else {
-		note = &models.Note{
-			ID:                          repo.newUUID(),
-			Title:                       payload.Title,
-			AuthorAccountID:             accountID,
-			GroupID:                     payload.GroupID,
-			CreatedAt:                   now,
-			ModifiedAt:                  nil,
-			AnalyzedAt:                  nil,
-			Keywords:                    []*models.Keyword{},
-			Blocks:                      payload.Blocks,
-			AccountsWithEditPermissions: []string{accountID},
-		}
+	note := &models.Note{
+		ID:                          repo.newUUID(),
+		Title:                       payload.Title,
+		AuthorAccountID:             accountID,
+		GroupID:                     payload.GroupID,
+		CreatedAt:                   now,
+		ModifiedAt:                  nil,
+		AnalyzedAt:                  nil,
+		Keywords:                    []*models.Keyword{},
+		Blocks:                      payload.Blocks,
+		AccountsWithEditPermissions: []string{accountID},
 	}
 
-	err := repo.insertOne(ctx, note)
+	err := repo.insertOne(ctx, &note)
 	if err != nil {
 		return nil, err
 	}
@@ -202,7 +187,6 @@ func (repo *notesRepository) ListAllNotesInternal(ctx context.Context, filter *m
 }
 
 func (repo *notesRepository) InsertBlock(ctx context.Context, filter *models.OneNoteFilter, payload *models.InsertNoteBlockPayload, accountID string) (*models.NoteBlock, error) {
-	note := &models.Note{}
 	payload.Block.ID = repo.newUUID()
 
 	query := bson.D{
@@ -219,12 +203,24 @@ func (repo *notesRepository) InsertBlock(ctx context.Context, filter *models.One
 		}},
 	}
 
-	err := repo.findOneAndUpdate(ctx, query, update, note)
+	err := repo.updateOne(ctx, query, update)
 	if err != nil {
 		return nil, err
 	}
 
-	return note.FindBlock(payload.Block.ID), nil
+	block, err := repo.GetBlock(ctx,
+		&models.OneBlockFilter{
+			GroupID: filter.GroupID,
+			NoteID:  filter.NoteID,
+			BlockID: payload.Block.ID,
+		},
+		accountID,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return block, nil
 }
 
 func (repo *notesRepository) UpdateBlock(ctx context.Context, filter *models.OneBlockFilter, payload *models.UpdateBlockPayload, accountID string) (*models.NoteBlock, error) {
