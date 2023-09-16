@@ -67,16 +67,16 @@ type Keyword struct {
 }
 
 type Note struct {
-	ID                          string      `json:"id" bson:"_id"`
-	Title                       string      `json:"title" bson:"title"`
-	AuthorAccountID             string      `json:"authorAccountId" bson:"authorAccountId"`
-	GroupID                     string      `json:"groupId" bson:"groupId"`
-	CreatedAt                   time.Time   `json:"createdAt" bson:"createdAt"`
-	ModifiedAt                  *time.Time  `json:"modifiedAt" bson:"modifiedAt"`
-	AnalyzedAt                  *time.Time  `json:"analyzedAt" bson:"analyzedAt"`
-	Keywords                    []*Keyword  `json:"keywords" bson:"keywords"`
-	Blocks                      []NoteBlock `json:"blocks" bson:"blocks"`
-	AccountsWithEditPermissions []string    `json:"accountsWithEditPermissions" bson:"accountsWithEditPermissions"`
+	ID                          string       `json:"id" bson:"_id"`
+	Title                       string       `json:"title" bson:"title"`
+	AuthorAccountID             string       `json:"authorAccountId" bson:"authorAccountId"`
+	GroupID                     string       `json:"groupId" bson:"groupId"`
+	CreatedAt                   time.Time    `json:"createdAt" bson:"createdAt"`
+	ModifiedAt                  *time.Time   `json:"modifiedAt" bson:"modifiedAt"`
+	AnalyzedAt                  *time.Time   `json:"analyzedAt" bson:"analyzedAt"`
+	Keywords                    []*Keyword   `json:"keywords" bson:"keywords"`
+	Blocks                      *[]NoteBlock `json:"blocks" bson:"blocks"`
+	AccountsWithEditPermissions []string     `json:"accountsWithEditPermissions" bson:"accountsWithEditPermissions"`
 }
 
 type Quiz struct {
@@ -90,9 +90,9 @@ type QuizQuestion struct {
 }
 
 func (note *Note) FindBlock(blockID string) *NoteBlock {
-	for i := 0; i < len(note.Blocks); i++ {
-		if note.Blocks[i].ID == blockID {
-			return &note.Blocks[i]
+	for i := 0; i < len(*note.Blocks); i++ {
+		if (*note.Blocks)[i].ID == blockID {
+			return &(*note.Blocks)[i]
 		}
 	}
 	return nil
