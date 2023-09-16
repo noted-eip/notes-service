@@ -40,6 +40,11 @@ func (repo *notesRepository) CreateNote(ctx context.Context, payload *models.Cre
 	}
 
 	now := time.Now()
+	blocks := &[]models.NoteBlock{}
+
+	if len(payload.Blocks) > 0 {
+		blocks = &payload.Blocks
+	}
 
 	note := &models.Note{
 		ID:                          repo.newUUID(),
@@ -50,7 +55,7 @@ func (repo *notesRepository) CreateNote(ctx context.Context, payload *models.Cre
 		ModifiedAt:                  nil,
 		AnalyzedAt:                  nil,
 		Keywords:                    []*models.Keyword{},
-		Blocks:                      payload.Blocks,
+		Blocks:                      blocks,
 		AccountsWithEditPermissions: []string{accountID},
 	}
 
@@ -204,6 +209,8 @@ func (repo *notesRepository) InsertBlock(ctx context.Context, filter *models.One
 	}
 
 	err := repo.updateOne(ctx, query, update)
+	//err := repo.findOneAndUpdate(ctx, query, update, note)
+	//res, err := repo.updateMany(ctx, query, update)
 	if err != nil {
 		return nil, err
 	}

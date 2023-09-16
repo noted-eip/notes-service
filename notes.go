@@ -443,7 +443,7 @@ func (srv *notesAPI) authenticate(ctx context.Context) (*auth.Token, error) {
 func noteModelToString(note *models.Note) string {
 	var fullNote string
 
-	for _, block := range note.Blocks {
+	for _, block := range *note.Blocks {
 		if block.Type != "TYPE_CODE" && block.Type != "TYPE_IMAGE" {
 			content, ok := GetBlockContent(&block)
 			if ok {
@@ -534,6 +534,14 @@ func modelsQuizToProtobufQuiz(quiz *models.Quiz) *notesv1.Quiz {
 }
 
 func modelsNoteToProtobufNote(note *models.Note) *notesv1.Note {
+	var lenBlocks int
+
+	if note.Blocks == nil {
+		lenBlocks = 0
+	} else {
+		lenBlocks = len(*note.Blocks)
+	}
+
 	protobufNote := &notesv1.Note{
 		Id:              note.ID,
 		GroupId:         note.GroupID,
@@ -542,11 +550,15 @@ func modelsNoteToProtobufNote(note *models.Note) *notesv1.Note {
 		CreatedAt:       timestamppb.New(note.CreatedAt),
 		ModifiedAt:      protobufTimestampOrNil(note.ModifiedAt),
 		AnalyzedAt:      protobufTimestampOrNil(note.AnalyzedAt),
-		Blocks:          make([]*notesv1.Block, len(note.Blocks)),
+		Blocks:          make([]*notesv1.Block, lenBlocks),
 	}
 
-	for i := range note.Blocks {
-		protobufNote.Blocks[i] = modelsBlockToProtobufBlock(&note.Blocks[i])
+	if note.Blocks == nil {
+		return protobufNote
+	}
+
+	for i := range *note.Blocks {
+		protobufNote.Blocks[i] = modelsBlockToProtobufBlock(&(*note.Blocks)[i])
 	}
 
 	return protobufNote

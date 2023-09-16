@@ -70,9 +70,9 @@ func TestBlocksSuite(t *testing.T) {
 		note, err := tu.notesRepository.GetNote(context.TODO(),
 			&models.OneNoteFilter{NoteID: maximeNote.ID, GroupID: maximeNote.Group.ID}, maxime.ID)
 		require.NoError(t, err)
-		require.Len(t, note.Blocks, 2)
-		require.Equal(t, note.Blocks[0].Type, notesv1.Block_TYPE_HEADING_1.String())
-		require.Equal(t, note.Blocks[1].Type, notesv1.Block_TYPE_CODE.String())
+		require.Len(t, *note.Blocks, 2)
+		require.Equal(t, (*note.Blocks)[0].Type, notesv1.Block_TYPE_HEADING_1.String())
+		require.Equal(t, (*note.Blocks)[1].Type, notesv1.Block_TYPE_CODE.String())
 	})
 
 	t.Run("insert-block-at-begining-of-note", func(t *testing.T) {
@@ -97,10 +97,10 @@ func TestBlocksSuite(t *testing.T) {
 		note, err := tu.notesRepository.GetNote(context.TODO(),
 			&models.OneNoteFilter{NoteID: maximeNote.ID, GroupID: maximeNote.Group.ID}, maxime.ID)
 		require.NoError(t, err)
-		require.Len(t, note.Blocks, 3)
-		require.Equal(t, note.Blocks[0].Type, notesv1.Block_TYPE_MATH.String())
-		require.Equal(t, note.Blocks[1].Type, notesv1.Block_TYPE_HEADING_1.String())
-		require.Equal(t, note.Blocks[2].Type, notesv1.Block_TYPE_CODE.String())
+		require.Len(t, *note.Blocks, 3)
+		require.Equal(t, (*note.Blocks)[0].Type, notesv1.Block_TYPE_MATH.String())
+		require.Equal(t, (*note.Blocks)[1].Type, notesv1.Block_TYPE_HEADING_1.String())
+		require.Equal(t, (*note.Blocks)[2].Type, notesv1.Block_TYPE_CODE.String())
 	})
 
 	t.Run("insert-block-in-middle-of-note", func(t *testing.T) {
@@ -125,11 +125,11 @@ func TestBlocksSuite(t *testing.T) {
 		note, err := tu.notesRepository.GetNote(context.TODO(),
 			&models.OneNoteFilter{NoteID: maximeNote.ID, GroupID: maximeNote.Group.ID}, maxime.ID)
 		require.NoError(t, err)
-		require.Len(t, note.Blocks, 4)
-		require.Equal(t, note.Blocks[0].Type, notesv1.Block_TYPE_MATH.String())
-		require.Equal(t, note.Blocks[1].Type, notesv1.Block_TYPE_HEADING_3.String())
-		require.Equal(t, note.Blocks[2].Type, notesv1.Block_TYPE_HEADING_1.String())
-		require.Equal(t, note.Blocks[3].Type, notesv1.Block_TYPE_CODE.String())
+		require.Len(t, *note.Blocks, 4)
+		require.Equal(t, (*note.Blocks)[0].Type, notesv1.Block_TYPE_MATH.String())
+		require.Equal(t, (*note.Blocks)[1].Type, notesv1.Block_TYPE_HEADING_3.String())
+		require.Equal(t, (*note.Blocks)[2].Type, notesv1.Block_TYPE_HEADING_1.String())
+		require.Equal(t, (*note.Blocks)[3].Type, notesv1.Block_TYPE_CODE.String())
 	})
 
 	t.Run("insert-block-out-of-bounds-should-succeed", func(t *testing.T) {
@@ -154,12 +154,12 @@ func TestBlocksSuite(t *testing.T) {
 		note, err := tu.notesRepository.GetNote(context.TODO(),
 			&models.OneNoteFilter{NoteID: maximeNote.ID, GroupID: maximeNote.Group.ID}, maxime.ID)
 		require.NoError(t, err)
-		require.Len(t, note.Blocks, 5)
-		require.Equal(t, note.Blocks[0].Type, notesv1.Block_TYPE_MATH.String())
-		require.Equal(t, note.Blocks[1].Type, notesv1.Block_TYPE_HEADING_3.String())
-		require.Equal(t, note.Blocks[2].Type, notesv1.Block_TYPE_HEADING_1.String())
-		require.Equal(t, note.Blocks[3].Type, notesv1.Block_TYPE_CODE.String())
-		require.Equal(t, note.Blocks[4].Type, notesv1.Block_TYPE_HEADING_2.String())
+		require.Len(t, *note.Blocks, 5)
+		require.Equal(t, (*note.Blocks)[0].Type, notesv1.Block_TYPE_MATH.String())
+		require.Equal(t, (*note.Blocks)[1].Type, notesv1.Block_TYPE_HEADING_3.String())
+		require.Equal(t, (*note.Blocks)[2].Type, notesv1.Block_TYPE_HEADING_1.String())
+		require.Equal(t, (*note.Blocks)[3].Type, notesv1.Block_TYPE_CODE.String())
+		require.Equal(t, (*note.Blocks)[4].Type, notesv1.Block_TYPE_HEADING_2.String())
 	})
 
 	t.Run("insert-block-stranger-cannot-insert", func(t *testing.T) {
