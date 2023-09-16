@@ -70,7 +70,7 @@ func TestBlocksSuite(t *testing.T) {
 		note, err := tu.notesRepository.GetNote(context.TODO(),
 			&models.OneNoteFilter{NoteID: maximeNote.ID, GroupID: maximeNote.Group.ID}, maxime.ID)
 		require.NoError(t, err)
-		require.Len(t, note.Blocks, 2)
+		require.Len(t, *note.Blocks, 2)
 		require.Equal(t, (*note.Blocks)[0].Type, notesv1.Block_TYPE_HEADING_1.String())
 		require.Equal(t, (*note.Blocks)[1].Type, notesv1.Block_TYPE_CODE.String())
 	})
@@ -97,7 +97,7 @@ func TestBlocksSuite(t *testing.T) {
 		note, err := tu.notesRepository.GetNote(context.TODO(),
 			&models.OneNoteFilter{NoteID: maximeNote.ID, GroupID: maximeNote.Group.ID}, maxime.ID)
 		require.NoError(t, err)
-		require.Len(t, note.Blocks, 3)
+		require.Len(t, *note.Blocks, 3)
 		require.Equal(t, (*note.Blocks)[0].Type, notesv1.Block_TYPE_MATH.String())
 		require.Equal(t, (*note.Blocks)[1].Type, notesv1.Block_TYPE_HEADING_1.String())
 		require.Equal(t, (*note.Blocks)[2].Type, notesv1.Block_TYPE_CODE.String())
@@ -125,7 +125,7 @@ func TestBlocksSuite(t *testing.T) {
 		note, err := tu.notesRepository.GetNote(context.TODO(),
 			&models.OneNoteFilter{NoteID: maximeNote.ID, GroupID: maximeNote.Group.ID}, maxime.ID)
 		require.NoError(t, err)
-		require.Len(t, note.Blocks, 4)
+		require.Len(t, *note.Blocks, 4)
 		require.Equal(t, (*note.Blocks)[0].Type, notesv1.Block_TYPE_MATH.String())
 		require.Equal(t, (*note.Blocks)[1].Type, notesv1.Block_TYPE_HEADING_3.String())
 		require.Equal(t, (*note.Blocks)[2].Type, notesv1.Block_TYPE_HEADING_1.String())
@@ -154,7 +154,7 @@ func TestBlocksSuite(t *testing.T) {
 		note, err := tu.notesRepository.GetNote(context.TODO(),
 			&models.OneNoteFilter{NoteID: maximeNote.ID, GroupID: maximeNote.Group.ID}, maxime.ID)
 		require.NoError(t, err)
-		require.Len(t, note.Blocks, 5)
+		require.Len(t, *note.Blocks, 5)
 		require.Equal(t, (*note.Blocks)[0].Type, notesv1.Block_TYPE_MATH.String())
 		require.Equal(t, (*note.Blocks)[1].Type, notesv1.Block_TYPE_HEADING_3.String())
 		require.Equal(t, (*note.Blocks)[2].Type, notesv1.Block_TYPE_HEADING_1.String())
