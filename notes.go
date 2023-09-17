@@ -527,7 +527,7 @@ func modelsQuizToProtobufQuiz(quiz *models.Quiz) *notesv1.Quiz {
 		res.Questions = append(res.Questions, &notesv1.QuizQuestion{
 			Question:  question.Question,
 			Answers:   question.Answers,
-			Solutions: question.Answers,
+			Solutions: question.Solutions,
 		})
 	}
 	return res
