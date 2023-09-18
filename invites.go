@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"log"
 	"time"
 
 	"notes-service/models"
@@ -9,6 +10,7 @@ import (
 	notesv1 "notes-service/protorepo/noted/notes/v1"
 	"notes-service/validators"
 
+	background "github.com/noted-eip/noted/background-service"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -193,6 +195,61 @@ func (srv *groupsAPI) ListInvites(ctx context.Context, req *notesv1.ListInvitesR
 	}
 
 	return &notesv1.ListInvitesResponse{Invites: modelsListInviteResponseToProtobufInvites(invites)}, nil
+}
+
+func (srv *groupsAPI) StreamInvites(req *notesv1.StreamInvitesRequest, stream notesv1.GroupsAPI_StreamInvitesServer) error {
+	invites, err := srv.groups.ListInvites(context.TODO(),
+		&models.ManyInvitesFilter{
+			RecipientAccountID: req.IdentifierAccountId,
+		},
+		listOptionsFromLimitOffset(0, 0),
+	)
+
+	if err != nil {
+		log.Println(err.Error())
+	}
+
+	date := time.Now()
+
+	srv.background.AddProcess(&background.Process{
+		Identifier: req.IdentifierAccountId,
+		CallBackFct: func() error {
+			newInvites, err := srv.groups.ListInvites(context.TODO(),
+				&models.ManyInvitesFilter{
+					RecipientAccountID: req.IdentifierAccountId,
+					FromDate:           date,
+				},
+				listOptionsFromLimitOffset(0, 0),
+			)
+			if err != nil {
+				return status.Error(codes.Internal, "list invites eror")
+			}
+			date.Add(5 * time.Second)
+			err = stream.Send(&notesv1.StreamInvitesResponse{Invites: modelsListInviteResponseToProtobufInvites(append(invites, newInvites...))})
+			if err != nil {
+				return status.Error(codes.Internal, "stream invites error")
+			}
+			return nil
+		},
+		SecondsToDebounce:             5,
+		CancelProcessOnSameIdentifier: true,
+		RepeatProcess:                 true,
+	})
+
+	return nil
+}
+
+func (srv *groupsAPI) EndStreamInvites(ctx context.Context, req *notesv1.EndStreamInvitesRequest) (*notesv1.EndStreamInvitesResponse, error) {
+
+	err := srv.background.CancelProcess(
+		&background.Process{
+			Identifier: req.IdentifierAccountId,
+		},
+	)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "stream invites error")
+	}
+	return &notesv1.EndStreamInvitesResponse{}, nil
 }
 
 func modelsInviteToProtobufInvite(invite *models.GroupInvite, groupID string) *notesv1.GroupInvite {
