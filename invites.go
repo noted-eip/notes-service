@@ -211,7 +211,7 @@ func (srv *groupsAPI) StreamInvites(req *notesv1.StreamInvitesRequest, stream no
 
 	date := time.Now()
 
-	srv.background.AddProcess(&background.Process{
+	err = srv.background.AddProcess(&background.Process{
 		Identifier: req.IdentifierAccountId,
 		CallBackFct: func() error {
 			newInvites, err := srv.groups.ListInvites(context.TODO(),
@@ -222,7 +222,7 @@ func (srv *groupsAPI) StreamInvites(req *notesv1.StreamInvitesRequest, stream no
 				listOptionsFromLimitOffset(0, 0),
 			)
 			if err != nil {
-				return status.Error(codes.Internal, "list invites eror")
+				return statusFromModelError(err)
 			}
 			date.Add(5 * time.Second)
 			err = stream.Send(&notesv1.StreamInvitesResponse{Invites: modelsListInviteResponseToProtobufInvites(append(invites, newInvites...))})
@@ -235,7 +235,9 @@ func (srv *groupsAPI) StreamInvites(req *notesv1.StreamInvitesRequest, stream no
 		CancelProcessOnSameIdentifier: true,
 		RepeatProcess:                 true,
 	})
-
+	if err != nil {
+		return statusFromModelError(err)
+	}
 	return nil
 }
 
@@ -247,7 +249,7 @@ func (srv *groupsAPI) EndStreamInvites(ctx context.Context, req *notesv1.EndStre
 		},
 	)
 	if err != nil {
-		return nil, status.Error(codes.Internal, "stream invites error")
+		return nil, statusFromModelError(err)
 	}
 	return &notesv1.EndStreamInvitesResponse{}, nil
 }
