@@ -327,6 +327,9 @@ func (repo *groupsRepository) ListInvites(ctx context.Context, filter *models.Ma
 		if filter.GroupID != "" {
 			mongoDocumentMatch = append(mongoDocumentMatch, bson.E{Key: "_id", Value: filter.GroupID})
 		}
+		if !filter.FromDate.IsZero() {
+			mongoDocumentMatch = append(mongoDocumentMatch, bson.E{Key: "invites.createdAt", Value: bson.D{{Key: "$gte", Value: filter.FromDate}}})
+		}
 	}
 
 	idToMongoCondition := func(id *string, varIdentifier string) interface{} {
