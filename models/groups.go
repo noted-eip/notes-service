@@ -202,6 +202,8 @@ type ManyInvitesFilter struct {
 	RecipientAccountID string
 	// (Optional) List all invites in this group.
 	GroupID string
+	// (Optional) List invites from date to Now  .
+	FromDate time.Time
 }
 
 type CreateGroupPayload struct {
