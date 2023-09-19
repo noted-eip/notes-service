@@ -44,6 +44,14 @@ func (repo *notesRepository) CreateNote(ctx context.Context, payload *models.Cre
 
 	if len(payload.Blocks) > 0 {
 		blocks = &payload.Blocks
+	} else {
+		// @note: fill an empty block if no one was provided
+		content := ""
+		*blocks = append((*blocks), models.NoteBlock{
+			ID:        repo.newUUID(),
+			Type:      "TYPE_PARAGRAPH",
+			Paragraph: &content,
+		})
 	}
 
 	note := &models.Note{
@@ -209,8 +217,6 @@ func (repo *notesRepository) InsertBlock(ctx context.Context, filter *models.One
 	}
 
 	err := repo.updateOne(ctx, query, update)
-	//err := repo.findOneAndUpdate(ctx, query, update, note)
-	//res, err := repo.updateMany(ctx, query, update)
 	if err != nil {
 		return nil, err
 	}

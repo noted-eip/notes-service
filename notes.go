@@ -52,8 +52,8 @@ func (srv *notesAPI) CreateNote(ctx context.Context, req *notesv1.CreateNoteRequ
 	if err != nil {
 		return nil, statusFromModelError(err)
 	}
-	// check user can edit the note
 
+	// Check user can edit the note
 	note, err := srv.notes.CreateNote(ctx, &models.CreateNotePayload{
 		GroupID:         req.GroupId,
 		Title:           req.Title,
