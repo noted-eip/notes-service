@@ -209,8 +209,6 @@ func (repo *notesRepository) InsertBlock(ctx context.Context, filter *models.One
 	}
 
 	err := repo.updateOne(ctx, query, update)
-	//err := repo.findOneAndUpdate(ctx, query, update, note)
-	//res, err := repo.updateMany(ctx, query, update)
 	if err != nil {
 		return nil, err
 	}
