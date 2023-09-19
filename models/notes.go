@@ -57,9 +57,9 @@ type Position struct {
 type TextStyleType string
 
 type Color struct {
-	R int32 `json:"R,omitempty" bson:"R,omitempty"`
-	G int32 `json:"G,omitempty" bson:"G,omitempty"`
-	B int32 `json:"B,omitempty" bson:"B,omitempty"`
+	R int32 `json:"r,omitempty" bson:"r,omitempty"`
+	G int32 `json:"g,omitempty" bson:"g,omitempty"`
+	B int32 `json:"b,omitempty" bson:"b,omitempty"`
 }
 
 const (
