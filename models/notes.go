@@ -40,6 +40,26 @@ type NoteBlock struct {
 	Math        *string         `json:"math,omitempty" bson:"math,omitempty"`
 	Image       *NoteBlockImage `json:"image,omitempty" bson:"image,omitempty"`
 	Code        *NoteBlockCode  `json:"code,omitempty" bson:"code,omitempty"`
+	Styles      []TextStyle     `json:"styles,omitempty" bson:"styles,omitempty"`
+}
+
+type TextStyle struct {
+	Style    string   `json:"style,omitempty" bson:"style,omitempty"`
+	Position Position `json:"pos,omitempty" bson:"pos,omitempty"`
+	Color    *Color   `json:"color,omitempty" bson:"color,omitempty"`
+}
+
+type Position struct {
+	Start  int64 `json:"styles,omitempty" bson:"styles,omitempty"`
+	Length int64 `json:"length,omitempty" bson:"length,omitempty"`
+}
+
+type TextStyleType string
+
+type Color struct {
+	R int32 `json:"R,omitempty" bson:"R,omitempty"`
+	G int32 `json:"G,omitempty" bson:"G,omitempty"`
+	B int32 `json:"B,omitempty" bson:"B,omitempty"`
 }
 
 const (

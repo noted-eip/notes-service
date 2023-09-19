@@ -517,6 +517,24 @@ func protobufBlockToModelsBlock(block *notesv1.Block) *models.NoteBlock {
 		val := block.GetNumberPoint()
 		modelsBlock.NumberPoint = &val
 	}
+
+	for _, style := range block.Styles {
+		modelStyle := models.TextStyle{
+			Style: style.Style.String(),
+			Position: models.Position{
+				Start:  style.Pos.Start,
+				Length: style.Pos.Length,
+			},
+		}
+		if style.GetColor() != nil {
+			modelStyle.Color = &models.Color{
+				R: style.Color.R,
+				G: style.Color.G,
+				B: style.Color.B,
+			}
+		}
+		modelsBlock.Styles = append(modelsBlock.Styles, modelStyle)
+	}
 	return modelsBlock
 }
 
@@ -527,7 +545,7 @@ func modelsQuizToProtobufQuiz(quiz *models.Quiz) *notesv1.Quiz {
 		res.Questions = append(res.Questions, &notesv1.QuizQuestion{
 			Question:  question.Question,
 			Answers:   question.Answers,
-			Solutions: question.Answers,
+			Solutions: question.Solutions,
 		})
 	}
 	return res
@@ -623,6 +641,25 @@ func modelsBlockToProtobufBlock(block *models.NoteBlock) *notesv1.Block {
 		ret.Data = &notesv1.Block_NumberPoint{
 			NumberPoint: stringPtrValueOrFallback(block.NumberPoint, ""),
 		}
+	}
+
+	for _, style := range block.Styles {
+		modelStyle := &notesv1.Block_TextStyle{
+			Style: notesv1.Block_TextStyle_Style(notesv1.Block_TextStyle_Style_value[style.Style]),
+			Pos: &notesv1.Block_TextStyle_Position{
+				Start:  int64(style.Position.Start),
+				Length: int64(style.Position.Length),
+			},
+		}
+		if style.Color != nil {
+			modelStyle.Color = &notesv1.Block_TextStyle_Color{
+				R: int32(style.Color.R),
+				G: int32(style.Color.G),
+				B: int32(style.Color.B),
+			}
+		}
+
+		ret.Styles = append(ret.Styles, modelStyle)
 	}
 
 	return ret
