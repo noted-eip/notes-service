@@ -287,6 +287,8 @@ Réponds en JSON. Le modèle est le suivant pour une question:
 "solutions": ["...", ...]
 }
 
+La clé "answers" contient les possibilité de réponse (vrais et fausses) à la "question" et la clé "solutions" listera uniquement la ou les bonnes réponses de l'array "answers". 
+
 Le résultat final englobant tout les modèles sera sous cette forme JSON:
 {
 	"questions": [..., ...]
