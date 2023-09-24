@@ -25,6 +25,8 @@ func TestActivitiesSuite(t *testing.T) {
 			Event:   "New event content",
 		})
 		after := time.Now()
+		require.NoError(t, err)
+
 		res, err := tu.groups.GetActivity(gabi.Context, &notesv1.GetActivityRequest{
 			GroupId:    gabiGroup.ID,
 			ActivityId: activity.ID,
@@ -44,6 +46,7 @@ func TestActivitiesSuite(t *testing.T) {
 			Type:    models.NoteAdded,
 			Event:   "New event content",
 		})
+		require.NoError(t, err)
 		res, err := tu.groups.GetActivity(stranger.Context, &notesv1.GetActivityRequest{
 			GroupId:    gabiGroup.ID,
 			ActivityId: activity.ID,
@@ -58,6 +61,7 @@ func TestActivitiesSuite(t *testing.T) {
 			Type:    models.NoteAdded,
 			Event:   "New event content",
 		})
+		require.NoError(t, err)
 
 		res, err := tu.groups.GetActivity(stranger.Context, &notesv1.GetActivityRequest{})
 		require.Error(t, err)

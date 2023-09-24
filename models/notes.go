@@ -40,27 +40,26 @@ type NoteBlock struct {
 	Math        *string         `json:"math,omitempty" bson:"math,omitempty"`
 	Image       *NoteBlockImage `json:"image,omitempty" bson:"image,omitempty"`
 	Code        *NoteBlockCode  `json:"code,omitempty" bson:"code,omitempty"`
-	TextStyle   *[]TextStyle    `json:"text_styles" bson:"text_styles"`
+	Styles      []TextStyle     `json:"styles,omitempty" bson:"styles,omitempty"`
 }
 
-type Color struct {
-	R int `json:"r" bson:"r"`
-	G int `json:"g" bson:"g"`
-	B int `json:"b" bson:"b"`
+type TextStyle struct {
+	Style    string   `json:"style,omitempty" bson:"style,omitempty"`
+	Position Position `json:"pos,omitempty" bson:"pos,omitempty"`
+	Color    *Color   `json:"color,omitempty" bson:"color,omitempty"`
 }
 
 type Position struct {
-	Start  int32 `json:"start" bson:"start"`
-	Length int32 `json:"length" bson:"length"`
+	Start  int64 `json:"styles,omitempty" bson:"styles,omitempty"`
+	Length int64 `json:"length,omitempty" bson:"length,omitempty"`
 }
 
-type TextStyleType = string
+type TextStyleType string
 
-type TextStyle struct {
-	ID       string        `json:"id" bson:"id"`
-	Style    TextStyleType `json:"style" bson:"style"`
-	Position Position      `json:"pos" bson:"pos"`
-	Color    *Color        `json:"color,omitempty" bson:"color,omitempty"`
+type Color struct {
+	R int32 `json:"r,omitempty" bson:"r,omitempty"`
+	G int32 `json:"g,omitempty" bson:"g,omitempty"`
+	B int32 `json:"b,omitempty" bson:"b,omitempty"`
 }
 
 const (
