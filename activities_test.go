@@ -89,9 +89,17 @@ func TestActivitiesSuite(t *testing.T) {
 		require.Equal(t, 4, len(res.Activities))
 	})
 
-	t.Run("stanger-cannot-list-activities", func(t *testing.T) {
+	t.Run("stanger-cannot-list-activities-by-group", func(t *testing.T) {
 		res, err := tu.groups.ListActivities(stranger.Context, &notesv1.ListActivitiesRequest{
 			GroupId: gabiGroup.ID,
+		})
+		require.Error(t, err)
+		require.Nil(t, res)
+	})
+
+	t.Run("stanger-cannot-list-activities-by-user", func(t *testing.T) {
+		res, err := tu.groups.ListActivities(stranger.Context, &notesv1.ListActivitiesRequest{
+			AccountId: gabiGroup.ID,
 		})
 		require.Error(t, err)
 		require.Nil(t, res)

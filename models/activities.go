@@ -25,7 +25,8 @@ type OneActivityFilter struct {
 }
 
 type ManyActivitiesFilter struct {
-	GroupID string
+	GroupID   string
+	AccountID string
 }
 
 type Activity struct {
