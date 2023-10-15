@@ -49,7 +49,7 @@ func (repo *notesRepository) CreateNote(ctx context.Context, payload *models.Cre
 		}
 		blocks = &payload.Blocks
 	} else {
-		// @note: fill an empty block if no one was provided
+		// @note: fill an empty block if none was provided
 		content := ""
 		*blocks = append((*blocks), models.NoteBlock{
 			ID:        repo.newUUID(),

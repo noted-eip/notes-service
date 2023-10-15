@@ -363,9 +363,13 @@ func (srv *notesAPI) UpdateKeywordsByNoteId(noteId string, groupId string, accou
 	return nil
 }
 
-// TODO(protorepo): Change it so we can grant and remove note edit permissions
 func (srv *notesAPI) ChangeNoteEditPermission(ctx context.Context, req *notesv1.ChangeNoteEditPermissionRequest) (*notesv1.ChangeNoteEditPermissionResponse, error) {
 	token, err := srv.authenticate(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	err = validators.ValidateChangeEditPermissionsRequest(req)
 	if err != nil {
 		return nil, err
 	}
@@ -428,6 +432,11 @@ func (srv *notesAPI) CreateBlockComment(ctx context.Context, req *notesv1.Create
 		return nil, err
 	}
 
+	err = validators.ValidateCreateBlockCommentRequest(req)
+	if err != nil {
+		return nil, err
+	}
+
 	res, err := srv.notes.CreateBlockComment(ctx, &models.OneBlockFilter{
 		GroupID: req.GroupId,
 		NoteID:  req.NoteId,
@@ -451,6 +460,11 @@ func (srv *notesAPI) DeleteBlockComment(ctx context.Context, req *notesv1.Delete
 		return nil, err
 	}
 
+	err = validators.ValidateDeleteBlockCommentRequest(req)
+	if err != nil {
+		return nil, err
+	}
+
 	_, err = srv.notes.DeleteBlockComment(ctx, &models.OneBlockFilter{
 		GroupID: req.GroupId,
 		NoteID:  req.NoteId,
@@ -467,6 +481,11 @@ func (srv *notesAPI) DeleteBlockComment(ctx context.Context, req *notesv1.Delete
 
 func (srv *notesAPI) ListBlockComments(ctx context.Context, req *notesv1.ListBlockCommentsRequest) (*notesv1.ListBlockCommentsResponse, error) {
 	token, err := srv.authenticate(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	err = validators.ValidateListBlockCommentRequest(req)
 	if err != nil {
 		return nil, err
 	}
