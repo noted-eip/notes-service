@@ -422,6 +422,74 @@ func (srv *notesAPI) ChangeNoteEditPermission(ctx context.Context, req *notesv1.
 	return &notesv1.ChangeNoteEditPermissionResponse{}, nil
 }
 
+func (srv *notesAPI) CreateBlockComment(ctx context.Context, req *notesv1.CreateBlockCommentRequest) (*notesv1.CreateBlockCommentResponse, error) {
+	token, err := srv.authenticate(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	res, err := srv.notes.CreateBlockComment(ctx, &models.OneBlockFilter{
+		GroupID: req.GroupId,
+		NoteID:  req.NoteId,
+		BlockID: req.BlockId,
+	}, &models.BlockComment{
+		AuthorAccountID: token.AccountID,
+		Content:         req.Comment.Content,
+	}, token.AccountID)
+	if err != nil {
+		return nil, statusFromModelError(err)
+	}
+
+	return &notesv1.CreateBlockCommentResponse{
+		Comment: modelsCommentToProtobufComment(res),
+	}, nil
+}
+
+func (srv *notesAPI) DeleteBlockComment(ctx context.Context, req *notesv1.DeleteBlockCommentRequest) (*notesv1.DeleteBlockCommentResponse, error) {
+	token, err := srv.authenticate(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = srv.notes.DeleteBlockComment(ctx, &models.OneBlockFilter{
+		GroupID: req.GroupId,
+		NoteID:  req.NoteId,
+		BlockID: req.BlockId,
+	}, &models.BlockComment{
+		ID: req.CommentId,
+	}, token.AccountID)
+	if err != nil {
+		return nil, statusFromModelError(err)
+	}
+
+	return &notesv1.DeleteBlockCommentResponse{}, nil
+}
+
+func (srv *notesAPI) ListBlockComments(ctx context.Context, req *notesv1.ListBlockCommentsRequest) (*notesv1.ListBlockCommentsResponse, error) {
+	token, err := srv.authenticate(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	res, err := srv.notes.ListBlockComments(ctx, &models.OneBlockFilter{
+		GroupID: req.GroupId,
+		NoteID:  req.NoteId,
+		BlockID: req.BlockId,
+	}, &models.ListOptions{}, token.AccountID)
+	if err != nil {
+		return nil, statusFromModelError(err)
+	}
+
+	comments := make([]*notesv1.Block_Comment, 0)
+	for _, modelComment := range *res {
+		comments = append(comments, modelsCommentToProtobufComment(&modelComment))
+	}
+
+	return &notesv1.ListBlockCommentsResponse{
+		Comments: comments,
+	}, nil
+}
+
 func hasEditPermission(AccountsWithEditPermissions []string, recipientAccountID string) bool {
 	for _, accountID := range AccountsWithEditPermissions {
 		if accountID == recipientAccountID {
@@ -670,4 +738,13 @@ func stringPtrValueOrFallback(ptr *string, fallback string) string {
 		return *ptr
 	}
 	return fallback
+}
+
+func modelsCommentToProtobufComment(cmt *models.BlockComment) *notesv1.Block_Comment {
+	protobufComment := &notesv1.Block_Comment{
+		Id:       cmt.ID,
+		AuthorId: cmt.AuthorAccountID,
+		Content:  cmt.Content,
+	}
+	return protobufComment
 }

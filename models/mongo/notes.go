@@ -160,9 +160,6 @@ func (repo *notesRepository) ListNotesInternal(ctx context.Context, filter *mode
 
 	query := bson.D{}
 	if filter != nil {
-		if filter.AuthorAccountID != "" {
-			query = append(query, bson.E{Key: "authorAccountId", Value: filter.AuthorAccountID})
-		}
 		if filter.GroupID != "" {
 			query = append(query, bson.E{Key: "groupId", Value: filter.GroupID})
 		}
@@ -339,6 +336,78 @@ func (repo *notesRepository) RemoveEditPermissions(ctx context.Context, filter *
 
 	_, err := repo.updateMany(ctx, query, update)
 	return err
+}
+
+func (repo *notesRepository) CreateBlockComment(ctx context.Context, filter *models.OneBlockFilter, payload *models.BlockComment, accountID string) (*models.BlockComment, error) {
+	query := bson.D{
+		{Key: "_id", Value: filter.NoteID},
+		{Key: "groupId", Value: filter.GroupID},
+		{Key: "blocks.id", Value: filter.BlockID},
+		{Key: "accountsWithEditPermissions", Value: accountID}, // NOTE: MongoDB model logic is not "safe" here - Who/What can call this function is decided in the endpoint's logic
+	}
+
+	commentID := repo.newUUID()
+	update := bson.D{
+		{Key: "$push", Value: bson.D{
+			{Key: "blocks.$.thread", Value: models.BlockComment{
+				ID:              commentID,
+				AuthorAccountID: payload.AuthorAccountID,
+				Content:         payload.Content,
+			}},
+		}},
+	}
+
+	res := models.Note{}
+	err := repo.findOneAndUpdate(ctx, query, res, update)
+	if err != nil {
+		return nil, err
+	}
+	return res.FindBlock(filter.BlockID).FindComment(commentID), err
+}
+
+func (repo *notesRepository) ListBlockComments(ctx context.Context, filter *models.OneBlockFilter, lo *models.ListOptions, accountID string) (*[]models.BlockComment, error) {
+	query := bson.D{
+		{Key: "_id", Value: filter.NoteID},
+		{Key: "groupId", Value: filter.GroupID},
+		{Key: "blocks.id", Value: filter.BlockID},
+		{Key: "accountsWithEditPermissions", Value: accountID}, // NOTE: MongoDB model logic is not "safe" here - Who/What can call this function is decided in the endpoint's logic
+	}
+
+	requieredFields := bson.D{{Key: "thread", Value: 1}}
+	opts := options.FindOne().SetProjection(requieredFields)
+
+	note := models.Note{}
+	err := repo.findOne(ctx, query, &note, opts)
+	if err != nil {
+		return nil, err
+	}
+
+	return &note.FindBlock(filter.BlockID).Thread, nil
+}
+
+func (repo *notesRepository) DeleteBlockComment(ctx context.Context, filter *models.OneBlockFilter, payload *models.BlockComment, accountID string) (*models.BlockComment, error) {
+	query := bson.D{
+		{Key: "_id", Value: filter.NoteID},
+		{Key: "groupId", Value: filter.GroupID},
+		{Key: "blocks.id", Value: filter.BlockID},
+		{Key: "accountsWithEditPermissions", Value: accountID},
+	}
+
+	update := bson.D{
+		{Key: "$pull", Value: bson.D{
+			{Key: "blocks", Value: bson.D{
+				{Key: "id", Value: payload.ID},
+				{Key: "authorAccountId", Value: accountID},
+			}},
+		}},
+	}
+
+	res := models.Note{}
+	err := repo.findOneAndUpdate(ctx, query, res, update)
+	if err != nil {
+		return nil, err
+	}
+	return payload, err
 }
 
 func updateBlockPayloadToDocument(payload *models.UpdateBlockPayload) bson.E {
