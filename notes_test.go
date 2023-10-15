@@ -839,4 +839,193 @@ func TestNotesSuite(t *testing.T) {
 
 	})
 
+	t.Run("author-can-comment-on-his-note", func(t *testing.T) {
+		res, err := tu.notesRepository.GetNote(note.Author.Context, &models.OneNoteFilter{
+			GroupID: testGroup.ID,
+			NoteID:  note.ID,
+		}, testUser.ID)
+
+		require.NoError(t, err)
+		require.NotZero(t, len(*res.Blocks))
+
+		blockID := (*res.Blocks)[0].ID
+		commentContent := "very nice comment"
+
+		r, err := tu.notes.CreateBlockComment(note.Author.Context, &notesv1.CreateBlockCommentRequest{
+			GroupId: testGroup.ID,
+			NoteId:  note.ID,
+			BlockId: blockID,
+			Comment: &notesv1.Block_Comment{
+				AuthorId: note.Author.ID,
+				Content:  commentContent,
+			},
+		})
+
+		require.NoError(t, err)
+		require.NotNil(t, r)
+		require.Equal(t, r.Comment.Content, commentContent)
+	})
+
+	t.Run("stranger-cannot-comment-on-author-note", func(t *testing.T) {
+		res, err := tu.notesRepository.GetNote(note.Author.Context, &models.OneNoteFilter{
+			GroupID: testGroup.ID,
+			NoteID:  note.ID,
+		}, testUser.ID)
+
+		require.NoError(t, err)
+		require.NotZero(t, len(*res.Blocks))
+
+		blockID := (*res.Blocks)[0].ID
+		commentContent := "very nice comment"
+
+		r, err := tu.notes.CreateBlockComment(stranger.Context, &notesv1.CreateBlockCommentRequest{
+			GroupId: testGroup.ID,
+			NoteId:  note.ID,
+			BlockId: blockID,
+			Comment: &notesv1.Block_Comment{
+				AuthorId: note.Author.ID,
+				Content:  commentContent,
+			},
+		})
+
+		require.Error(t, err)
+		require.Nil(t, r)
+	})
+
+	t.Run("user-cannot-comment-on-note-on-which-he-has-not-access-to", func(t *testing.T) {
+		res, err := tu.notesRepository.GetNote(note.Author.Context, &models.OneNoteFilter{
+			GroupID: testGroup.ID,
+			NoteID:  note.ID,
+		}, testUser.ID)
+
+		require.NoError(t, err)
+		require.NotZero(t, len(*res.Blocks))
+
+		blockID := (*res.Blocks)[0].ID
+		commentContent := "very nice comment"
+
+		r, err := tu.notes.CreateBlockComment(edouard.Context, &notesv1.CreateBlockCommentRequest{
+			GroupId: testGroup.ID,
+			NoteId:  note.ID,
+			BlockId: blockID,
+			Comment: &notesv1.Block_Comment{
+				AuthorId: note.Author.ID,
+				Content:  commentContent,
+			},
+		})
+
+		require.Error(t, err)
+		require.Nil(t, r)
+	})
+
+	t.Run("user-cannot-list-comments-on-note-on-which-he-has-not-access-to", func(t *testing.T) {
+		res, err := tu.notesRepository.GetNote(note.Author.Context, &models.OneNoteFilter{
+			GroupID: testGroup.ID,
+			NoteID:  note.ID,
+		}, testUser.ID)
+
+		require.NoError(t, err)
+		require.NotZero(t, len(*res.Blocks))
+
+		blockID := (*res.Blocks)[0].ID
+
+		r, err := tu.notes.ListBlockComments(edouard.Context, &notesv1.ListBlockCommentsRequest{
+			GroupId: testGroup.ID,
+			NoteId:  note.ID,
+			BlockId: blockID,
+		})
+
+		require.Error(t, err)
+		require.Nil(t, r)
+	})
+
+	// Change back permissions for edouard on testUser's note
+	r, err := tu.notes.ChangeNoteEditPermission(testUser.Context, &notesv1.ChangeNoteEditPermissionRequest{
+		GroupId:            note.Group.ID,
+		NoteId:             note.ID,
+		RecipientAccountId: edouard.ID,
+		Type:               notesv1.ChangeNoteEditPermissionRequest_ACTION_GRANT,
+	})
+	require.NoError(t, err)
+	require.NotNil(t, r)
+
+	t.Run("user-can-comment-on-note-on-which-he-has-access-to", func(t *testing.T) {
+		res, err := tu.notesRepository.GetNote(note.Author.Context, &models.OneNoteFilter{
+			GroupID: testGroup.ID,
+			NoteID:  note.ID,
+		}, testUser.ID)
+
+		require.NoError(t, err)
+		require.NotZero(t, len(*res.Blocks))
+
+		blockID := (*res.Blocks)[0].ID
+		commentContent := "very nice comment"
+
+		r, err := tu.notes.CreateBlockComment(edouard.Context, &notesv1.CreateBlockCommentRequest{
+			GroupId: testGroup.ID,
+			NoteId:  note.ID,
+			BlockId: blockID,
+			Comment: &notesv1.Block_Comment{
+				AuthorId: note.Author.ID,
+				Content:  commentContent,
+			},
+		})
+
+		require.NoError(t, err)
+		require.NotNil(t, r)
+		require.Equal(t, commentContent, r.Comment.Content)
+	})
+
+	t.Run("user-can-list-comments-on-note-on-which-he-has-access-to", func(t *testing.T) {
+		res, err := tu.notesRepository.GetNote(note.Author.Context, &models.OneNoteFilter{
+			GroupID: testGroup.ID,
+			NoteID:  note.ID,
+		}, testUser.ID)
+
+		require.NoError(t, err)
+		require.NotZero(t, len(*res.Blocks))
+
+		blockID := (*res.Blocks)[0].ID
+
+		r, err := tu.notes.ListBlockComments(edouard.Context, &notesv1.ListBlockCommentsRequest{
+			GroupId: testGroup.ID,
+			NoteId:  note.ID,
+			BlockId: blockID,
+		})
+
+		require.NoError(t, err)
+		require.NotNil(t, r)
+		require.Equal(t, len(r.Comments), 2)
+	})
+
+	t.Run("is-possible-to-delete-own-comment", func(t *testing.T) {
+		res, err := tu.notesRepository.GetNote(note.Author.Context, &models.OneNoteFilter{
+			GroupID: testGroup.ID,
+			NoteID:  note.ID,
+		}, testUser.ID)
+
+		require.NoError(t, err)
+		require.NotZero(t, len(*res.Blocks))
+
+		blockID := (*res.Blocks)[0].ID
+		commentID := ""
+		for _, cmt := range *(*res.Blocks)[0].Thread {
+			if cmt.AuthorAccountID == note.Author.ID {
+				commentID = cmt.ID
+				break
+			}
+		}
+		require.NotEmpty(t, commentID)
+
+		r, err := tu.notes.DeleteBlockComment(note.Author.Context, &notesv1.DeleteBlockCommentRequest{
+			GroupId:   testGroup.ID,
+			NoteId:    note.ID,
+			BlockId:   blockID,
+			CommentId: commentID,
+		})
+
+		require.NoError(t, err)
+		require.NotNil(t, r)
+	})
+
 }
