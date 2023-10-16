@@ -28,8 +28,13 @@ func (srv *groupsAPI) ListActivities(ctx context.Context, req *notesv1.ListActiv
 		return nil, statusFromModelError(err)
 	}
 
+	// Check if user is the same than the requested AccountId
+	if token.AccountID != req.AccountId && len(req.AccountId) > 0 {
+		return nil, status.Error(codes.PermissionDenied, "The user accountId isn't the same than the accountId requested")
+	}
+
 	activities, err := srv.activities.ListActivitiesInternal(ctx,
-		&models.ManyActivitiesFilter{GroupID: req.GroupId},
+		&models.ManyActivitiesFilter{GroupID: req.GroupId, AccountID: req.AccountId},
 		&models.ListOptions{Limit: int32(req.Limit), Offset: int32(req.Offset)})
 	if err != nil {
 		return nil, statusFromModelError(err)
