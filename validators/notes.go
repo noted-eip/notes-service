@@ -79,3 +79,38 @@ func ValidateGenerateQuizzRequest(req *notespb.GenerateQuizRequest) error {
 		validation.Field(&req.NoteId, validation.Required),
 	)
 }
+
+func ValidateCreateBlockCommentRequest(req *notespb.CreateBlockCommentRequest) error {
+	return validation.ValidateStruct(req,
+		validation.Field(&req.GroupId, validation.Required),
+		validation.Field(&req.NoteId, validation.Required),
+		validation.Field(&req.BlockId, validation.Required),
+		validation.Field(&req.Comment, validation.Required),
+	)
+}
+
+func ValidateListBlockCommentRequest(req *notespb.ListBlockCommentsRequest) error {
+	return validation.ValidateStruct(req,
+		validation.Field(&req.GroupId, validation.Required),
+		validation.Field(&req.NoteId, validation.Required),
+		validation.Field(&req.BlockId, validation.Required),
+	)
+}
+
+func ValidateDeleteBlockCommentRequest(req *notespb.DeleteBlockCommentRequest) error {
+	return validation.ValidateStruct(req,
+		validation.Field(&req.GroupId, validation.Required),
+		validation.Field(&req.NoteId, validation.Required),
+		validation.Field(&req.BlockId, validation.Required),
+		validation.Field(&req.CommentId, validation.Required),
+	)
+}
+
+func ValidateChangeEditPermissionsRequest(req *notespb.ChangeNoteEditPermissionRequest) error {
+	return validation.ValidateStruct(req,
+		validation.Field(&req.GroupId, validation.Required),
+		validation.Field(&req.NoteId, validation.Required),
+		validation.Field(&req.Type, validation.Required),
+		validation.Field(&req.RecipientAccountId, validation.Required),
+	)
+}

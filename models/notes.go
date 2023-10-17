@@ -41,6 +41,13 @@ type NoteBlock struct {
 	Image       *NoteBlockImage `json:"image,omitempty" bson:"image,omitempty"`
 	Code        *NoteBlockCode  `json:"code,omitempty" bson:"code,omitempty"`
 	Styles      []TextStyle     `json:"styles,omitempty" bson:"styles,omitempty"`
+	Thread      *[]BlockComment `json:"thread,omitempty" bson:"thread,omitempty"`
+}
+
+type BlockComment struct {
+	ID              string `json:"id" bson:"id"`
+	AuthorAccountID string `json:"authorAccountId" bson:"authorAccountId"`
+	Content         string `json:"content,omitempty" bson:"content,omitempty"`
 }
 
 type TextStyle struct {
@@ -118,6 +125,15 @@ func (note *Note) FindBlock(blockID string) *NoteBlock {
 	return nil
 }
 
+func (block *NoteBlock) FindComment(commentID string) *BlockComment {
+	for i := 0; i < len(*block.Thread); i++ {
+		if (*block.Thread)[i].ID == commentID {
+			return &(*block.Thread)[i]
+		}
+	}
+	return nil
+}
+
 type CreateNotePayload struct {
 	Title           string
 	AuthorAccountID string
@@ -184,6 +200,9 @@ type NotesRepository interface {
 	UpdateBlock(ctx context.Context, filter *OneBlockFilter, payload *UpdateBlockPayload, accountID string) (*NoteBlock, error)
 	GetBlock(ctx context.Context, filter *OneBlockFilter, accountID string) (*NoteBlock, error)
 	DeleteBlock(ctx context.Context, filter *OneBlockFilter, accountID string) error
+	CreateBlockComment(ctx context.Context, filter *OneBlockFilter, payload *BlockComment, accountID string) (*BlockComment, error)
+	DeleteBlockComment(ctx context.Context, filter *OneBlockFilter, payload *BlockComment, accountID string) (*BlockComment, error)
+	ListBlockComments(ctx context.Context, filter *OneBlockFilter, lo *ListOptions, accountID string) (*[]BlockComment, error)
 
 	// Utils
 	RemoveEditPermissions(ctx context.Context, filter *OneNoteFilter, accountID string) error

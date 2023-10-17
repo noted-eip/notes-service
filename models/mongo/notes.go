@@ -43,14 +43,19 @@ func (repo *notesRepository) CreateNote(ctx context.Context, payload *models.Cre
 	blocks := &[]models.NoteBlock{}
 
 	if len(payload.Blocks) > 0 {
+		// Create "real" empty array for mongodb golang drivers
+		for i := 0; i < len(payload.Blocks); i++ {
+			(payload.Blocks[i]).Thread = &[]models.BlockComment{}
+		}
 		blocks = &payload.Blocks
 	} else {
-		// @note: fill an empty block if no one was provided
+		// @note: fill an empty block if none was provided
 		content := ""
 		*blocks = append((*blocks), models.NoteBlock{
 			ID:        repo.newUUID(),
 			Type:      "TYPE_PARAGRAPH",
 			Paragraph: &content,
+			Thread:    &[]models.BlockComment{},
 		})
 	}
 
@@ -207,6 +212,9 @@ func (repo *notesRepository) InsertBlock(ctx context.Context, filter *models.One
 		{Key: "groupId", Value: filter.GroupID},
 		{Key: "authorAccountId", Value: accountID},
 	}
+
+	payload.Block.Thread = &[]models.BlockComment{} // Make non-null empty array
+
 	update := bson.D{
 		{Key: "$push", Value: bson.D{
 			{Key: "blocks", Value: bson.D{
@@ -339,6 +347,92 @@ func (repo *notesRepository) RemoveEditPermissions(ctx context.Context, filter *
 
 	_, err := repo.updateMany(ctx, query, update)
 	return err
+}
+
+func (repo *notesRepository) CreateBlockComment(ctx context.Context, filter *models.OneBlockFilter, payload *models.BlockComment, accountID string) (*models.BlockComment, error) {
+	query := bson.D{
+		{Key: "_id", Value: filter.NoteID},
+		{Key: "groupId", Value: filter.GroupID},
+		{Key: "blocks.id", Value: filter.BlockID},
+		{Key: "$or", Value: bson.A{
+			bson.D{{Key: "accountsWithEditPermissions", Value: accountID}},
+			bson.D{{Key: "authorAccountId", Value: accountID}},
+		}},
+	}
+
+	commentID := repo.newUUID()
+	update := bson.D{
+		{Key: "$push", Value: bson.D{
+			{Key: "blocks.$.thread", Value: models.BlockComment{
+				ID:              commentID,
+				AuthorAccountID: payload.AuthorAccountID,
+				Content:         payload.Content,
+			}},
+		}},
+	}
+
+	err := repo.updateOne(ctx, query, update)
+	if err != nil {
+		return nil, err
+	}
+
+	res, err := repo.GetBlock(ctx, &models.OneBlockFilter{
+		GroupID: filter.GroupID,
+		NoteID:  filter.NoteID,
+		BlockID: filter.BlockID,
+	}, accountID)
+
+	return res.FindComment(commentID), err
+}
+
+func (repo *notesRepository) ListBlockComments(ctx context.Context, filter *models.OneBlockFilter, lo *models.ListOptions, accountID string) (*[]models.BlockComment, error) {
+	query := bson.D{
+		{Key: "_id", Value: filter.NoteID},
+		{Key: "groupId", Value: filter.GroupID},
+		{Key: "blocks.id", Value: filter.BlockID},
+		{Key: "$or", Value: bson.A{
+			bson.D{{Key: "accountsWithEditPermissions", Value: accountID}},
+			bson.D{{Key: "authorAccountId", Value: accountID}},
+		}},
+	}
+
+	requieredFields := bson.D{{Key: "blocks", Value: 1}}
+	opts := options.FindOne().SetProjection(requieredFields)
+
+	note := models.Note{}
+	err := repo.findOne(ctx, query, &note, opts)
+	if err != nil {
+		return nil, err
+	}
+
+	return note.FindBlock(filter.BlockID).Thread, nil
+}
+
+func (repo *notesRepository) DeleteBlockComment(ctx context.Context, filter *models.OneBlockFilter, payload *models.BlockComment, accountID string) (*models.BlockComment, error) {
+	query := bson.D{
+		{Key: "_id", Value: filter.NoteID},
+		{Key: "groupId", Value: filter.GroupID},
+		{Key: "blocks.id", Value: filter.BlockID},
+		{Key: "$or", Value: bson.A{
+			bson.D{{Key: "accountsWithEditPermissions", Value: accountID}},
+			bson.D{{Key: "authorAccountId", Value: accountID}},
+		}},
+	}
+
+	update := bson.D{
+		{Key: "$pull", Value: bson.D{
+			{Key: "blocks.$.thread", Value: bson.D{
+				{Key: "id", Value: payload.ID},
+				{Key: "authorAccountId", Value: accountID},
+			}},
+		}},
+	}
+
+	err := repo.updateOne(ctx, query, update)
+	if err != nil {
+		return nil, err
+	}
+	return payload, err
 }
 
 func updateBlockPayloadToDocument(payload *models.UpdateBlockPayload) bson.E {

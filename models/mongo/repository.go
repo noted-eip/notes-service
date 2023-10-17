@@ -33,7 +33,7 @@ func (repo *repository) aggregate(ctx context.Context, pipeline interface{}, res
 }
 
 func (repo *repository) updateOne(ctx context.Context, query interface{}, update interface{}, opts ...*options.UpdateOptions) error {
-	repo.logger.Debug("update many", zap.Any("query", query), zap.Any("update", update))
+	repo.logger.Debug("update one", zap.Any("query", query), zap.Any("update", update))
 	res, err := repo.coll.UpdateOne(ctx, query, update, opts...)
 
 	if err != nil {
