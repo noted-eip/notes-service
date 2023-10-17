@@ -423,6 +423,7 @@ func (repo *notesRepository) DeleteBlockComment(ctx context.Context, filter *mod
 		{Key: "$pull", Value: bson.D{
 			{Key: "blocks.$.thread", Value: bson.D{
 				{Key: "id", Value: payload.ID},
+				{Key: "authorAccountId", Value: accountID},
 			}},
 		}},
 	}

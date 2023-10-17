@@ -998,6 +998,35 @@ func TestNotesSuite(t *testing.T) {
 		require.Equal(t, len(r.Comments), 2)
 	})
 
+	t.Run("non-author-cannot-delete-an-other-user-comment", func(t *testing.T) {
+		res, err := tu.notesRepository.GetNote(note.Author.Context, &models.OneNoteFilter{
+			GroupID: testGroup.ID,
+			NoteID:  note.ID,
+		}, testUser.ID)
+		require.NoError(t, err)
+		require.NotZero(t, len(*res.Blocks))
+
+		blockID := (*res.Blocks)[0].ID
+		commentID := ""
+		for _, cmt := range *(*res.Blocks)[0].Thread {
+			if cmt.AuthorAccountID == note.Author.ID {
+				commentID = cmt.ID
+				break
+			}
+		}
+		require.NotEmpty(t, commentID)
+
+		r, err := tu.notes.DeleteBlockComment(maxime.Context, &notesv1.DeleteBlockCommentRequest{
+			GroupId:   testGroup.ID,
+			NoteId:    note.ID,
+			BlockId:   blockID,
+			CommentId: commentID,
+		})
+
+		require.Error(t, err)
+		require.Nil(t, r)
+	})
+
 	t.Run("is-possible-to-delete-own-comment", func(t *testing.T) {
 		res, err := tu.notesRepository.GetNote(note.Author.Context, &models.OneNoteFilter{
 			GroupID: testGroup.ID,
@@ -1027,5 +1056,4 @@ func TestNotesSuite(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, r)
 	})
-
 }
