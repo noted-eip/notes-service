@@ -332,7 +332,7 @@ func UserSummaryPrompt(input string) string {
 	return `
 Créer un résumé de 500 charactères maximum, en utilisant uniquement les informations contenues dans la note, ne fait aucune supposition sur les informations que tu ne connais pas.
 Le résumé doit contenir la pluspart des informations importantes contenue dans la note. Sous forme de plusieurs bullet points en markdown et non de paragraphes.
-Le résultat final sera sous cette forme de texte.
+Le résultat final sera sous forme d'une string simple, sans aucun JSON.
 
 <note>
 ` + input + `
