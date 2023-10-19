@@ -69,7 +69,7 @@ require (
 	github.com/go-ozzo/ozzo-validation/v4 v4.3.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.18.0
 	github.com/jaevor/go-nanoid v1.3.0
-	github.com/noted-eip/noted/background-service v0.0.0-20231019174136-67a952236514
+	github.com/noted-eip/noted/background-service v0.0.0-20231019175320-87a462bae7e3
 	github.com/noted-eip/noted/mailing-service v0.0.0-20231019174136-67a952236514
 	github.com/sashabaranov/go-openai v1.16.0
 	google.golang.org/genproto/googleapis/api v0.0.0-20231016165738-49dd2c1f3d0b
