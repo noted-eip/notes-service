@@ -30,8 +30,6 @@ cloud.google.com/go/compute/metadata v0.2.3 h1:mg4jlk7mCAj6xXp9UJ4fjI9VUI5rubuGB
 cloud.google.com/go/compute/metadata v0.2.3/go.mod h1:VAV5nSsACxMJvgaAuX6Pk2AawlZn8kiOGuCv6gTkwuA=
 cloud.google.com/go/datastore v1.0.0/go.mod h1:LXYbyblFSglQ5pkeyhO+Qmw7ukd3C+pD7TKLgZqpHYE=
 cloud.google.com/go/datastore v1.1.0/go.mod h1:umbIZjpQpHh4hmRpGhH4tLFup+FVzqBi1b3c64qFpCk=
-cloud.google.com/go/language v1.11.1 h1:BjU7Ljhh0ZYnZC8jZwiezf1FH75yijJ4raAScseqCns=
-cloud.google.com/go/language v1.11.1/go.mod h1:Xyid9MG9WOX3utvDbpX7j3tXDmmDooMyMDqgUVpH17U=
 cloud.google.com/go/language v1.12.0 h1:qA3eA9MzSpM1ptrWCftRSs9FnPXDvs4IJmtTyj1bFY0=
 cloud.google.com/go/language v1.12.0/go.mod h1:Xyid9MG9WOX3utvDbpX7j3tXDmmDooMyMDqgUVpH17U=
 cloud.google.com/go/pubsub v1.0.1/go.mod h1:R0Gpsv3s54REJCy4fxDixWD93lHJMoZTyQ2kNxGRt3I=
@@ -100,7 +98,6 @@ github.com/go-swiss/fonts v0.0.0-20230807175105-90067c2f5042/go.mod h1:kDru5pqfn
 github.com/golang-jwt/jwt v3.2.2+incompatible h1:IfV12K8xAKAnZqdXVzCZ+TOjboZ2keLg81eXfW3O+oY=
 github.com/golang-jwt/jwt v3.2.2+incompatible/go.mod h1:8pz2t5EyA70fFQQSrl6XZXzqecmYZeUEB8OUGHkxJ+I=
 github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b/go.mod h1:SBH7ygxi8pfUlaOkMMuAQtPIUF8ecWP5IEl/CR7VP2Q=
-github.com/golang/glog v1.1.0 h1:/d3pCKDPWNnvIWe0vVUpNP32qc8U3PDVxySP/y360qE=
 github.com/golang/glog v1.1.2 h1:DVjP2PbBOzHyzA+dn3WhHIq4NdVu3Q+pvivFICf/7fo=
 github.com/golang/groupcache v0.0.0-20190702054246-869f871628b6/go.mod h1:cIg4eruTrX1D+g88fzRXU5OdNfaM+9IcxsU14FzY7Hc=
 github.com/golang/groupcache v0.0.0-20191227052852-215e87163ea7/go.mod h1:cIg4eruTrX1D+g88fzRXU5OdNfaM+9IcxsU14FzY7Hc=
@@ -153,7 +150,6 @@ github.com/google/go-cmp v0.5.3/go.mod h1:v8dTdLbMG2kIc/vJvl+f65V22dbkXbowE6jgT/
 github.com/google/go-cmp v0.5.4/go.mod h1:v8dTdLbMG2kIc/vJvl+f65V22dbkXbowE6jgT/gNBxE=
 github.com/google/go-cmp v0.5.5/go.mod h1:v8dTdLbMG2kIc/vJvl+f65V22dbkXbowE6jgT/gNBxE=
 github.com/google/go-cmp v0.6.0 h1:ofyhxvXcZhMsU5ulbFiLKl/XBFqE1GSq7atu8tAmTRI=
-github.com/google/go-cmp v0.6.0/go.mod h1:17dUlkBOakJ0+DkrSSNjCkIjxS6bF9zb3elmeNGIjoY=
 github.com/google/martian v2.1.0+incompatible/go.mod h1:9I4somxYTbIHy5NJKHRl3wXiIaQGbYVAs8BPL6v8lEs=
 github.com/google/martian/v3 v3.0.0/go.mod h1:y5Zk1BBys9G+gd6Jrk0W3cC1+ELVxBWuIGO+w/tUAp0=
 github.com/google/martian/v3 v3.1.0/go.mod h1:y5Zk1BBys9G+gd6Jrk0W3cC1+ELVxBWuIGO+w/tUAp0=
@@ -205,14 +201,10 @@ github.com/mattn/go-isatty v0.0.12/go.mod h1:cbi8OIDigv2wuxKPP5vlRcQ1OAZbq2CE4Ky
 github.com/montanaflynn/stats v0.0.0-20171201202039-1bf9dbcd8cbe/go.mod h1:wL8QJuTMNUDYhXwkmfOly8iTdp5TEcJFWZD2D7SIkUc=
 github.com/montanaflynn/stats v0.7.1 h1:etflOAAHORrCC44V+aR6Ftzort912ZU+YLiSTuV8eaE=
 github.com/montanaflynn/stats v0.7.1/go.mod h1:etXPPgVO6n31NxCd9KQUMvCM+ve0ruNzt6R8Bnaayow=
-github.com/noted-eip/noted/background-service v0.0.0-20230612112126-a144d6b761c3 h1:fEhb5BYYjgILLVuUUJlqiN0rudv1KrO9ZHQB+z8LfSQ=
-github.com/noted-eip/noted/background-service v0.0.0-20230612112126-a144d6b761c3/go.mod h1:ErQ0SpCbWG6OftzL2VppSd/+P5fLnV0wjw0l17BFfJo=
-github.com/noted-eip/noted/background-service v0.0.0-20231019174136-67a952236514 h1:e54I3vvtV/eH7U25ia/tUiKjVd1hE6u2cYULKfp0nWQ=
-github.com/noted-eip/noted/background-service v0.0.0-20231019174136-67a952236514/go.mod h1:5a5kEeZqI89qEfFADfQhy1WCRHyvS8/xF4FSsMZXkWw=
-github.com/noted-eip/noted/mailing-service v0.0.0-20230612112126-a144d6b761c3 h1:TE2d4KVGT0aJda94NoCb35S95osbVCKy9J0tu7N5w5I=
-github.com/noted-eip/noted/mailing-service v0.0.0-20230612112126-a144d6b761c3/go.mod h1:9L2ss3vlrCpuU68PlPWABJWIMBamzoYXN4yt0XjUzgo=
-github.com/noted-eip/noted/mailing-service v0.0.0-20231019174136-67a952236514 h1:YFAxbj7ikyLdGzgIAXPKIuQa7DZiv7vgLsNMgSGBFn4=
-github.com/noted-eip/noted/mailing-service v0.0.0-20231019174136-67a952236514/go.mod h1:9L2ss3vlrCpuU68PlPWABJWIMBamzoYXN4yt0XjUzgo=
+github.com/noted-eip/noted/background-service v0.0.0-20231019183944-fdc7e875ae26 h1:3qiplEYYTeKH85y/UopFQE2y1kUdsgV/JER8XVnAWNg=
+github.com/noted-eip/noted/background-service v0.0.0-20231019183944-fdc7e875ae26/go.mod h1:5a5kEeZqI89qEfFADfQhy1WCRHyvS8/xF4FSsMZXkWw=
+github.com/noted-eip/noted/mailing-service v0.0.0-20231019185756-aee58391ebed h1:0/AVfHCm0Ny6XqTRtdYBchlmrcl+kcv19NNveW1A60o=
+github.com/noted-eip/noted/mailing-service v0.0.0-20231019185756-aee58391ebed/go.mod h1:9L2ss3vlrCpuU68PlPWABJWIMBamzoYXN4yt0XjUzgo=
 github.com/pascaldekloe/name v0.0.0-20180628100202-0fd16699aae1/go.mod h1:eD5JxqMiuNYyFNmyY9rkJ/slN8y59oEu4Ei7F8OoKWQ=
 github.com/phpdave11/gofpdf v1.4.2 h1:KPKiIbfwbvC/wOncwhrpRdXVj2CZTCFlw4wnoyjtHfQ=
 github.com/phpdave11/gofpdf v1.4.2/go.mod h1:zpO6xFn9yxo3YLyMvW8HcKWVdbNqgIfOOp2dXMnm1mY=
@@ -528,8 +520,6 @@ google.golang.org/api v0.40.0/go.mod h1:fYKFpnQN0DsDSKRVRcQSDQNtqWPfM9i+zNPxepjR
 google.golang.org/api v0.41.0/go.mod h1:RkxM5lITDfTzmyKFPt+wGrCJbVfniCr2ool8kTBzRTU=
 google.golang.org/api v0.43.0/go.mod h1:nQsDGjRXMo4lvh5hP0TKqF244gqhGcr/YSIykhUk/94=
 google.golang.org/api v0.44.0/go.mod h1:EBOGZqzyhtvMDoxwS97ctnh0zUmYY6CxqXsc1AvkYD8=
-google.golang.org/api v0.147.0 h1:Can3FaQo9LlVqxJCodNmeZW/ib3/qKAY3rFeXiHo5gc=
-google.golang.org/api v0.147.0/go.mod h1:pQ/9j83DcmPd/5C9e2nFOdjjNkDZ1G+zkbK2uvdkJMs=
 google.golang.org/api v0.148.0 h1:HBq4TZlN4/1pNcu0geJZ/Q50vIwIXT532UIMYoo0vOs=
 google.golang.org/api v0.148.0/go.mod h1:8/TBgwaKjfqTdacOJrOv2+2Q6fBDU1uHKK06oGSkxzU=
 google.golang.org/appengine v1.1.0/go.mod h1:EbEs0AVv82hx2wNQdGPgUI5lhzA/G0D9YwlJXL52JkM=
@@ -604,8 +594,6 @@ google.golang.org/grpc v1.34.0/go.mod h1:WotjhfgOW/POjDeRt8vscBtXq+2VjORFy659qA5
 google.golang.org/grpc v1.35.0/go.mod h1:qjiiYl8FncCW8feJPdyg3v6XW24KsRHe+dy9BAGRRjU=
 google.golang.org/grpc v1.36.0/go.mod h1:qjiiYl8FncCW8feJPdyg3v6XW24KsRHe+dy9BAGRRjU=
 google.golang.org/grpc v1.36.1/go.mod h1:qjiiYl8FncCW8feJPdyg3v6XW24KsRHe+dy9BAGRRjU=
-google.golang.org/grpc v1.58.3 h1:BjnpXut1btbtgN/6sp+brB2Kbm2LjNXnidYujAVbSoQ=
-google.golang.org/grpc v1.58.3/go.mod h1:tgX3ZQDlNJGU96V6yHh1T/JeoBQ2TXdr43YbYSsCJk0=
 google.golang.org/grpc v1.59.0 h1:Z5Iec2pjwb+LEOqzpB2MR12/eKFhDPhuqW91O+4bwUk=
 google.golang.org/grpc v1.59.0/go.mod h1:aUPDwccQo6OTjy7Hct4AfBPD1GptF4fyUjIkQ9YtF98=
 google.golang.org/protobuf v0.0.0-20200109180630-ec00e32a8dfd/go.mod h1:DFci5gLYBciE7Vtevhsrf46CRTquxDuWsQurQQe4oz8=

@@ -39,7 +39,6 @@ require (
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/gomarkdown/markdown v0.0.0-20230922112808-5421fefb8386 // indirect
-	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/google/s2a-go v0.1.7 // indirect
 	github.com/google/uuid v1.3.1 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.1 // indirect
@@ -70,8 +69,8 @@ require (
 	github.com/go-ozzo/ozzo-validation/v4 v4.3.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.18.0
 	github.com/jaevor/go-nanoid v1.3.0
-	github.com/noted-eip/noted/background-service v0.0.0-20231019174136-67a952236514
-	github.com/noted-eip/noted/mailing-service v0.0.0-20231019174136-67a952236514
+	github.com/noted-eip/noted/background-service v0.0.0-20231019183944-fdc7e875ae26
+	github.com/noted-eip/noted/mailing-service v0.0.0-20231019185756-aee58391ebed
 	github.com/sashabaranov/go-openai v1.16.0
 	google.golang.org/genproto/googleapis/api v0.0.0-20231016165738-49dd2c1f3d0b
 )
