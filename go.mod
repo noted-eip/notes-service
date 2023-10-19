@@ -7,7 +7,7 @@ require (
 	github.com/stretchr/testify v1.8.4
 	go.mongodb.org/mongo-driver v1.12.1
 	go.uber.org/zap v1.26.0
-	google.golang.org/grpc v1.58.3
+	google.golang.org/grpc v1.59.0
 	google.golang.org/protobuf v1.31.0
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
 )
@@ -15,8 +15,8 @@ require (
 require github.com/bep/debounce v1.2.1 // indirect
 
 require (
-	cloud.google.com/go/language v1.11.1
-	google.golang.org/api v0.147.0
+	cloud.google.com/go/language v1.12.0
+	google.golang.org/api v0.148.0
 )
 
 require (
@@ -70,8 +70,8 @@ require (
 	github.com/go-ozzo/ozzo-validation/v4 v4.3.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.18.0
 	github.com/jaevor/go-nanoid v1.3.0
-	github.com/noted-eip/noted/background-service v0.0.0-20230612112126-a144d6b761c3
-	github.com/noted-eip/noted/mailing-service v0.0.0-20230612112126-a144d6b761c3
+	github.com/noted-eip/noted/background-service v0.0.0-20231019174136-67a952236514
+	github.com/noted-eip/noted/mailing-service v0.0.0-20231019174136-67a952236514
 	github.com/sashabaranov/go-openai v1.16.0
 	google.golang.org/genproto/googleapis/api v0.0.0-20231016165738-49dd2c1f3d0b
 )
