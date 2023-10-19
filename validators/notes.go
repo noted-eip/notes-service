@@ -80,6 +80,13 @@ func ValidateGenerateQuizzRequest(req *notespb.GenerateQuizRequest) error {
 	)
 }
 
+func ValidateGenerateSummaryRequest(req *notespb.GenerateSummaryRequest) error {
+	return validation.ValidateStruct(req,
+		validation.Field(&req.GroupId, validation.Required),
+		validation.Field(&req.NoteId, validation.Required),
+	)
+}
+
 func ValidateCreateBlockCommentRequest(req *notespb.CreateBlockCommentRequest) error {
 	return validation.ValidateStruct(req,
 		validation.Field(&req.GroupId, validation.Required),

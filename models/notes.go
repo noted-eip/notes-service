@@ -110,6 +110,10 @@ type Quiz struct {
 	QuizQuestions []QuizQuestion `json:"questions,omitempty" bson:"questions,omitempty"`
 }
 
+type Summary struct {
+	Content string `json:"content,omitempty" bson:"content,omitempty"`
+}
+
 type QuizQuestion struct {
 	Question  string   `json:"question,omitempty" bson:"question,omitempty"`
 	Answers   []string `json:"answers,omitempty" bson:"answers,omitempty"`
