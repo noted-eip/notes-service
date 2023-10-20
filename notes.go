@@ -335,6 +335,38 @@ func (srv *notesAPI) GenerateQuiz(ctx context.Context, req *notesv1.GenerateQuiz
 	return &notesv1.GenerateQuizResponse{Quiz: modelsQuizToProtobufQuiz(quiz)}, nil
 }
 
+func (srv *notesAPI) GenerateSummary(ctx context.Context, req *notesv1.GenerateSummaryRequest) (*notesv1.GenerateSummaryResponse, error) {
+	token, err := srv.authenticate(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	err = validators.ValidateGenerateSummaryRequest(req)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	// Check user is part of the group.
+	_, err = srv.groups.GetGroup(ctx, &models.OneGroupFilter{GroupID: req.GroupId}, token.AccountID)
+	if err != nil {
+		return nil, statusFromModelError(err)
+	}
+
+	note, err := srv.notes.GetNote(ctx, &models.OneNoteFilter{GroupID: req.GroupId, NoteID: req.NoteId}, token.AccountID)
+	if err != nil {
+		return nil, statusFromModelError(err)
+	}
+
+	fullNote := noteModelToString(note)
+	summary, err := srv.language.GenerateSummaryFromTextInput(fullNote)
+	if err != nil {
+		srv.logger.Error("failed to generate summarry", zap.Error(err))
+		return nil, status.Errorf(codes.Internal, "failed to generate summarry for noteId : %s", "ok" /*note.ID*/)
+	}
+
+	return &notesv1.GenerateSummaryResponse{Summary: summary.Content}, nil
+}
+
 func (srv *notesAPI) UpdateKeywordsByNoteId(noteId string, groupId string, accountID string) error {
 	note, err := srv.notes.GetNote(context.TODO(), &models.OneNoteFilter{GroupID: groupId, NoteID: noteId}, accountID)
 	if err != nil {
