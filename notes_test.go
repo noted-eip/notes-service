@@ -55,6 +55,7 @@ func TestNotesSuite(t *testing.T) {
 		res, err := tu.notes.CreateNote(edouard.Context, &notesv1.CreateNoteRequest{
 			GroupId: edouardGroup.ID,
 			Title:   "My New Note",
+			Lang:    "en",
 		})
 		after := time.Now()
 		require.NoError(t, err)
@@ -70,6 +71,7 @@ func TestNotesSuite(t *testing.T) {
 		res, err := tu.notes.CreateNote(stranger.Context, &notesv1.CreateNoteRequest{
 			GroupId: edouardGroup.ID,
 			Title:   "My New Note",
+			Lang:    "en",
 		})
 		requireErrorHasGRPCCode(t, codes.NotFound, err)
 		require.Nil(t, res)
@@ -102,6 +104,7 @@ func TestNotesSuite(t *testing.T) {
 					},
 				},
 			},
+			Lang: "en",
 		})
 		require.NoError(t, err)
 		require.NotNil(t, res)
@@ -184,6 +187,7 @@ func TestNotesSuite(t *testing.T) {
 					},
 				},
 			},
+			Lang: "en",
 		})
 		require.NoError(t, err)
 		require.NotNil(t, res)
@@ -248,6 +252,7 @@ func TestNotesSuite(t *testing.T) {
 					},
 				},
 			},
+			Lang: "en",
 		})
 		require.NoError(t, err)
 		require.NotNil(t, res)
@@ -532,12 +537,12 @@ func TestNotesSuite(t *testing.T) {
 		require.Len(t, res.Notes, 5)
 	})
 
-	// DeleteNote is a repository function, no auth
 	_ = newTestNote(t, tu, edouardGroup, edouard, []*notesv1.Block{})
 	_ = newTestNote(t, tu, edouardGroup, edouard, []*notesv1.Block{})
 	_ = newTestNote(t, tu, maximeGroup, edouard, []*notesv1.Block{})
 
 	t.Run("delete-notes-account", func(t *testing.T) {
+		// DeleteNotes is a repository function, no auth
 		err := tu.notesRepository.DeleteNotes(context.TODO(), &models.ManyNotesFilter{
 			AuthorAccountID: edouard.ID,
 		})
@@ -612,6 +617,7 @@ func TestNotesSuite(t *testing.T) {
 	//
 	//
 
+	var quizIDContainer string
 	// NOTE: This test takes at least 5 seconds
 	t.Run("generate-quiz-success", func(t *testing.T) {
 		res, err := tu.notes.GenerateQuiz(testUser.Context, &notesv1.GenerateQuizRequest{
@@ -626,6 +632,53 @@ func TestNotesSuite(t *testing.T) {
 			require.NotZero(t, len(question.Answers))
 			require.NotZero(t, len(question.Solutions))
 		}
+
+		quizIDContainer = res.Quiz.Id
+	})
+
+	t.Run("quiz-stored-after-generated-quiz", func(t *testing.T) {
+		res, err := tu.notesRepository.ListQuizs(note.Author.Context, &models.OneNoteFilter{
+			GroupID: note.Group.ID,
+			NoteID:  note.ID,
+		}, note.Author.ID)
+		require.NoError(t, err)
+		require.NotNil(t, res)
+
+		require.Equal(t, 1, len(*res))
+	})
+
+	t.Run("stranger-cannot-list-quiz", func(t *testing.T) {
+		res, err := tu.notesRepository.ListQuizs(stranger.Context, &models.OneNoteFilter{
+			GroupID: note.Group.ID,
+			NoteID:  note.ID,
+		}, stranger.ID)
+		require.Error(t, err)
+		require.Nil(t, res)
+	})
+
+	t.Run("stranger-cannot-delete-quiz", func(t *testing.T) {
+		err := tu.notesRepository.DeleteQuiz(stranger.Context, &models.OneNoteFilter{
+			GroupID: note.Group.ID,
+			NoteID:  note.ID,
+		}, quizIDContainer, stranger.ID)
+		require.Error(t, err)
+	})
+
+	t.Run("author-can-delete-quiz", func(t *testing.T) {
+		err := tu.notesRepository.DeleteQuiz(note.Author.Context, &models.OneNoteFilter{
+			GroupID: note.Group.ID,
+			NoteID:  note.ID,
+		}, quizIDContainer, note.Author.ID)
+		require.NoError(t, err)
+
+		res, err := tu.notesRepository.ListQuizs(note.Author.Context, &models.OneNoteFilter{
+			GroupID: note.Group.ID,
+			NoteID:  note.ID,
+		}, note.Author.ID)
+		require.NoError(t, err)
+		require.NotNil(t, res)
+
+		require.Zero(t, len(*res))
 	})
 
 	//

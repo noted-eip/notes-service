@@ -70,6 +70,8 @@ func (repo *notesRepository) CreateNote(ctx context.Context, payload *models.Cre
 		Keywords:                    []*models.Keyword{},
 		Blocks:                      blocks,
 		AccountsWithEditPermissions: []string{accountID},
+		Quizs:                       &[]models.Quiz{},
+		Lang:                        payload.Lang,
 	}
 
 	err := repo.insertOne(ctx, &note)
@@ -433,6 +435,75 @@ func (repo *notesRepository) DeleteBlockComment(ctx context.Context, filter *mod
 		return nil, err
 	}
 	return payload, err
+}
+
+func (repo *notesRepository) StoreNewQuiz(ctx context.Context, filter *models.OneNoteFilter, payload *models.Quiz, accountID string) (*models.Quiz, error) {
+	query := bson.D{
+		{Key: "_id", Value: filter.NoteID},
+		{Key: "groupId", Value: filter.GroupID},
+		{Key: "$or", Value: bson.A{
+			bson.D{{Key: "accountsWithEditPermissions", Value: accountID}},
+			bson.D{{Key: "authorAccountId", Value: accountID}},
+		}},
+	}
+
+	payload.ID = repo.newUUID()
+	payload.CreatedAt = time.Now()
+
+	update := bson.D{
+		{Key: "$push", Value: bson.D{
+			{Key: "quizs", Value: payload},
+		}},
+	}
+
+	err := repo.updateOne(ctx, query, update)
+	if err != nil {
+		return nil, err
+	}
+	return payload, err
+}
+
+func (repo *notesRepository) ListQuizs(ctx context.Context, filter *models.OneNoteFilter, accountID string) (*[]models.Quiz, error) {
+	query := bson.D{
+		{Key: "_id", Value: filter.NoteID},
+		{Key: "groupId", Value: filter.GroupID},
+		{Key: "$or", Value: bson.A{
+			bson.D{{Key: "members.accountId", Value: accountID}},
+			bson.D{{Key: "authorAccountId", Value: accountID}},
+		}},
+	}
+
+	requiredFields := bson.D{{Key: "quizs", Value: 1}}
+	opts := options.FindOne().SetProjection(requiredFields)
+
+	note := models.Note{}
+	err := repo.findOne(ctx, query, &note, opts)
+	if err != nil {
+		return nil, err
+	}
+
+	return note.Quizs, nil
+}
+
+func (repo *notesRepository) DeleteQuiz(ctx context.Context, filter *models.OneNoteFilter, quizID string, accountID string) error {
+	query := bson.D{
+		{Key: "_id", Value: filter.NoteID},
+		{Key: "groupId", Value: filter.GroupID},
+		{Key: "$or", Value: bson.A{
+			bson.D{{Key: "accountsWithEditPermissions", Value: accountID}},
+			bson.D{{Key: "authorAccountId", Value: accountID}},
+		}},
+	}
+
+	update := bson.D{
+		{Key: "$pull", Value: bson.D{
+			{Key: "quizs", Value: bson.D{
+				{Key: "id", Value: quizID},
+			}},
+		}},
+	}
+
+	return repo.updateOne(ctx, query, update)
 }
 
 func updateBlockPayloadToDocument(payload *models.UpdateBlockPayload) bson.E {
