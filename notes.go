@@ -68,7 +68,7 @@ func (srv *notesAPI) CreateNote(ctx context.Context, req *notesv1.CreateNoteRequ
 	}
 
 	err = srv.background.AddProcess(&background.Process{
-		Identifier: models.NoteIdentifier{NoteId: note.ID, ActionType: models.NoteUpdateKeyword},
+		Identifier: models.NoteIdentifier{Metadata: note.ID, ActionType: models.NoteUpdateKeyword},
 		CallBackFct: func() error {
 			err := srv.UpdateKeywordsByNoteId(note.ID, req.GroupId, token.AccountID)
 			return err
@@ -154,7 +154,7 @@ func (srv *notesAPI) UpdateNote(ctx context.Context, req *notesv1.UpdateNoteRequ
 	}
 
 	err = srv.background.AddProcess(&background.Process{
-		Identifier: models.NoteIdentifier{NoteId: updatedNote.ID, ActionType: models.NoteUpdateKeyword},
+		Identifier: models.NoteIdentifier{Metadata: updatedNote.ID, ActionType: models.NoteUpdateKeyword},
 		CallBackFct: func() error {
 			err := srv.UpdateKeywordsByNoteId(updatedNote.ID, req.GroupId, note.AuthorAccountID)
 			return err
@@ -314,6 +314,49 @@ func (srv *notesAPI) OnAccountDelete(ctx context.Context, req *notesv1.OnAccount
 	return &notesv1.OnAccountDeleteResponse{}, nil
 }
 
+func (srv *notesAPI) ListQuizs(ctx context.Context, req *notesv1.ListQuizsRequest) (*notesv1.ListQuizsResponse, error) {
+	token, err := srv.authenticate(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	err = validators.ValidateListQuizs(req)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	res, err := srv.groups.GetGroup(ctx, &models.OneGroupFilter{
+		GroupID: req.GroupId,
+	}, token.AccountID)
+	if err != nil {
+		return nil, status.Error(codes.NotFound, "can't get group: "+err.Error())
+	}
+
+	note, err := srv.notes.GetNote(ctx, &models.OneNoteFilter{
+		GroupID: req.GroupId,
+		NoteID:  req.NoteId,
+	}, token.AccountID)
+	if err != nil {
+		return nil, status.Error(codes.NotFound, "can't get note: "+err.Error())
+	}
+
+	if res.FindMember(token.AccountID) == nil && note.AuthorAccountID != token.AccountID {
+		return nil, status.Error(codes.PermissionDenied, "you don't have the access rights")
+	}
+
+	quizs, err := srv.notes.ListQuizs(ctx, &models.OneNoteFilter{
+		GroupID: req.GroupId,
+		NoteID:  req.NoteId,
+	}, token.AccountID)
+	if err != nil {
+		return nil, statusFromModelError(err)
+	}
+
+	return &notesv1.ListQuizsResponse{
+		Quizs: modelsQuizsToProtobufQuizs(quizs),
+	}, nil
+}
+
 func (srv *notesAPI) GenerateQuiz(ctx context.Context, req *notesv1.GenerateQuizRequest) (*notesv1.GenerateQuizResponse, error) {
 	token, err := srv.authenticate(ctx)
 	if err != nil {
@@ -354,7 +397,6 @@ func (srv *notesAPI) GenerateQuiz(ctx context.Context, req *notesv1.GenerateQuiz
 
 	err = srv.background.AddProcess(&background.Process{
 		Identifier: models.NoteIdentifier{
-			NoteId:     req.NoteId,
 			ActionType: models.NoteDeleteQuiz,
 			Metadata: models.Quiz{
 				ID: quiz.ID,
@@ -701,6 +743,16 @@ func protobufBlockToModelsBlock(block *notesv1.Block) *models.NoteBlock {
 		modelsBlock.Styles = append(modelsBlock.Styles, modelStyle)
 	}
 	return modelsBlock
+}
+
+func modelsQuizsToProtobufQuizs(quizs *[]models.Quiz) []*notesv1.Quiz {
+	res := []*notesv1.Quiz{}
+
+	for _, quiz := range *quizs {
+		res = append(res, modelsQuizToProtobufQuiz(&quiz))
+	}
+
+	return res
 }
 
 func modelsQuizToProtobufQuiz(quiz *models.Quiz) *notesv1.Quiz {

@@ -174,8 +174,8 @@ func (repo *notesRepository) ListNotesInternal(ctx context.Context, filter *mode
 			query = append(query, bson.E{Key: "groupId", Value: filter.GroupID})
 		}
 	}
-	requieredFields := bson.D{{Key: "blocks", Value: 0}, {Key: "keywords", Value: 0}}
-	opts := options.Find().SetProjection(requieredFields)
+	requiredFields := bson.D{{Key: "blocks", Value: 0}, {Key: "keywords", Value: 0}, {Key: "quizs", Value: 0}}
+	opts := options.Find().SetProjection(requiredFields)
 
 	err := repo.find(ctx, query, &notes, lo, opts)
 	if err != nil {
@@ -398,8 +398,8 @@ func (repo *notesRepository) ListBlockComments(ctx context.Context, filter *mode
 		}},
 	}
 
-	requieredFields := bson.D{{Key: "blocks", Value: 1}}
-	opts := options.FindOne().SetProjection(requieredFields)
+	requiredFields := bson.D{{Key: "blocks", Value: 1}}
+	opts := options.FindOne().SetProjection(requiredFields)
 
 	note := models.Note{}
 	err := repo.findOne(ctx, query, &note, opts)
@@ -467,10 +467,7 @@ func (repo *notesRepository) ListQuizs(ctx context.Context, filter *models.OneNo
 	query := bson.D{
 		{Key: "_id", Value: filter.NoteID},
 		{Key: "groupId", Value: filter.GroupID},
-		{Key: "$or", Value: bson.A{
-			bson.D{{Key: "members.accountId", Value: accountID}},
-			bson.D{{Key: "authorAccountId", Value: accountID}},
-		}},
+		// Right checks are made before, we can't access members from here
 	}
 
 	requiredFields := bson.D{{Key: "quizs", Value: 1}}
@@ -483,6 +480,28 @@ func (repo *notesRepository) ListQuizs(ctx context.Context, filter *models.OneNo
 	}
 
 	return note.Quizs, nil
+}
+
+// This function is used to put an expiration date on all Quizs after a server reboot (background services)
+func (repo *notesRepository) ListQuizsCreatedDateInternal(ctx context.Context) (*[]models.Quiz, error) {
+	unwind := bson.D{{
+		Key: "$unwind", Value: "$quizs",
+	}}
+
+	projectIDandDate := bson.D{{
+		Key: "$project", Value: bson.D{
+			{Key: "id", Value: "$quizs.id"},
+			{Key: "createdAt", Value: "$quizs.createdAt"},
+		},
+	}}
+
+	res := &[]models.Quiz{}
+	err := repo.aggregate(ctx, mongo.Pipeline{unwind, projectIDandDate}, res)
+	if err != nil {
+		return nil, err
+	}
+
+	return res, nil
 }
 
 func (repo *notesRepository) DeleteQuiz(ctx context.Context, filter *models.OneNoteFilter, quizID string, accountID string) error {
@@ -504,6 +523,21 @@ func (repo *notesRepository) DeleteQuiz(ctx context.Context, filter *models.OneN
 	}
 
 	return repo.updateOne(ctx, query, update)
+}
+
+func (repo *notesRepository) DeleteQuizFromIDInternal(ctx context.Context, quizID string) error {
+	query := bson.D{}
+
+	update := bson.D{
+		{Key: "$pull", Value: bson.D{
+			{Key: "quizs", Value: bson.D{
+				{Key: "id", Value: quizID},
+			}},
+		}},
+	}
+
+	_, err := repo.updateMany(ctx, query, update)
+	return err
 }
 
 func updateBlockPayloadToDocument(payload *models.UpdateBlockPayload) bson.E {

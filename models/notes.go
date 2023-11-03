@@ -8,7 +8,6 @@ import (
 type NoteAction uint
 
 type NoteIdentifier struct {
-	NoteId     string
 	ActionType NoteAction
 	Metadata   interface{}
 }
@@ -205,6 +204,8 @@ type NotesRepository interface {
 	StoreNewQuiz(ctx context.Context, filter *OneNoteFilter, payload *Quiz, accountID string) (*Quiz, error)
 	ListQuizs(ctx context.Context, filter *OneNoteFilter, accountID string) (*[]Quiz, error)
 	DeleteQuiz(ctx context.Context, filter *OneNoteFilter, quizID string, accountID string) error
+	DeleteQuizFromIDInternal(ctx context.Context, quizID string) error
+	ListQuizsCreatedDateInternal(ctx context.Context) (*[]Quiz, error)
 
 	// Permisions
 	GrantNoteEditPermission(ctx context.Context, filter *OneNoteFilter, AccountID string, RecipientAccountId string) error
