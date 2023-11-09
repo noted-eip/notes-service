@@ -2,6 +2,7 @@ package validators
 
 import (
 	notespb "notes-service/protorepo/noted/notes/v1"
+	"strings"
 
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 )
@@ -44,7 +45,8 @@ func ValidateUpdateNoteRequest(req *notespb.UpdateNoteRequest) error {
 		case "blocks":
 			err = validation.Validate(&req.Note.Blocks, validation.NotNil)
 		default:
-			return validation.NewError("update_mask", "update to "+path+" is forbidden")
+			//req.UpdateMask.Paths = append(req.UpdateMask.Paths[:idx], req.UpdateMask.Paths[idx+1:]...)
+			return validation.NewError("update_mask", "update to "+strings.Join(req.UpdateMask.Paths, "/")+" is forbidden")
 		}
 	}
 
