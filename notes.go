@@ -688,6 +688,7 @@ func modelsNoteToProtobufNote(note *models.Note) *notesv1.Note {
 		ModifiedAt:      protobufTimestampOrNil(note.ModifiedAt),
 		AnalyzedAt:      protobufTimestampOrNil(note.AnalyzedAt),
 		Blocks:          make([]*notesv1.Block, lenBlocks),
+		Lang:            "fr", //@todo: default value to change
 	}
 
 	if note.Blocks == nil {
