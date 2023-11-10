@@ -2,7 +2,6 @@ package validators
 
 import (
 	notespb "notes-service/protorepo/noted/notes/v1"
-	"strings"
 
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 )
@@ -37,17 +36,26 @@ func ValidateUpdateNoteRequest(req *notespb.UpdateNoteRequest) error {
 		return err
 	}
 
-	// Check update mask paths are set.
-	for _, path := range req.UpdateMask.Paths {
-		switch path {
-		case "title":
+	cptValideFieldMask := 0
+
+	for i := 0; i < len(req.UpdateMask.Paths); i++ {
+		path := req.UpdateMask.Paths[i]
+		if path == "title" {
+			cptValideFieldMask++
 			err = validation.Validate(&req.Note.Title, validation.Required, validation.Length(1, 64))
-		case "blocks":
+		} else if path == "blocks" {
+			cptValideFieldMask++
 			err = validation.Validate(&req.Note.Blocks, validation.NotNil)
-		default:
-			//req.UpdateMask.Paths = append(req.UpdateMask.Paths[:idx], req.UpdateMask.Paths[idx+1:]...)
-			return validation.NewError("update_mask", "update to "+strings.Join(req.UpdateMask.Paths, "/")+" is forbidden")
+		} else {
+			// if update mask is not allowed, we remove it from the list
+			req.UpdateMask.Paths = append(req.UpdateMask.Paths[:i], req.UpdateMask.Paths[i+1:]...)
+			i--
+			continue
 		}
+	}
+
+	if cptValideFieldMask < 1 {
+		return validation.NewError("update_mask", "At least one valide update mask should be valid")
 	}
 
 	return err
