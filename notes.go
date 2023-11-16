@@ -461,6 +461,11 @@ func (srv *notesAPI) UpdateKeywordsByNoteId(noteId string, groupId string, accou
 	// TODO : mettre un timeout sur le call google
 	fullNote := noteModelToString(note)
 
+	// Don't gen keywords if the note has no content
+	if len(fullNote) < 1 {
+		return nil
+	}
+
 	keywords, err := srv.language.GetKeywordsFromTextInput(fullNote, note.Lang)
 	if err != nil {
 		srv.logger.Error("failed to gen keywords", zap.Error(err))
