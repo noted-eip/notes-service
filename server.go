@@ -128,7 +128,7 @@ func (s *server) initLogger() {
 
 func (s *server) initLanguageService() {
 	s.languageService = &language.NotedLanguageService{}
-	err := s.languageService.Init()
+	err := s.languageService.Init(s.logger)
 	must(err, "unable to instantiate language service")
 }
 

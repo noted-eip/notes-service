@@ -12,6 +12,7 @@ import (
 	glanguage "cloud.google.com/go/language/apiv1"
 	"cloud.google.com/go/language/apiv1/languagepb"
 	openai "github.com/sashabaranov/go-openai"
+	"go.uber.org/zap"
 	kgsearch "google.golang.org/api/kgsearch/v1"
 	"google.golang.org/api/option"
 	"google.golang.org/grpc/codes"
@@ -48,10 +49,13 @@ type NotedLanguageService struct {
 	lClient      *glanguage.Client
 	openaiClient *openai.Client
 	kgService    *kgsearch.Service
+	logger       *zap.Logger
 }
 
 // TODO: To clean
-func (s *NotedLanguageService) Init() error {
+func (s *NotedLanguageService) Init(logger *zap.Logger) error {
+	// Init logger
+	s.logger = logger
 
 	// Get natural AI credentials
 	jsonCredentialBase64 := os.Getenv("JSON_GOOGLE_CREDS_B64")
@@ -239,7 +243,7 @@ func (s *NotedLanguageService) GetKeywordsFromTextInput(input string, lang strin
 
 	err = s.fillWithKnowledgeGraph(&keywordsWithMID)
 	if err != nil {
-		// TODO: log
+		s.logger.Error("failed to fill knowledgeGraph", zap.Error(err))
 		return nil, err
 	}
 
