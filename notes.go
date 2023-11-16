@@ -465,6 +465,7 @@ func (srv *notesAPI) UpdateKeywordsByNoteId(noteId string, groupId string, accou
 	// Don't gen keywords if the note has no content
 	blank := strings.Trim(fullNote, "\n") == ""
 	if blank {
+		srv.logger.Error("no keywords will be generate for the note, because note content empty")
 		return nil
 	}
 
