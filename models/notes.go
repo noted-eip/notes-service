@@ -7,6 +7,10 @@ import (
 
 type NoteAction uint
 
+type QuizIdentifier struct {
+	QuizID string
+}
+
 type NoteIdentifier struct {
 	ActionType NoteAction
 	Metadata   interface{}

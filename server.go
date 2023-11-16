@@ -231,8 +231,8 @@ func (s *server) validateQuizsExpiration() {
 		err := s.backgroundService.AddProcess(&background.Process{
 			Identifier: models.NoteIdentifier{
 				ActionType: models.NoteDeleteQuiz,
-				Metadata: models.Quiz{
-					ID: quiz.ID,
+				Metadata: models.QuizIdentifier{
+					QuizID: quiz.ID,
 				},
 			},
 			CallBackFct: func() error {
