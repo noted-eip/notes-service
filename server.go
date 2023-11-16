@@ -25,6 +25,7 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/status"
 )
@@ -64,6 +65,8 @@ func (s *server) Init(opt ...grpc.ServerOption) {
 	s.initNotesAPI()
 	s.initRecommendationsAPI()
 	s.initgrpcServer(opt...)
+
+	s.validateOldBackgroundService()
 }
 
 func (s *server) Run() {
@@ -204,6 +207,43 @@ func (s *server) initRepositories() {
 	s.notesRepository = mongo.NewNotesRepository(s.mongoDB.DB, s.logger)
 	s.groupsRepository = mongo.NewGroupsRepository(s.mongoDB.DB, s.logger)
 	s.activitiesRepository = mongo.NewActivitiesRepository(s.mongoDB.DB, s.logger)
+}
+
+func (s *server) validateOldBackgroundService() {
+	s.validateQuizsExpiration()
+}
+
+func (s *server) validateQuizsExpiration() {
+	res, err := s.notesRepository.ListQuizsCreatedDateInternal(context.Background())
+
+	if err != nil {
+		s, ok := status.FromError(err)
+		if !ok {
+			must(errors.New("wrong error code"), "not a grpc status")
+		}
+		must(err, "could not check quiz listing error")
+		if s.Code() != codes.NotFound {
+			must(err, "could not list quizs for expiration validation")
+		}
+	}
+
+	for _, quiz := range *res {
+		err := s.backgroundService.AddProcess(&background.Process{
+			Identifier: models.NoteIdentifier{
+				ActionType: models.NoteDeleteQuiz,
+				Metadata: models.Quiz{
+					ID: quiz.ID,
+				},
+			},
+			CallBackFct: func() error {
+				return s.notesRepository.DeleteQuizFromIDInternal(context.Background(), quiz.ID)
+			},
+			CancelProcessOnSameIdentifier: true,
+			RepeatProcess:                 false,
+			SecondsToDebounce:             uint32(time.Until(quiz.CreatedAt.Add(time.Hour * 24 * 7)).Seconds()),
+		})
+		must(err, "couldn't validate quiz "+quiz.ID+"'s expiration date")
+	}
 }
 
 func must(err error, msg string) {

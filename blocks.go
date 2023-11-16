@@ -37,7 +37,7 @@ func (srv *notesAPI) InsertBlock(ctx context.Context, req *notesv1.InsertBlockRe
 
 	// Launch process to generate keywords in 15minutes after the last modification
 	srv.background.AddProcess(&background.Process{
-		Identifier: models.NoteIdentifier{NoteId: req.NoteId, ActionType: models.NoteUpdateKeyword},
+		Identifier: models.NoteIdentifier{Metadata: req.NoteId, ActionType: models.NoteUpdateKeyword},
 		CallBackFct: func() error {
 			err := srv.UpdateKeywordsByNoteId(req.NoteId, req.GroupId, token.AccountID)
 			return err
@@ -110,7 +110,7 @@ func (srv *notesAPI) UpdateBlock(ctx context.Context, req *notesv1.UpdateBlockRe
 
 	// Launch process to generate keywords in 15minutes after the last modification
 	srv.background.AddProcess(&background.Process{
-		Identifier: models.NoteIdentifier{NoteId: req.NoteId, ActionType: models.NoteUpdateKeyword},
+		Identifier: models.NoteIdentifier{Metadata: req.NoteId, ActionType: models.NoteUpdateKeyword},
 		CallBackFct: func() error {
 			err := srv.UpdateKeywordsByNoteId(req.NoteId, req.GroupId, token.AccountID)
 			return err
@@ -143,7 +143,7 @@ func (srv *notesAPI) DeleteBlock(ctx context.Context, req *notesv1.DeleteBlockRe
 
 	// Launch process to generate keywords in 15minutes after the last modification
 	srv.background.AddProcess(&background.Process{
-		Identifier: models.NoteIdentifier{NoteId: req.NoteId, ActionType: models.NoteUpdateKeyword},
+		Identifier: models.NoteIdentifier{Metadata: req.NoteId, ActionType: models.NoteUpdateKeyword},
 		CallBackFct: func() error {
 			err := srv.UpdateKeywordsByNoteId(req.NoteId, req.GroupId, token.AccountID)
 			return err

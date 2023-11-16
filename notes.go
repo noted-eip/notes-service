@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"time"
 
 	"notes-service/auth"
 
@@ -59,14 +60,15 @@ func (srv *notesAPI) CreateNote(ctx context.Context, req *notesv1.CreateNoteRequ
 		Title:           req.Title,
 		AuthorAccountID: token.AccountID,
 		FolderID:        "",
+		Lang:            req.Lang,
 		Blocks:          protobufBlocksToModelsBlocks(req.Blocks),
 	}, token.AccountID)
 	if err != nil {
 		return nil, statusFromModelError(err)
 	}
 
-	srv.background.AddProcess(&background.Process{
-		Identifier: models.NoteIdentifier{NoteId: note.ID, ActionType: models.NoteUpdateKeyword},
+	err = srv.background.AddProcess(&background.Process{
+		Identifier: models.NoteIdentifier{Metadata: note.ID, ActionType: models.NoteUpdateKeyword},
 		CallBackFct: func() error {
 			err := srv.UpdateKeywordsByNoteId(note.ID, req.GroupId, token.AccountID)
 			return err
@@ -75,12 +77,18 @@ func (srv *notesAPI) CreateNote(ctx context.Context, req *notesv1.CreateNoteRequ
 		CancelProcessOnSameIdentifier: true,
 		RepeatProcess:                 false,
 	})
+	if err != nil {
+		return nil, err
+	}
 
-	srv.activities.CreateActivityInternal(ctx, &models.ActivityPayload{
+	_, err = srv.activities.CreateActivityInternal(ctx, &models.ActivityPayload{
 		GroupID: note.GroupID,
 		Type:    models.NoteAdded,
 		Event:   "<userID:" + note.AuthorAccountID + "> has added the note <noteID:" + note.ID + "> in the folder <folderID:" + "" + ">.",
 	})
+	if err != nil {
+		return nil, err
+	}
 
 	return &notesv1.CreateNoteResponse{Note: modelsNoteToProtobufNote(note)}, nil
 }
@@ -145,8 +153,8 @@ func (srv *notesAPI) UpdateNote(ctx context.Context, req *notesv1.UpdateNoteRequ
 		return nil, statusFromModelError(err)
 	}
 
-	srv.background.AddProcess(&background.Process{
-		Identifier: models.NoteIdentifier{NoteId: updatedNote.ID, ActionType: models.NoteUpdateKeyword},
+	err = srv.background.AddProcess(&background.Process{
+		Identifier: models.NoteIdentifier{Metadata: updatedNote.ID, ActionType: models.NoteUpdateKeyword},
 		CallBackFct: func() error {
 			err := srv.UpdateKeywordsByNoteId(updatedNote.ID, req.GroupId, note.AuthorAccountID)
 			return err
@@ -155,6 +163,9 @@ func (srv *notesAPI) UpdateNote(ctx context.Context, req *notesv1.UpdateNoteRequ
 		CancelProcessOnSameIdentifier: true,
 		RepeatProcess:                 false,
 	})
+	if err != nil {
+		return nil, err
+	}
 
 	return &notesv1.UpdateNoteResponse{Note: modelsNoteToProtobufNote(updatedNote)}, nil
 }
@@ -303,6 +314,49 @@ func (srv *notesAPI) OnAccountDelete(ctx context.Context, req *notesv1.OnAccount
 	return &notesv1.OnAccountDeleteResponse{}, nil
 }
 
+func (srv *notesAPI) ListQuizs(ctx context.Context, req *notesv1.ListQuizsRequest) (*notesv1.ListQuizsResponse, error) {
+	token, err := srv.authenticate(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	err = validators.ValidateListQuizs(req)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	res, err := srv.groups.GetGroup(ctx, &models.OneGroupFilter{
+		GroupID: req.GroupId,
+	}, token.AccountID)
+	if err != nil {
+		return nil, status.Error(codes.NotFound, "can't get group: "+err.Error())
+	}
+
+	note, err := srv.notes.GetNote(ctx, &models.OneNoteFilter{
+		GroupID: req.GroupId,
+		NoteID:  req.NoteId,
+	}, token.AccountID)
+	if err != nil {
+		return nil, status.Error(codes.NotFound, "can't get note: "+err.Error())
+	}
+
+	if res.FindMember(token.AccountID) == nil && note.AuthorAccountID != token.AccountID {
+		return nil, status.Error(codes.PermissionDenied, "you don't have the access rights")
+	}
+
+	quizs, err := srv.notes.ListQuizs(ctx, &models.OneNoteFilter{
+		GroupID: req.GroupId,
+		NoteID:  req.NoteId,
+	}, token.AccountID)
+	if err != nil {
+		return nil, statusFromModelError(err)
+	}
+
+	return &notesv1.ListQuizsResponse{
+		Quizs: modelsQuizsToProtobufQuizs(quizs),
+	}, nil
+}
+
 func (srv *notesAPI) GenerateQuiz(ctx context.Context, req *notesv1.GenerateQuizRequest) (*notesv1.GenerateQuizResponse, error) {
 	token, err := srv.authenticate(ctx)
 	if err != nil {
@@ -320,16 +374,47 @@ func (srv *notesAPI) GenerateQuiz(ctx context.Context, req *notesv1.GenerateQuiz
 		return nil, statusFromModelError(err)
 	}
 
-	note, err := srv.notes.GetNote(ctx, &models.OneNoteFilter{GroupID: req.GroupId, NoteID: req.NoteId}, token.AccountID)
+	noteFilter := &models.OneNoteFilter{GroupID: req.GroupId, NoteID: req.NoteId}
+	note, err := srv.notes.GetNote(ctx, noteFilter, token.AccountID)
 	if err != nil {
 		return nil, statusFromModelError(err)
 	}
 
 	fullNote := noteModelToString(note)
-	quiz, err := srv.language.GenerateQuizFromTextInput(fullNote)
+
+	quiz, err := srv.language.GenerateQuizFromTextInput(fullNote, note.Lang)
 	if err != nil {
 		srv.logger.Error("failed to generate quiz", zap.Error(err))
 		return nil, status.Errorf(codes.Internal, "failed to generate quiz for noteId : %s", note.ID)
+	}
+
+	_, err = srv.notes.StoreNewQuiz(ctx, noteFilter, quiz, token.AccountID)
+	if err != nil {
+		srv.logger.Error("failed to store quizs", zap.Error(err))
+		return nil, statusFromModelError(err)
+	}
+
+	err = srv.background.AddProcess(&background.Process{
+		Identifier: models.NoteIdentifier{
+			ActionType: models.NoteDeleteQuiz,
+			Metadata: models.Quiz{
+				ID: quiz.ID,
+			},
+		},
+
+		SecondsToDebounce:             uint32((time.Hour * 24 * 31) / time.Second), // TODO: Clean-up
+		CancelProcessOnSameIdentifier: true,
+		RepeatProcess:                 false,
+
+		CallBackFct: func() error {
+			return srv.notes.DeleteQuiz(ctx, &models.OneNoteFilter{
+				GroupID: req.GroupId,
+				NoteID:  req.NoteId,
+			}, quiz.ID, token.AccountID)
+		},
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	return &notesv1.GenerateQuizResponse{Quiz: modelsQuizToProtobufQuiz(quiz)}, nil
@@ -358,7 +443,7 @@ func (srv *notesAPI) GenerateSummary(ctx context.Context, req *notesv1.GenerateS
 	}
 
 	fullNote := noteModelToString(note)
-	summary, err := srv.language.GenerateSummaryFromTextInput(fullNote)
+	summary, err := srv.language.GenerateSummaryFromTextInput(fullNote, note.Lang)
 	if err != nil {
 		srv.logger.Error("failed to generate summarry", zap.Error(err))
 		return nil, status.Errorf(codes.Internal, "failed to generate summarry for noteId : %s", "ok" /*note.ID*/)
@@ -376,7 +461,7 @@ func (srv *notesAPI) UpdateKeywordsByNoteId(noteId string, groupId string, accou
 	// TODO : mettre un timeout sur le call google
 	fullNote := noteModelToString(note)
 
-	keywords, err := srv.language.GetKeywordsFromTextInput(fullNote)
+	keywords, err := srv.language.GetKeywordsFromTextInput(fullNote, note.Lang)
 	if err != nil {
 		srv.logger.Error("failed to gen keywords", zap.Error(err))
 		return status.Errorf(codes.Internal, "failed to gen keywords for noteId : %s", note.ID)
@@ -657,8 +742,20 @@ func protobufBlockToModelsBlock(block *notesv1.Block) *models.NoteBlock {
 	return modelsBlock
 }
 
+func modelsQuizsToProtobufQuizs(quizs *[]models.Quiz) []*notesv1.Quiz {
+	res := []*notesv1.Quiz{}
+
+	for _, quiz := range *quizs {
+		res = append(res, modelsQuizToProtobufQuiz(&quiz))
+	}
+
+	return res
+}
+
 func modelsQuizToProtobufQuiz(quiz *models.Quiz) *notesv1.Quiz {
-	res := &notesv1.Quiz{}
+	res := &notesv1.Quiz{
+		Id: quiz.ID,
+	}
 
 	for _, question := range quiz.QuizQuestions {
 		res.Questions = append(res.Questions, &notesv1.QuizQuestion{

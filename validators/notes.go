@@ -131,3 +131,10 @@ func ValidateChangeEditPermissionsRequest(req *notespb.ChangeNoteEditPermissionR
 		validation.Field(&req.RecipientAccountId, validation.Required),
 	)
 }
+
+func ValidateListQuizs(req *notespb.ListQuizsRequest) error {
+	return validation.ValidateStruct(req,
+		validation.Field(&req.GroupId, validation.Required),
+		validation.Field(&req.NoteId, validation.Required),
+	)
+}

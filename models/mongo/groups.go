@@ -365,8 +365,7 @@ func (repo *groupsRepository) ListInvites(ctx context.Context, filter *models.Ma
 
 	// Separate every invite in it's specific array element
 	unwindQuery := bson.D{{
-		Key:   "$unwind",
-		Value: "$invites",
+		Key: "$unwind", Value: "$invites",
 	}}
 
 	paginationSkip := bson.D{{ // NOTE: Not putting it in repo.aggregate because it can reduce the work done after, like in this example, we skip and offset before projecting

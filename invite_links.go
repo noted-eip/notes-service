@@ -55,7 +55,7 @@ func (srv *groupsAPI) GenerateInviteLink(ctx context.Context, req *notesv1.Gener
 				},
 				token.AccountID)
 		},
-		SecondsToDebounce:             uint32(validUntil.Second()),
+		SecondsToDebounce:             uint32(time.Until(validUntil).Seconds()),
 		CancelProcessOnSameIdentifier: true,
 		RepeatProcess:                 false,
 	})
