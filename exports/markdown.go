@@ -36,6 +36,7 @@ func imageBlockToMarkdown(b *notespb.Block) string {
 	return "![](" + imageData.Url + " " + imageData.Caption + ")\n"
 }
 
+// Replace every CLRF by a line feed and add a line feed at the end of the string
 func sanitizeNewLines(str *string) {
 	if len(*str) == 0 {
 		*str = "\n"

@@ -240,6 +240,7 @@ func (s *NotedLanguageService) GetKeywordsFromTextInput(input string) ([]*models
 	err = s.fillWithKnowledgeGraph(&keywordsWithMID)
 	if err != nil {
 		// TODO: log
+		return nil, err
 	}
 
 	return keywords, nil

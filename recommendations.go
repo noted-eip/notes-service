@@ -25,6 +25,7 @@ type recommendationsAPI struct {
 
 var _ notesv1.RecommendationsAPIServer = &recommendationsAPI{}
 
+// Generate companion component data
 func (srv *recommendationsAPI) GenerateWidgets(ctx context.Context, req *notesv1.GenerateWidgetsRequest) (*notesv1.GenerateWidgetsResponse, error) {
 	token, err := srv.authenticate(ctx)
 	if err != nil {
