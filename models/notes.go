@@ -8,12 +8,13 @@ import (
 type NoteAction uint
 
 type NoteIdentifier struct {
-	NoteId     string
 	ActionType NoteAction
+	Metadata   interface{}
 }
 
 const (
-	NoteUpdateKeyword NoteAction = 1
+	NoteUpdateKeyword NoteAction = iota
+	NoteDeleteQuiz
 	// Put in enum the other type of actions
 	//...
 )
@@ -103,10 +104,14 @@ type Note struct {
 	AnalyzedAt                  *time.Time   `json:"analyzedAt" bson:"analyzedAt"`
 	Keywords                    []*Keyword   `json:"keywords" bson:"keywords"`
 	Blocks                      *[]NoteBlock `json:"blocks" bson:"blocks"`
+	Quizs                       *[]Quiz      `json:"quizs" bson:"quizs"`
+	Lang                        string       `json:"lang" bson:"lang"`
 	AccountsWithEditPermissions []string     `json:"accountsWithEditPermissions" bson:"accountsWithEditPermissions"`
 }
 
 type Quiz struct {
+	ID            string         `json:"id" bson:"id"`
+	CreatedAt     time.Time      `json:"createdAt" bson:"createdAt"`
 	QuizQuestions []QuizQuestion `json:"questions,omitempty" bson:"questions,omitempty"`
 }
 
@@ -143,6 +148,7 @@ type CreateNotePayload struct {
 	AuthorAccountID string
 	GroupID         string
 	FolderID        string
+	Lang            string
 	Blocks          []NoteBlock
 }
 
@@ -195,6 +201,11 @@ type NotesRepository interface {
 	DeleteNotes(ctx context.Context, filter *ManyNotesFilter) error
 	ListNotesInternal(ctx context.Context, filter *ManyNotesFilter, opts *ListOptions) ([]*Note, error)
 	ListAllNotesInternal(ctx context.Context, filter *ManyNotesFilter) ([]*Note, error)
+	StoreNewQuiz(ctx context.Context, filter *OneNoteFilter, payload *Quiz, accountID string) (*Quiz, error)
+	ListQuizs(ctx context.Context, filter *OneNoteFilter, accountID string) (*[]Quiz, error)
+	DeleteQuiz(ctx context.Context, filter *OneNoteFilter, quizID string, accountID string) error
+	DeleteQuizFromIDInternal(ctx context.Context, quizID string) error
+	ListQuizsCreatedDateInternal(ctx context.Context) (*[]Quiz, error)
 
 	// Permisions
 	GrantNoteEditPermission(ctx context.Context, filter *OneNoteFilter, AccountID string, RecipientAccountId string) error

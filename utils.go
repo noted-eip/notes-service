@@ -230,6 +230,24 @@ func newTestNote(t *testing.T, tu *testUtils, group *testGroup, author *testAcco
 		GroupId: group.ID,
 		Title:   "Default Title",
 		Blocks:  blocks,
+		Lang:    "fr",
+	})
+	require.NoError(t, err)
+	require.NotNil(t, res)
+
+	return &testNote{
+		ID:     res.Note.Id,
+		Author: author,
+		Group:  group,
+	}
+}
+
+func newTestNoteWLang(t *testing.T, tu *testUtils, group *testGroup, author *testAccount, blocks []*notesv1.Block, lang string) *testNote {
+	res, err := tu.notes.CreateNote(author.Context, &notesv1.CreateNoteRequest{
+		GroupId: group.ID,
+		Title:   "Default Title",
+		Blocks:  blocks,
+		Lang:    lang,
 	})
 	require.NoError(t, err)
 	require.NotNil(t, res)

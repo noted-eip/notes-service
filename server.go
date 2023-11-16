@@ -65,6 +65,8 @@ func (s *server) Init(opt ...grpc.ServerOption) {
 	s.initNotesAPI()
 	s.initRecommendationsAPI()
 	s.initgrpcServer(opt...)
+
+	s.validateOldBackgroundService()
 }
 
 func (s *server) Run() {
@@ -211,7 +213,6 @@ func (s *server) validateOldBackgroundService() {
 	s.validateQuizsExpiration()
 }
 
-// Puts a background process for every quiz that deletes it at n + 7 days, n being when the quiz was created
 func (s *server) validateQuizsExpiration() {
 	res, err := s.notesRepository.ListQuizsCreatedDateInternal(context.Background())
 

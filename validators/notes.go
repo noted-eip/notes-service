@@ -36,16 +36,26 @@ func ValidateUpdateNoteRequest(req *notespb.UpdateNoteRequest) error {
 		return err
 	}
 
-	// Check update mask paths are set.
-	for _, path := range req.UpdateMask.Paths {
-		switch path {
-		case "title":
+	cptValideFieldMask := 0
+
+	for i := 0; i < len(req.UpdateMask.Paths); i++ {
+		path := req.UpdateMask.Paths[i]
+		if path == "title" {
+			cptValideFieldMask++
 			err = validation.Validate(&req.Note.Title, validation.Required, validation.Length(1, 64))
-		case "blocks":
+		} else if path == "blocks" {
+			cptValideFieldMask++
 			err = validation.Validate(&req.Note.Blocks, validation.NotNil)
-		default:
-			return validation.NewError("update_mask", "update to "+path+" is forbidden")
+		} else {
+			// if update mask is not allowed, we remove it from the list
+			req.UpdateMask.Paths = append(req.UpdateMask.Paths[:i], req.UpdateMask.Paths[i+1:]...)
+			i--
+			continue
 		}
+	}
+
+	if cptValideFieldMask < 1 {
+		return validation.NewError("update_mask", "At least one valide update mask should be valid")
 	}
 
 	return err
@@ -119,5 +129,12 @@ func ValidateChangeEditPermissionsRequest(req *notespb.ChangeNoteEditPermissionR
 		validation.Field(&req.NoteId, validation.Required),
 		validation.Field(&req.Type, validation.Required),
 		validation.Field(&req.RecipientAccountId, validation.Required),
+	)
+}
+
+func ValidateListQuizs(req *notespb.ListQuizsRequest) error {
+	return validation.ValidateStruct(req,
+		validation.Field(&req.GroupId, validation.Required),
+		validation.Field(&req.NoteId, validation.Required),
 	)
 }
