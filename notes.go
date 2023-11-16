@@ -68,21 +68,19 @@ func (srv *notesAPI) CreateNote(ctx context.Context, req *notesv1.CreateNoteRequ
 		return nil, statusFromModelError(err)
 	}
 
-	if len(*note.Blocks) > 0 {
-		err = srv.background.AddProcess(&background.Process{
-			Identifier: models.NoteIdentifier{Metadata: note.ID, ActionType: models.NoteUpdateKeyword},
-			CallBackFct: func() error {
-				err := srv.UpdateKeywordsByNoteId(note.ID, req.GroupId, token.AccountID)
-				return err
-			},
-			SecondsToDebounce:             5,
-			CancelProcessOnSameIdentifier: true,
-			RepeatProcess:                 false,
-		})
-		if err != nil {
-			return nil, err
-		}
-	}
+	/*err = srv.background.AddProcess(&background.Process{
+		Identifier: models.NoteIdentifier{Metadata: note.ID, ActionType: models.NoteUpdateKeyword},
+		CallBackFct: func() error {
+			err := srv.UpdateKeywordsByNoteId(note.ID, req.GroupId, token.AccountID)
+			return err
+		},
+		SecondsToDebounce:             5,
+		CancelProcessOnSameIdentifier: true,
+		RepeatProcess:                 false,
+	})
+	if err != nil {
+		return nil, err
+	}*/
 
 	_, err = srv.activities.CreateActivityInternal(ctx, &models.ActivityPayload{
 		GroupID: note.GroupID,
@@ -467,7 +465,7 @@ func (srv *notesAPI) UpdateKeywordsByNoteId(noteId string, groupId string, accou
 	// Don't gen keywords if the note has no content
 	blank := strings.Trim(fullNote, "\n") == ""
 	if blank {
-		srv.logger.Error("failed to gen keyword : note content empty")
+		srv.logger.Error("failed to gen keyword : note content is empty")
 		return nil
 	}
 
