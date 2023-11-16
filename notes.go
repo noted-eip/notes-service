@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"notes-service/auth"
@@ -462,7 +463,8 @@ func (srv *notesAPI) UpdateKeywordsByNoteId(noteId string, groupId string, accou
 	fullNote := noteModelToString(note)
 
 	// Don't gen keywords if the note has no content
-	if len(fullNote) < 1 {
+	blank := strings.Trim(fullNote, "\n") == ""
+	if blank {
 		return nil
 	}
 
@@ -659,7 +661,6 @@ func noteModelToString(note *models.Note) string {
 				fullNote += content + "\n"
 			}
 		}
-
 	}
 	return fullNote
 }
