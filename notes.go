@@ -382,8 +382,7 @@ func (srv *notesAPI) GenerateQuiz(ctx context.Context, req *notesv1.GenerateQuiz
 
 	fullNote := noteModelToString(note)
 
-	srv.language.SetLanguage(note.Lang)
-	quiz, err := srv.language.GenerateQuizFromTextInput(fullNote)
+	quiz, err := srv.language.GenerateQuizFromTextInput(fullNote, note.Lang)
 	if err != nil {
 		srv.logger.Error("failed to generate quiz", zap.Error(err))
 		return nil, status.Errorf(codes.Internal, "failed to generate quiz for noteId : %s", note.ID)
@@ -444,8 +443,7 @@ func (srv *notesAPI) GenerateSummary(ctx context.Context, req *notesv1.GenerateS
 	}
 
 	fullNote := noteModelToString(note)
-	srv.language.SetLanguage(note.Lang)
-	summary, err := srv.language.GenerateSummaryFromTextInput(fullNote)
+	summary, err := srv.language.GenerateSummaryFromTextInput(fullNote, note.Lang)
 	if err != nil {
 		srv.logger.Error("failed to generate summarry", zap.Error(err))
 		return nil, status.Errorf(codes.Internal, "failed to generate summarry for noteId : %s", "ok" /*note.ID*/)
@@ -463,8 +461,7 @@ func (srv *notesAPI) UpdateKeywordsByNoteId(noteId string, groupId string, accou
 	// TODO : mettre un timeout sur le call google
 	fullNote := noteModelToString(note)
 
-	srv.language.SetLanguage(note.Lang)
-	keywords, err := srv.language.GetKeywordsFromTextInput(fullNote)
+	keywords, err := srv.language.GetKeywordsFromTextInput(fullNote, note.Lang)
 	if err != nil {
 		srv.logger.Error("failed to gen keywords", zap.Error(err))
 		return status.Errorf(codes.Internal, "failed to gen keywords for noteId : %s", note.ID)
