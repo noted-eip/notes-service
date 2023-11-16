@@ -78,10 +78,10 @@ func newTestUtilsOrDie(t *testing.T) *testUtils {
 	groupsRepository := mongo.NewGroupsRepository(db.DB, logger)
 	activitiesRepository := mongo.NewActivitiesRepository(db.DB, logger)
 	language := &language.NotedLanguageService{}
-	err = language.Init()
+	err = language.Init(logger)
 	require.NoError(t, err, "Error on language intialization")
 	background := background.NewService(logger)
-	require.NoError(t, language.Init())
+	require.NoError(t, language.Init(logger))
 	newUUID, err := nanoid.Standard(21)
 	require.NoError(t, err)
 
