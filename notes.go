@@ -397,8 +397,8 @@ func (srv *notesAPI) GenerateQuiz(ctx context.Context, req *notesv1.GenerateQuiz
 	err = srv.background.AddProcess(&background.Process{
 		Identifier: models.NoteIdentifier{
 			ActionType: models.NoteDeleteQuiz,
-			Metadata: models.Quiz{
-				ID: quiz.ID,
+			Metadata: models.QuizIdentifier{
+				QuizID: quiz.ID,
 			},
 		},
 
