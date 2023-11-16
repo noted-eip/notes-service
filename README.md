@@ -5,19 +5,23 @@ Service responsible for managing notes and recommandations.
 
 ## Build
 
-To run the service you only need to have [golang](https://go.dev) and [docker](https://docs.docker.com/get-docker/) installed.
+To run the service you only need to have [golang](https://go.dev) or [docker](https://docs.docker.com/get-docker/) installed.
 
 After cloning the repository run:
 
 ```
 make update-submodules
 ```
+This will update the git submodules referencing our gRPC models and gRPC API definition.
+
 
 You can then build the project by running the following command :
 
 ```
 make re
 ```
+
+Or by building and running the Dockerfile.
 
 ## Tests
 
