@@ -107,7 +107,7 @@ func (s *NotedLanguageService) Init(logger *zap.Logger) error {
 	return nil
 }
 
-func (s *NotedLanguageService) doKnowledgeGraphSearch(keywords *map[string]*models.Keyword) (*kgsearch.SearchResponse, error) {
+func (s *NotedLanguageService) doKnowledgeGraphSearch(keywords *map[string]*models.Keyword, lang string) (*kgsearch.SearchResponse, error) {
 	mids := []string{}
 
 	for mid := range *keywords {
@@ -116,7 +116,7 @@ func (s *NotedLanguageService) doKnowledgeGraphSearch(keywords *map[string]*mode
 
 	search := s.kgService.Entities.Search()
 	search.Ids(mids...)
-	search.Languages("fr")
+	search.Languages(lang)
 
 	response, err := search.Do()
 	if err != nil {
@@ -137,8 +137,8 @@ func kgInterfaceToStruct(i interface{}, s interface{}) error {
 	return nil
 }
 
-func (s *NotedLanguageService) fillWithKnowledgeGraph(keywords *map[string]*models.Keyword) error {
-	entityResult, err := s.doKnowledgeGraphSearch(keywords)
+func (s *NotedLanguageService) fillWithKnowledgeGraph(keywords *map[string]*models.Keyword, lang string) error {
+	entityResult, err := s.doKnowledgeGraphSearch(keywords, lang)
 	if err != nil {
 		return err
 	}
@@ -225,7 +225,11 @@ func (s *NotedLanguageService) GetKeywordsFromTextInput(input string, lang strin
 	for _, entity := range res.Entities {
 		newKeyword := models.Keyword{
 			Keyword: entity.Name,
-			Type:    protobufEnumToKeywordType[entity.Type],
+		}
+		if lang == "fr" {
+			newKeyword.Type = protobufEnumToKeywordType[entity.Type]
+		} else if lang == "en" {
+			newKeyword.Type = entity.Type.Enum().String()
 		}
 
 		if val, ok := entity.Metadata["wikipedia_url"]; ok {
@@ -241,7 +245,7 @@ func (s *NotedLanguageService) GetKeywordsFromTextInput(input string, lang strin
 		keywords = append(keywords, &newKeyword)
 	}
 
-	err = s.fillWithKnowledgeGraph(&keywordsWithMID)
+	err = s.fillWithKnowledgeGraph(&keywordsWithMID, lang)
 	if err != nil {
 		s.logger.Error("failed to fill knowledgeGraph", zap.Error(err))
 		return nil, err
