@@ -68,7 +68,7 @@ func (srv *notesAPI) CreateNote(ctx context.Context, req *notesv1.CreateNoteRequ
 		return nil, statusFromModelError(err)
 	}
 
-	/*err = srv.background.AddProcess(&background.Process{
+	err = srv.background.AddProcess(&background.Process{
 		Identifier: models.NoteIdentifier{Metadata: note.ID, ActionType: models.NoteUpdateKeyword},
 		CallBackFct: func() error {
 			err := srv.UpdateKeywordsByNoteId(note.ID, req.GroupId, token.AccountID)
@@ -80,7 +80,7 @@ func (srv *notesAPI) CreateNote(ctx context.Context, req *notesv1.CreateNoteRequ
 	})
 	if err != nil {
 		return nil, err
-	}*/
+	}
 
 	_, err = srv.activities.CreateActivityInternal(ctx, &models.ActivityPayload{
 		GroupID: note.GroupID,
