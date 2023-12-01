@@ -24,6 +24,8 @@ type GroupConversation struct {
 type GroupMember struct {
 	AccountID string    `json:"accountId" bson:"accountId"`
 	IsAdmin   bool      `json:"isAdmin" bson:"isAdmin"`
+	Score     int       `json:"score" bson:"score"`
+	QuizTotal int       `json:"quizTotal" bson:"quizTotal"`
 	JoinedAt  time.Time `json:"joinedAt" bson:"joinedAt"`
 }
 
@@ -249,6 +251,11 @@ type UpdateMemberPayload struct {
 	IsAdmin *bool
 }
 
+type UpdateMemberScorePayload struct {
+	Score      *int `bson:"score,omitempty"`
+	ScoreTotal *int `bson:"scoreTotal,omitempty"`
+}
+
 type UpdateGroupConversationPayload struct {
 	Name string
 }
@@ -293,6 +300,7 @@ type GroupsRepository interface {
 	// Members
 	UpdateGroupMember(ctx context.Context, filter *OneMemberFilter, payload *UpdateMemberPayload, accountID string) (*GroupMember, error)
 	RemoveGroupMember(ctx context.Context, filter *OneMemberFilter, accountID string) error
+	UpdateGroupMemberScore(ctx context.Context, filter *OneMemberFilter, payload *UpdateMemberScorePayload, accountID string) (*GroupMember, error)
 
 	// Invite Links
 	GenerateGroupInviteLink(ctx context.Context, filter *OneGroupFilter, payload *GenerateGroupInviteLinkPayload, accountID string) (*GroupInviteLink, error)

@@ -95,6 +95,46 @@ func (srv *groupsAPI) RemoveMember(ctx context.Context, req *notesv1.RemoveMembe
 	return &notesv1.RemoveMemberResponse{}, nil
 }
 
+func (srv *groupsAPI) TrackScore(ctx context.Context, req *notesv1.TrackScoreRequest) (*notesv1.TrackScoreResponse, error) {
+	token, err := srv.authenticate(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	err = validators.ValidateTrackScoreRequest(req)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	group, err := srv.groups.GetGroupInternal(ctx, &models.OneGroupFilter{GroupID: req.GroupId})
+	if err != nil {
+		return nil, statusFromModelError(err)
+	}
+
+	member := group.FindMember(token.AccountID)
+	if member == nil {
+		return nil, status.Error(codes.Unauthenticated, "member not found")
+	}
+
+	memberScore := member.Score + int(req.Score)
+	memberResponses := member.QuizTotal + int(req.Responses)
+
+	_, err = srv.groups.UpdateGroupMemberScore(ctx, &models.OneMemberFilter{GroupID: req.GroupId, AccountID: token.AccountID}, &models.UpdateMemberScorePayload{
+		Score:      &memberScore,
+		ScoreTotal: &memberResponses,
+	}, token.AccountID)
+	if err != nil {
+		return nil, statusFromModelError(err)
+	}
+
+	return &notesv1.TrackScoreResponse{
+		AccountId:  token.AccountID,
+		GroupId:    req.GroupId,
+		ScoreTotal: int32(memberScore),
+		Responses:  int32(memberResponses),
+	}, nil
+}
+
 func modelsMemberToProtobufMember(member *models.GroupMember) *notesv1.GroupMember {
 	if member == nil {
 		return nil

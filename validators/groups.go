@@ -36,3 +36,11 @@ func ValidateListGroupsRequest(req *notesv1.ListGroupsRequest) error {
 		validation.Field(&req.AccountId, validation.Required),
 	)
 }
+
+func ValidateTrackScoreRequest(req *notesv1.TrackScoreRequest) error {
+	return validation.ValidateStruct(req,
+		validation.Field(&req.GroupId, validation.Required),
+		validation.Field(&req.Score, validation.Required, validation.Min(0), validation.Max(5)),
+		validation.Field(&req.Responses, validation.Required, validation.Min(0), validation.Max(5)),
+	)
+}

@@ -495,6 +495,35 @@ func (repo *groupsRepository) UpdateGroupMember(ctx context.Context, filter *mod
 	return group.FindMember(filter.AccountID), nil
 }
 
+func (repo *groupsRepository) UpdateGroupMemberScore(ctx context.Context, filter *models.OneMemberFilter, payload *models.UpdateMemberScorePayload, accountID string) (*models.GroupMember, error) {
+	group := &models.Group{}
+
+	// NOTE: There's something very weird about the ordering of these fields.
+	// Something about matching with '$' and array operators.
+	query := bson.D{
+		{Key: "_id", Value: filter.GroupID},
+		// Target is in group.
+		{Key: "members", Value: bson.D{
+			{Key: "$elemMatch", Value: bson.D{
+				{Key: "accountId", Value: filter.AccountID},
+			}},
+		}},
+	}
+
+	// Forbidden operations, either results in no-op or demoting.
+	if payload == nil || payload.Score == nil || payload.ScoreTotal == nil {
+		return nil, models.ErrForbidden
+	}
+	update := bson.D{{Key: "$set", Value: bson.D{{Key: "members.$.quizTotal", Value: payload.ScoreTotal}, {Key: "members.$.score", Value: payload.Score}}}}
+
+	err := repo.findOneAndUpdate(ctx, query, update, group)
+	if err != nil {
+		return nil, err
+	}
+
+	return group.FindMember(filter.AccountID), nil
+}
+
 func (repo *groupsRepository) RemoveGroupMember(ctx context.Context, filter *models.OneMemberFilter, accountID string) error {
 	group := &models.Group{}
 	condition := bson.E{Key: "$and", Value: bson.A{
