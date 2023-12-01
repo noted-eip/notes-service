@@ -688,6 +688,7 @@ func protobufBlocksToModelsBlocks(blocks []*notesv1.Block) []models.NoteBlock {
 func protobufBlockToModelsBlock(block *notesv1.Block) *models.NoteBlock {
 	modelsBlock := &models.NoteBlock{
 		Type: block.Type.String(),
+		ID:   block.Id,
 	}
 	switch block.Type {
 	case notesv1.Block_TYPE_HEADING_1:
