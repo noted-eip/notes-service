@@ -116,7 +116,6 @@ func (repo *notesRepository) UpdateNotesInternal(ctx context.Context, filter *mo
 	return note, nil
 }
 
-// @todo: fix, les blocks sont update les BlockId sont mis a nil
 func (repo *notesRepository) UpdateNote(ctx context.Context, filter *models.OneNoteFilter, payload *models.UpdateNotePayload, accountID string) (*models.Note, error) {
 	note := &models.Note{}
 	query := bson.D{
@@ -124,6 +123,15 @@ func (repo *notesRepository) UpdateNote(ctx context.Context, filter *models.OneN
 		{Key: "groupId", Value: filter.GroupID},
 		// {Key: "authorAccountId", Value: accountID}, // NOTE: Removed to manage notes permissions
 	}
+
+	if payload.Blocks != nil {
+		for i := range *payload.Blocks {
+			if len((*payload.Blocks)[i].ID) < 21 {
+				(*payload.Blocks)[i].ID = repo.newUUID()
+			}
+		}
+	}
+
 	update := bson.D{
 		{Key: "$set", Value: payload},
 		{Key: "$set", Value: bson.D{
