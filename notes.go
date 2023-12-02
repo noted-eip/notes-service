@@ -746,6 +746,17 @@ func protobufBlockToModelsBlock(block *notesv1.Block) *models.NoteBlock {
 		}
 		modelsBlock.Styles = append(modelsBlock.Styles, modelStyle)
 	}
+
+	temporaryThread := []models.BlockComment{}
+	for _, comment := range block.Thread {
+		temporaryThread = append(temporaryThread, models.BlockComment{
+			ID:              comment.Id,
+			AuthorAccountID: comment.AuthorId,
+			Content:         comment.Content,
+		})
+	}
+	modelsBlock.Thread = &temporaryThread
+
 	return modelsBlock
 }
 
