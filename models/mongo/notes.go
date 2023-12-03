@@ -138,6 +138,7 @@ func (repo *notesRepository) UpdateNote(ctx context.Context, filter *models.OneN
 				}, accountID)
 				if err == nil {
 					(*payload.Blocks)[i].Thread = block.Thread
+					(*payload.Blocks)[i].Styles = block.Styles
 				}
 			}
 		}
