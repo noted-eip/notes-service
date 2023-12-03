@@ -126,8 +126,19 @@ func (repo *notesRepository) UpdateNote(ctx context.Context, filter *models.OneN
 
 	if payload.Blocks != nil {
 		for i := range *payload.Blocks {
+			// @note: if the id is invalid or wrong format, it's a new block, then we create a new ID
 			if len((*payload.Blocks)[i].ID) < 21 {
 				(*payload.Blocks)[i].ID = repo.newUUID()
+			} else {
+				// @note: Reset the "thread" field to its current value to avoid modification
+				block, err := repo.GetBlock(ctx, &models.OneBlockFilter{
+					GroupID: filter.GroupID,
+					NoteID:  filter.NoteID,
+					BlockID: (*payload.Blocks)[i].ID,
+				}, accountID)
+				if err == nil {
+					(*payload.Blocks)[i].Thread = block.Thread
+				}
 			}
 		}
 	}
