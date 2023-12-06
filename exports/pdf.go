@@ -6,7 +6,7 @@ import (
 
 	"github.com/yuin/goldmark"
 
-	pdf "github.com/stephenafamo/goldmark-pdf"
+	pdf "github.com/edouard-sn/goldmark-pdf"
 )
 
 func NoteToPDF(n *notespb.Note) ([]byte, error) {
