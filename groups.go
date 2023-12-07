@@ -224,6 +224,8 @@ func modelsGroupToProtobufGroup(group *models.Group) *notesv1.Group {
 				AccountId: (*group.Members)[i].AccountID,
 				JoinedAt:  timestamppb.New((*group.Members)[i].JoinedAt),
 				IsAdmin:   (*group.Members)[i].IsAdmin,
+				Score:     int32((*group.Members)[i].Score),
+				TotalQuiz: int32((*group.Members)[i].QuizTotal),
 			}
 		}
 	}
