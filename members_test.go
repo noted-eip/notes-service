@@ -222,4 +222,41 @@ func TestMembersSuite(t *testing.T) {
 		require.Zero(t, len(notes))
 	})
 
+	t.Run("track-score-in-group", func(t *testing.T) {
+		dewee := newTestAccount(t, tu)
+		dewee.AcceptInvite(t, tu, jhon.SendInvite(t, tu, dewee, jhonGroup))
+
+		res, err := tu.groups.TrackScore(jhon.Context, &notesv1.TrackScoreRequest{
+			GroupId:   jhonGroup.ID,
+			Score:     5,
+			Responses: 5,
+		})
+
+		require.NoError(t, err)
+		require.Equal(t, 5, int(res.ScoreTotal))
+
+		res, err = tu.groups.TrackScore(jhon.Context, &notesv1.TrackScoreRequest{
+			GroupId:   jhonGroup.ID,
+			Score:     2,
+			Responses: 5,
+		})
+
+		require.NoError(t, err)
+		require.Equal(t, 7, int(res.ScoreTotal))
+	})
+
+	t.Run("track-score-in-group-invalid-score", func(t *testing.T) {
+		reese := newTestAccount(t, tu)
+		reese.AcceptInvite(t, tu, jhon.SendInvite(t, tu, reese, jhonGroup))
+
+		res, err := tu.groups.TrackScore(jhon.Context, &notesv1.TrackScoreRequest{
+			GroupId:   jhonGroup.ID,
+			Score:     -1,
+			Responses: 5,
+		})
+
+		require.Error(t, err)
+		require.Nil(t, res)
+	})
+
 }
