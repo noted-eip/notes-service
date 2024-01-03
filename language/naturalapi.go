@@ -248,7 +248,7 @@ func (s *NotedLanguageService) GetKeywordsFromTextInput(input string, lang strin
 	err = s.fillWithKnowledgeGraph(&keywordsWithMID, lang)
 	if err != nil {
 		s.logger.Error("failed to fill knowledgeGraph", zap.Error(err))
-		return nil, nil // tqt mec
+		return []*models.Keyword{}, nil // tqt mec
 	}
 
 	return keywords, nil
