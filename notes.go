@@ -447,7 +447,7 @@ func (srv *notesAPI) GenerateSummary(ctx context.Context, req *notesv1.GenerateS
 	summary, err := srv.language.GenerateSummaryFromTextInput(fullNote, note.Lang)
 	if err != nil {
 		srv.logger.Error("failed to generate summarry", zap.Error(err))
-		return nil, status.Errorf(codes.Internal, "failed to generate summarry for noteId : %s", "ok" /*note.ID*/)
+		return nil, status.Errorf(codes.Internal, "failed to generate summarry for noteId : %s", note.ID)
 	}
 
 	return &notesv1.GenerateSummaryResponse{Summary: summary.Content}, nil
