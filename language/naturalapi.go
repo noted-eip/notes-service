@@ -357,7 +357,6 @@ func (s *NotedLanguageService) GenerateSummaryFromTextInput(input string, lang s
 	summary := &models.Summary{}
 	summary.Content = res.Choices[0].Message.Content
 	return summary, nil
-
 }
 
 func UserSummaryPrompt(input string) string {
