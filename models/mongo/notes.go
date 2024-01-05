@@ -376,10 +376,10 @@ func (repo *notesRepository) CreateBlockComment(ctx context.Context, filter *mod
 		{Key: "_id", Value: filter.NoteID},
 		{Key: "groupId", Value: filter.GroupID},
 		{Key: "blocks.id", Value: filter.BlockID},
-		{Key: "$or", Value: bson.A{
-			bson.D{{Key: "accountsWithEditPermissions", Value: accountID}},
-			bson.D{{Key: "authorAccountId", Value: accountID}},
-		}},
+		// {Key: "$or", Value: bson.A{
+		// 	bson.D{{Key: "accountsWithEditPermissions", Value: accountID}},
+		// 	bson.D{{Key: "authorAccountId", Value: accountID}},
+		// }},
 	}
 
 	commentID := repo.newUUID()
@@ -412,10 +412,10 @@ func (repo *notesRepository) ListBlockComments(ctx context.Context, filter *mode
 		{Key: "_id", Value: filter.NoteID},
 		{Key: "groupId", Value: filter.GroupID},
 		{Key: "blocks.id", Value: filter.BlockID},
-		{Key: "$or", Value: bson.A{
-			bson.D{{Key: "accountsWithEditPermissions", Value: accountID}},
-			bson.D{{Key: "authorAccountId", Value: accountID}},
-		}},
+		// {Key: "$or", Value: bson.A{
+		// 	bson.D{{Key: "accountsWithEditPermissions", Value: accountID}},
+		// 	bson.D{{Key: "authorAccountId", Value: accountID}},
+		// }},
 	}
 
 	requiredFields := bson.D{{Key: "blocks", Value: 1}}
@@ -435,10 +435,10 @@ func (repo *notesRepository) DeleteBlockComment(ctx context.Context, filter *mod
 		{Key: "_id", Value: filter.NoteID},
 		{Key: "groupId", Value: filter.GroupID},
 		{Key: "blocks.id", Value: filter.BlockID},
-		{Key: "$or", Value: bson.A{
-			bson.D{{Key: "accountsWithEditPermissions", Value: accountID}},
-			bson.D{{Key: "authorAccountId", Value: accountID}},
-		}},
+		// {Key: "$or", Value: bson.A{
+		// 	bson.D{{Key: "accountsWithEditPermissions", Value: accountID}},
+		// 	bson.D{{Key: "authorAccountId", Value: accountID}},
+		// }},
 	}
 
 	update := bson.D{
