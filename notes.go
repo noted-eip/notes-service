@@ -562,6 +562,15 @@ func (srv *notesAPI) CreateBlockComment(ctx context.Context, req *notesv1.Create
 		return nil, err
 	}
 
+	r, err := srv.groups.GetGroup(ctx, &models.OneGroupFilter{GroupID: req.GroupId}, token.AccountID)
+	if err != nil {
+		return nil, statusFromModelError(err)
+	}
+
+	if r.FindMember(token.AccountID) == nil {
+		return nil, status.Error(codes.PermissionDenied, "you don't have the access rights")
+	}
+
 	res, err := srv.notes.CreateBlockComment(ctx, &models.OneBlockFilter{
 		GroupID: req.GroupId,
 		NoteID:  req.NoteId,
@@ -613,6 +622,15 @@ func (srv *notesAPI) ListBlockComments(ctx context.Context, req *notesv1.ListBlo
 	err = validators.ValidateListBlockCommentRequest(req)
 	if err != nil {
 		return nil, err
+	}
+
+	r, err := srv.groups.GetGroup(ctx, &models.OneGroupFilter{GroupID: req.GroupId}, token.AccountID)
+	if err != nil {
+		return nil, statusFromModelError(err)
+	}
+
+	if r.FindMember(token.AccountID) == nil {
+		return nil, status.Error(codes.PermissionDenied, "you don't have the access rights")
 	}
 
 	res, err := srv.notes.ListBlockComments(ctx, &models.OneBlockFilter{

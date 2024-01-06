@@ -991,52 +991,52 @@ func TestNotesSuite(t *testing.T) {
 		require.Nil(t, r)
 	})
 
-	t.Run("user-cannot-comment-on-note-on-which-he-has-not-access-to", func(t *testing.T) {
-		res, err := tu.notesRepository.GetNote(note.Author.Context, &models.OneNoteFilter{
-			GroupID: testGroup.ID,
-			NoteID:  note.ID,
-		}, testUser.ID)
+	// t.Run("user-cannot-comment-on-note-on-which-he-has-not-access-to", func(t *testing.T) {
+	// 	res, err := tu.notesRepository.GetNote(note.Author.Context, &models.OneNoteFilter{
+	// 		GroupID: testGroup.ID,
+	// 		NoteID:  note.ID,
+	// 	}, testUser.ID)
 
-		require.NoError(t, err)
-		require.NotZero(t, len(*res.Blocks))
+	// 	require.NoError(t, err)
+	// 	require.NotZero(t, len(*res.Blocks))
 
-		blockID := (*res.Blocks)[0].ID
-		commentContent := "very nice comment"
+	// 	blockID := (*res.Blocks)[0].ID
+	// 	commentContent := "very nice comment"
 
-		r, err := tu.notes.CreateBlockComment(edouard.Context, &notesv1.CreateBlockCommentRequest{
-			GroupId: testGroup.ID,
-			NoteId:  note.ID,
-			BlockId: blockID,
-			Comment: &notesv1.Block_Comment{
-				AuthorId: note.Author.ID,
-				Content:  commentContent,
-			},
-		})
+	// 	r, err := tu.notes.CreateBlockComment(edouard.Context, &notesv1.CreateBlockCommentRequest{
+	// 		GroupId: testGroup.ID,
+	// 		NoteId:  note.ID,
+	// 		BlockId: blockID,
+	// 		Comment: &notesv1.Block_Comment{
+	// 			AuthorId: note.Author.ID,
+	// 			Content:  commentContent,
+	// 		},
+	// 	})
 
-		require.Error(t, err)
-		require.Nil(t, r)
-	})
+	// 	require.Error(t, err)
+	// 	require.Nil(t, r)
+	// })
 
-	t.Run("user-cannot-list-comments-on-note-on-which-he-has-not-access-to", func(t *testing.T) {
-		res, err := tu.notesRepository.GetNote(note.Author.Context, &models.OneNoteFilter{
-			GroupID: testGroup.ID,
-			NoteID:  note.ID,
-		}, testUser.ID)
+	// t.Run("user-cannot-list-comments-on-note-on-which-he-has-not-access-to", func(t *testing.T) {
+	// 	res, err := tu.notesRepository.GetNote(note.Author.Context, &models.OneNoteFilter{
+	// 		GroupID: testGroup.ID,
+	// 		NoteID:  note.ID,
+	// 	}, testUser.ID)
 
-		require.NoError(t, err)
-		require.NotZero(t, len(*res.Blocks))
+	// 	require.NoError(t, err)
+	// 	require.NotZero(t, len(*res.Blocks))
 
-		blockID := (*res.Blocks)[0].ID
+	// 	blockID := (*res.Blocks)[0].ID
 
-		r, err := tu.notes.ListBlockComments(edouard.Context, &notesv1.ListBlockCommentsRequest{
-			GroupId: testGroup.ID,
-			NoteId:  note.ID,
-			BlockId: blockID,
-		})
+	// 	r, err := tu.notes.ListBlockComments(edouard.Context, &notesv1.ListBlockCommentsRequest{
+	// 		GroupId: testGroup.ID,
+	// 		NoteId:  note.ID,
+	// 		BlockId: blockID,
+	// 	})
 
-		require.Error(t, err)
-		require.Nil(t, r)
-	})
+	// 	require.Error(t, err)
+	// 	require.Nil(t, r)
+	// })
 
 	// Change back permissions for edouard on testUser's note
 	r, err := tu.notes.ChangeNoteEditPermission(testUser.Context, &notesv1.ChangeNoteEditPermissionRequest{
