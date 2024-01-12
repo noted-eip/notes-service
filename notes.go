@@ -748,6 +748,7 @@ func protobufBlockToModelsBlock(block *notesv1.Block) *models.NoteBlock {
 		modelsBlock.NumberPoint = &val
 	}
 
+	temporaryStyle := []models.TextStyle{}
 	for _, style := range block.Styles {
 		modelStyle := models.TextStyle{
 			Style: style.Style.String(),
@@ -763,8 +764,9 @@ func protobufBlockToModelsBlock(block *notesv1.Block) *models.NoteBlock {
 				B: style.Color.B,
 			}
 		}
-		modelsBlock.Styles = append(modelsBlock.Styles, modelStyle)
+		temporaryStyle = append(temporaryStyle, modelStyle)
 	}
+	modelsBlock.Styles = &temporaryStyle
 
 	temporaryThread := []models.BlockComment{}
 	for _, comment := range block.Thread {
@@ -897,23 +899,25 @@ func modelsBlockToProtobufBlock(block *models.NoteBlock) *notesv1.Block {
 		}
 	}
 
-	for _, style := range block.Styles {
-		modelStyle := &notesv1.Block_TextStyle{
-			Style: notesv1.Block_TextStyle_Style(notesv1.Block_TextStyle_Style_value[style.Style]),
-			Pos: &notesv1.Block_TextStyle_Position{
-				Start:  int64(style.Position.Start),
-				Length: int64(style.Position.Length),
-			},
-		}
-		if style.Color != nil {
-			modelStyle.Color = &notesv1.Block_TextStyle_Color{
-				R: int32(style.Color.R),
-				G: int32(style.Color.G),
-				B: int32(style.Color.B),
+	if block.Styles != nil {
+		for _, style := range *block.Styles {
+			modelStyle := &notesv1.Block_TextStyle{
+				Style: notesv1.Block_TextStyle_Style(notesv1.Block_TextStyle_Style_value[style.Style]),
+				Pos: &notesv1.Block_TextStyle_Position{
+					Start:  int64(style.Position.Start),
+					Length: int64(style.Position.Length),
+				},
 			}
-		}
+			if style.Color != nil {
+				modelStyle.Color = &notesv1.Block_TextStyle_Color{
+					R: int32(style.Color.R),
+					G: int32(style.Color.G),
+					B: int32(style.Color.B),
+				}
+			}
 
-		ret.Styles = append(ret.Styles, modelStyle)
+			ret.Styles = append(ret.Styles, modelStyle)
+		}
 	}
 
 	return ret

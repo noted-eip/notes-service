@@ -236,6 +236,7 @@ func (repo *notesRepository) InsertBlock(ctx context.Context, filter *models.One
 	}
 
 	payload.Block.Thread = &[]models.BlockComment{} // Make non-null empty array
+	payload.Block.Styles = &[]models.TextStyle{}    // Make non-null empty array
 
 	update := bson.D{
 		{Key: "$push", Value: bson.D{

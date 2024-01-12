@@ -45,7 +45,7 @@ type NoteBlock struct {
 	Math        *string         `json:"math,omitempty" bson:"math,omitempty"`
 	Image       *NoteBlockImage `json:"image,omitempty" bson:"image,omitempty"`
 	Code        *NoteBlockCode  `json:"code,omitempty" bson:"code,omitempty"`
-	Styles      []TextStyle     `json:"styles,omitempty" bson:"styles,omitempty"`
+	Styles      *[]TextStyle    `json:"styles,omitempty" bson:"styles,omitempty"`
 	Thread      *[]BlockComment `json:"thread,omitempty" bson:"thread,omitempty"`
 }
 
