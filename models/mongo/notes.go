@@ -139,9 +139,12 @@ func (repo *notesRepository) UpdateNote(ctx context.Context, filter *models.OneN
 					BlockID: (*payload.Blocks)[i].ID,
 				}, accountID)
 				if err == nil {
-					repo.logger.Info("found block", zap.Any("block", block))
+					// repo.logger.Info("found block", zap.Any("block", block))
 					(*payload.Blocks)[i].Thread = block.Thread
-					(*payload.Blocks)[i].Styles = block.Styles
+
+					if (*payload.Blocks)[i].Styles == nil {
+						(*payload.Blocks)[i].Styles = block.Styles
+					}
 				} else {
 					repo.logger.Error("error while getting block in UpdateNote", zap.Error(err))
 				}
