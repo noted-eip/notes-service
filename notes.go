@@ -125,14 +125,6 @@ func (srv *notesAPI) UpdateNote(ctx context.Context, req *notesv1.UpdateNoteRequ
 		return nil, err
 	}
 
-	if len(req.Note.Blocks) > 0 {
-		srv.logger.Info("Note", zap.Int("length", len(req.Note.String())))
-		srv.logger.Info("Length of threads", zap.Int("length", len(req.Note.Blocks[0].Thread)))
-		srv.logger.Info("Length of styles", zap.Int("length", len(req.Note.Blocks[0].Styles)))
-		if len(req.Note.Blocks[0].Styles) > 0 {
-			srv.logger.Info("...", zap.Int("length", len(req.Note.Blocks[0].Styles[0].String())))
-		}
-	}
 	err = validators.ValidateUpdateNoteRequest(req)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
@@ -185,8 +177,10 @@ func updateNotePayloadFromUpdateNoteRequest(req *notesv1.UpdateNoteRequest) *mod
 	for _, path := range req.UpdateMask.Paths {
 		switch path {
 		case "title":
+			print("title stuff")
 			payload.Title = req.Note.Title
 		case "blocks":
+			print("blocks stuff\n")
 			blocks := protobufBlocksToModelsBlocks(req.Note.Blocks)
 			payload.Blocks = &blocks
 		}
@@ -772,6 +766,10 @@ func protobufBlockToModelsBlock(block *notesv1.Block) *models.NoteBlock {
 				B: style.Color.B,
 			}
 		}
+		println(modelStyle.Position.Length)
+		println(modelStyle.Position.Start)
+		println(modelStyle.Style)
+		println("----")
 		temporaryStyle = append(temporaryStyle, modelStyle)
 	}
 	modelsBlock.Styles = &temporaryStyle
