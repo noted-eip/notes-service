@@ -145,7 +145,9 @@ func (srv *notesAPI) UpdateNote(ctx context.Context, req *notesv1.UpdateNoteRequ
 	if !hasEditPermission(note.AccountsWithEditPermissions, token.AccountID) {
 		return nil, status.Error(codes.PermissionDenied, "you do not have edit permissions on this note")
 	}
-
+	if len(req.Note.Blocks) > 0 {
+		srv.logger.Info("length of styles before", zap.Int("length", len(req.Note.Blocks[0].Styles)))
+	}
 	updatedNote, err := srv.notes.UpdateNote(ctx,
 		&models.OneNoteFilter{GroupID: req.GroupId, NoteID: req.NoteId},
 		updateNotePayloadFromUpdateNoteRequest(req),
@@ -699,6 +701,8 @@ func protobufBlocksToModelsBlocks(blocks []*notesv1.Block) []models.NoteBlock {
 	modelsBlocks := make([]models.NoteBlock, len(blocks))
 
 	for i, block := range blocks {
+		println("blocks loop")
+		println(len(block.Styles))
 		modelsBlocks[i] = *protobufBlockToModelsBlock(block)
 	}
 
