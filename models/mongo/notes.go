@@ -141,6 +141,8 @@ func (repo *notesRepository) UpdateNote(ctx context.Context, filter *models.OneN
 				if err == nil {
 					(*payload.Blocks)[i].Thread = block.Thread
 					(*payload.Blocks)[i].Styles = block.Styles
+				} else {
+					repo.logger.Error("error while getting block in UpdateNote", zap.Error(err))
 				}
 			}
 		}

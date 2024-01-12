@@ -179,10 +179,8 @@ func updateNotePayloadFromUpdateNoteRequest(req *notesv1.UpdateNoteRequest) *mod
 	for _, path := range req.UpdateMask.Paths {
 		switch path {
 		case "title":
-			print("title stuff")
 			payload.Title = req.Note.Title
 		case "blocks":
-			print("blocks stuff\n")
 			blocks := protobufBlocksToModelsBlocks(req.Note.Blocks)
 			payload.Blocks = &blocks
 		}
@@ -701,8 +699,6 @@ func protobufBlocksToModelsBlocks(blocks []*notesv1.Block) []models.NoteBlock {
 	modelsBlocks := make([]models.NoteBlock, len(blocks))
 
 	for i, block := range blocks {
-		println("blocks loop")
-		println(len(block.Styles))
 		modelsBlocks[i] = *protobufBlockToModelsBlock(block)
 	}
 
@@ -770,10 +766,6 @@ func protobufBlockToModelsBlock(block *notesv1.Block) *models.NoteBlock {
 				B: style.Color.B,
 			}
 		}
-		println(modelStyle.Position.Length)
-		println(modelStyle.Position.Start)
-		println(modelStyle.Style)
-		println("----")
 		temporaryStyle = append(temporaryStyle, modelStyle)
 	}
 	modelsBlock.Styles = &temporaryStyle
