@@ -46,6 +46,7 @@ func (repo *notesRepository) CreateNote(ctx context.Context, payload *models.Cre
 		// Create "real" empty array for mongodb golang drivers
 		for i := 0; i < len(payload.Blocks); i++ {
 			(payload.Blocks[i]).Thread = &[]models.BlockComment{}
+			(payload.Blocks[i]).Styles = &[]models.TextStyle{}
 		}
 		blocks = &payload.Blocks
 	} else {
@@ -56,6 +57,7 @@ func (repo *notesRepository) CreateNote(ctx context.Context, payload *models.Cre
 			Type:      "TYPE_PARAGRAPH",
 			Paragraph: &content,
 			Thread:    &[]models.BlockComment{},
+			Styles:    &[]models.TextStyle{},
 		})
 	}
 
