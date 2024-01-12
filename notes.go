@@ -125,6 +125,14 @@ func (srv *notesAPI) UpdateNote(ctx context.Context, req *notesv1.UpdateNoteRequ
 		return nil, err
 	}
 
+	if len(req.Note.Blocks) > 0 {
+		srv.logger.Info("Note", zap.Int("length", len(req.Note.String())))
+		srv.logger.Info("Length of threads", zap.Int("length", len(req.Note.Blocks[0].Thread)))
+		srv.logger.Info("Length of styles", zap.Int("length", len(req.Note.Blocks[0].Styles)))
+		if len(req.Note.Blocks[0].Styles) > 0 {
+			srv.logger.Info("...", zap.Int("length", len(req.Note.Blocks[0].Styles[0].String())))
+		}
+	}
 	err = validators.ValidateUpdateNoteRequest(req)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
@@ -696,8 +704,8 @@ func protobufBlocksToModelsBlocks(blocks []*notesv1.Block) []models.NoteBlock {
 
 	modelsBlocks := make([]models.NoteBlock, len(blocks))
 
-	for i := range blocks {
-		modelsBlocks[i] = *protobufBlockToModelsBlock(blocks[i])
+	for i, block := range blocks {
+		modelsBlocks[i] = *protobufBlockToModelsBlock(block)
 	}
 
 	return modelsBlocks
