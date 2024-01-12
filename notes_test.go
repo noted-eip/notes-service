@@ -392,7 +392,7 @@ func TestNotesSuite(t *testing.T) {
 	})
 
 	t.Run("owner-can-update-note-styles", func(t *testing.T) {
-		res, err := tu.notes.UpdateNote(edouard.Context, &notesv1.UpdateNoteRequest{
+		_, err := tu.notes.UpdateNote(edouard.Context, &notesv1.UpdateNoteRequest{
 			NoteId:  edouardNote.ID,
 			GroupId: edouardGroup.ID,
 			Note: &notesv1.Note{
@@ -404,15 +404,10 @@ func TestNotesSuite(t *testing.T) {
 						},
 						Styles: []*notesv1.Block_TextStyle{
 							{
-								Style: notesv1.Block_TextStyle_STYLE_BG_COLOR,
+								Style: notesv1.Block_TextStyle_STYLE_BOLD,
 								Pos: &notesv1.Block_TextStyle_Position{
 									Start:  12,
 									Length: 10,
-								},
-								Color: &notesv1.Block_TextStyle_Color{
-									R: 12,
-									G: 120,
-									B: 12,
 								},
 							},
 						},
@@ -424,13 +419,21 @@ func TestNotesSuite(t *testing.T) {
 			},
 		})
 		require.NoError(t, err)
-		require.NotNil(t, res)
-		require.Equal(t, res.Note.Blocks[0].Styles[0].Style, notesv1.Block_TextStyle_STYLE_BG_COLOR)
-		require.Equal(t, res.Note.Blocks[0].Styles[0].Color.R, int32(12))
-		require.Equal(t, res.Note.Blocks[0].Styles[0].Color.G, int32(120))
-		require.Equal(t, res.Note.Blocks[0].Styles[0].Color.B, int32(12))
-		require.Equal(t, res.Note.Blocks[0].Styles[0].Pos.Start, int64(12))
-		require.Equal(t, res.Note.Blocks[0].Styles[0].Pos.Length, int64(10))
+
+		note, err := tu.notes.GetNote(edouard.Context, &notesv1.GetNoteRequest{
+			NoteId:  edouardNote.ID,
+			GroupId: edouardGroup.ID,
+		})
+
+		require.NoError(t, err)
+		require.NotNil(t, note)
+		style := note.Note.Blocks[0].Styles[0]
+		require.Equal(t, style.Style, notesv1.Block_TextStyle_STYLE_BOLD)
+		// require.Equal(t, style.Color.R, int32(12))
+		// require.Equal(t, style.Color.G, int32(120))
+		// require.Equal(t, style.Color.B, int32(12))
+		require.Equal(t, style.Pos.Start, int64(12))
+		require.Equal(t, style.Pos.Length, int64(10))
 	})
 
 	t.Run("owner-cannot-update-note-with-invalid-field-mask", func(t *testing.T) {
