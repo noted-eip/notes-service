@@ -409,6 +409,11 @@ func TestNotesSuite(t *testing.T) {
 									Start:  12,
 									Length: 10,
 								},
+								Color: &notesv1.Block_TextStyle_Color{
+									R: 12,
+									G: 120,
+									B: 12,
+								},
 							},
 						},
 					},
@@ -429,9 +434,9 @@ func TestNotesSuite(t *testing.T) {
 		require.NotNil(t, note)
 		style := note.Note.Blocks[0].Styles[0]
 		require.Equal(t, style.Style, notesv1.Block_TextStyle_STYLE_BOLD)
-		// require.Equal(t, style.Color.R, int32(12))
-		// require.Equal(t, style.Color.G, int32(120))
-		// require.Equal(t, style.Color.B, int32(12))
+		require.Equal(t, style.Color.R, int32(12))
+		require.Equal(t, style.Color.G, int32(120))
+		require.Equal(t, style.Color.B, int32(12))
 		require.Equal(t, style.Pos.Start, int64(12))
 		require.Equal(t, style.Pos.Length, int64(10))
 	})
