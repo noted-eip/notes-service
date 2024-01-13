@@ -44,16 +44,14 @@ func (srv *groupsAPI) SendInvite(ctx context.Context, req *notesv1.SendInviteReq
 	}
 
 	if srv.accountsClient != nil {
-		emailInformation := SendGroupInviteMailContent(invite.RecipientAccountID, group.Name, timestamppb.New(invite.ValidUntil))
-		accountResponse, err := srv.accountsClient.Accounts.GetAccount(ctx, &accountsv1.GetAccountRequest{
-			AccountId: invite.SenderAccountID,
+		_, err = srv.accountsClient.Accounts.SendGroupInviteMail(ctx, &accountsv1.SendGroupInviteMailRequest{
+			RecipientId: invite.RecipientAccountID,
+			SenderId:    invite.SenderAccountID,
+			GroupName:   group.Name,
+			ValidUntil:  timestamppb.New(invite.ValidUntil),
 		})
 		if err != nil {
-			return nil, err
-		}
-		err = srv.mailing.SendEmails(ctx, emailInformation, []string{accountResponse.Account.Email})
-		if err != nil {
-			return nil, status.Error(codes.Internal, err.Error())
+			srv.logger.Warn("SendEmail for invite returned an error: " + err.Error())
 		}
 	} else {
 		srv.logger.Warn("SendEmail for invite returned an error because notes service is not connected with the accountsClients")
