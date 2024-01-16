@@ -392,40 +392,38 @@ func TestNotesSuite(t *testing.T) {
 	})
 
 	t.Run("owner-can-update-note-styles", func(t *testing.T) {
-		_, err := tu.notes.UpdateNote(edouard.Context, &notesv1.UpdateNoteRequest{
+		note, err := tu.notes.GetNote(edouard.Context, &notesv1.GetNoteRequest{
 			NoteId:  edouardNote.ID,
 			GroupId: edouardGroup.ID,
-			Note: &notesv1.Note{
-				Blocks: []*notesv1.Block{
+		})
+		require.NoError(t, err)
+
+		_, err = tu.notes.UpdateBlock(edouard.Context, &notesv1.UpdateBlockRequest{
+			GroupId: edouardGroup.ID,
+			NoteId:  edouardNote.ID,
+			BlockId: note.Note.Blocks[0].Id,
+			Block: &notesv1.Block{
+				Styles: []*notesv1.Block_TextStyle{
 					{
-						Type: notesv1.Block_TYPE_HEADING_1,
-						Data: &notesv1.Block_Heading{
-							Heading: "Heading",
+						Style: notesv1.Block_TextStyle_STYLE_BOLD,
+						Pos: &notesv1.Block_TextStyle_Position{
+							Start:  12,
+							Length: 10,
 						},
-						Styles: []*notesv1.Block_TextStyle{
-							{
-								Style: notesv1.Block_TextStyle_STYLE_BOLD,
-								Pos: &notesv1.Block_TextStyle_Position{
-									Start:  12,
-									Length: 10,
-								},
-								Color: &notesv1.Block_TextStyle_Color{
-									R: 12,
-									G: 120,
-									B: 12,
-								},
-							},
+						Color: &notesv1.Block_TextStyle_Color{
+							R: 12,
+							G: 120,
+							B: 12,
 						},
 					},
 				},
 			},
-			UpdateMask: &fieldmaskpb.FieldMask{
-				Paths: []string{"blocks"},
-			},
-		})
+		},
+		)
+
 		require.NoError(t, err)
 
-		note, err := tu.notes.GetNote(edouard.Context, &notesv1.GetNoteRequest{
+		note, err = tu.notes.GetNote(edouard.Context, &notesv1.GetNoteRequest{
 			NoteId:  edouardNote.ID,
 			GroupId: edouardGroup.ID,
 		})

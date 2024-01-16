@@ -287,11 +287,25 @@ func (repo *notesRepository) UpdateBlock(ctx context.Context, filter *models.One
 		{Key: "blocks.id", Value: filter.BlockID},
 		{Key: "authorAccountId", Value: accountID},
 	}
+
+	setQuery := bson.D{
+		{Key: "blocks.$.type", Value: payload.Block.Type},
+	}
+
+	typeQuery := updateBlockPayloadToDocument(payload)
+	if (typeQuery.Key != "") && (typeQuery.Value != nil) {
+		setQuery = append(setQuery, typeQuery)
+	}
+
+	if (payload.Block.Thread != nil) && (len(*payload.Block.Thread) > 0) {
+		setQuery = append(setQuery, bson.E{Key: "blocks.$.thread", Value: payload.Block.Thread})
+	}
+	if (payload.Block.Styles != nil) && (len(*payload.Block.Styles) > 0) {
+		setQuery = append(setQuery, bson.E{Key: "blocks.$.styles", Value: payload.Block.Styles})
+	}
+
 	update := bson.D{
-		{Key: "$set", Value: bson.D{
-			{Key: "blocks.$.type", Value: payload.Block.Type},
-			updateBlockPayloadToDocument(payload),
-		}},
+		{Key: "$set", Value: setQuery},
 	}
 
 	err := repo.findOneAndUpdate(ctx, query, update, note)
