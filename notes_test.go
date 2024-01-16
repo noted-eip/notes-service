@@ -392,16 +392,30 @@ func TestNotesSuite(t *testing.T) {
 	})
 
 	t.Run("owner-can-update-note-styles", func(t *testing.T) {
-		note, err := tu.notes.GetNote(edouard.Context, &notesv1.GetNoteRequest{
+		res, err := tu.notes.UpdateNote(edouard.Context, &notesv1.UpdateNoteRequest{
 			NoteId:  edouardNote.ID,
 			GroupId: edouardGroup.ID,
+			Note: &notesv1.Note{
+				Blocks: []*notesv1.Block{
+					&notesv1.Block{
+						Type: notesv1.Block_TYPE_PARAGRAPH,
+						Data: &notesv1.Block_Paragraph{
+							Paragraph: "",
+						},
+					},
+				},
+			},
+			UpdateMask: &fieldmaskpb.FieldMask{
+				Paths: []string{"blocks"},
+			},
 		})
 		require.NoError(t, err)
+		note := res.Note
 
 		_, err = tu.notes.UpdateBlock(edouard.Context, &notesv1.UpdateBlockRequest{
 			GroupId: edouardGroup.ID,
 			NoteId:  edouardNote.ID,
-			BlockId: note.Note.Blocks[0].Id,
+			BlockId: note.Blocks[0].Id,
 			Block: &notesv1.Block{
 				Styles: []*notesv1.Block_TextStyle{
 					{
@@ -423,14 +437,15 @@ func TestNotesSuite(t *testing.T) {
 
 		require.NoError(t, err)
 
-		note, err = tu.notes.GetNote(edouard.Context, &notesv1.GetNoteRequest{
+		r, err := tu.notes.GetNote(edouard.Context, &notesv1.GetNoteRequest{
 			NoteId:  edouardNote.ID,
 			GroupId: edouardGroup.ID,
 		})
+		note = r.Note
 
 		require.NoError(t, err)
 		require.NotNil(t, note)
-		style := note.Note.Blocks[0].Styles[0]
+		style := note.Blocks[0].Styles[0]
 		require.Equal(t, style.Style, notesv1.Block_TextStyle_STYLE_BOLD)
 		require.Equal(t, style.Color.R, int32(12))
 		require.Equal(t, style.Color.G, int32(120))
