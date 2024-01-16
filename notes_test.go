@@ -392,29 +392,15 @@ func TestNotesSuite(t *testing.T) {
 	})
 
 	t.Run("owner-can-update-note-styles", func(t *testing.T) {
-		_, err := tu.notes.UpdateNote(edouard.Context, &notesv1.UpdateNoteRequest{
+		res, err := tu.notes.UpdateNote(edouard.Context, &notesv1.UpdateNoteRequest{
 			NoteId:  edouardNote.ID,
 			GroupId: edouardGroup.ID,
 			Note: &notesv1.Note{
 				Blocks: []*notesv1.Block{
-					{
-						Type: notesv1.Block_TYPE_HEADING_1,
-						Data: &notesv1.Block_Heading{
-							Heading: "Heading",
-						},
-						Styles: []*notesv1.Block_TextStyle{
-							{
-								Style: notesv1.Block_TextStyle_STYLE_BOLD,
-								Pos: &notesv1.Block_TextStyle_Position{
-									Start:  12,
-									Length: 10,
-								},
-								Color: &notesv1.Block_TextStyle_Color{
-									R: 12,
-									G: 120,
-									B: 12,
-								},
-							},
+					&notesv1.Block{
+						Type: notesv1.Block_TYPE_PARAGRAPH,
+						Data: &notesv1.Block_Paragraph{
+							Paragraph: "",
 						},
 					},
 				},
@@ -424,15 +410,42 @@ func TestNotesSuite(t *testing.T) {
 			},
 		})
 		require.NoError(t, err)
+		note := res.Note
 
-		note, err := tu.notes.GetNote(edouard.Context, &notesv1.GetNoteRequest{
+		_, err = tu.notes.UpdateBlock(edouard.Context, &notesv1.UpdateBlockRequest{
+			GroupId: edouardGroup.ID,
+			NoteId:  edouardNote.ID,
+			BlockId: note.Blocks[0].Id,
+			Block: &notesv1.Block{
+				Styles: []*notesv1.Block_TextStyle{
+					{
+						Style: notesv1.Block_TextStyle_STYLE_BOLD,
+						Pos: &notesv1.Block_TextStyle_Position{
+							Start:  12,
+							Length: 10,
+						},
+						Color: &notesv1.Block_TextStyle_Color{
+							R: 12,
+							G: 120,
+							B: 12,
+						},
+					},
+				},
+			},
+		},
+		)
+
+		require.NoError(t, err)
+
+		r, err := tu.notes.GetNote(edouard.Context, &notesv1.GetNoteRequest{
 			NoteId:  edouardNote.ID,
 			GroupId: edouardGroup.ID,
 		})
+		note = r.Note
 
 		require.NoError(t, err)
 		require.NotNil(t, note)
-		style := note.Note.Blocks[0].Styles[0]
+		style := note.Blocks[0].Styles[0]
 		require.Equal(t, style.Style, notesv1.Block_TextStyle_STYLE_BOLD)
 		require.Equal(t, style.Color.R, int32(12))
 		require.Equal(t, style.Color.G, int32(120))
