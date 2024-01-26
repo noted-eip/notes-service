@@ -487,10 +487,6 @@ func (repo *notesRepository) StoreNewQuiz(ctx context.Context, filter *models.On
 	query := bson.D{
 		{Key: "_id", Value: filter.NoteID},
 		{Key: "groupId", Value: filter.GroupID},
-		{Key: "$or", Value: bson.A{
-			// bson.D{{Key: "accountsWithEditPermissions", Value: accountID}},
-			bson.D{{Key: "authorAccountId", Value: accountID}},
-		}},
 	}
 
 	payload.ID = repo.newUUID()
