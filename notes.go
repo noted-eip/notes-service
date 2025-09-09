@@ -55,13 +55,21 @@ func (srv *notesAPI) CreateNote(ctx context.Context, req *notesv1.CreateNoteRequ
 		return nil, statusFromModelError(err)
 	}
 
-	// Check user can edit the note
+	// Assign the req lang or the default one
+	var lang string
+
+	if len(req.Lang) < 1 {
+		lang = "fr"
+	} else {
+		lang = req.Lang
+	}
+
 	note, err := srv.notes.CreateNote(ctx, &models.CreateNotePayload{
 		GroupID:         req.GroupId,
 		Title:           req.Title,
 		AuthorAccountID: token.AccountID,
 		FolderID:        "",
-		Lang:            req.Lang,
+		Lang:            lang,
 		Blocks:          protobufBlocksToModelsBlocks(req.Blocks),
 	}, token.AccountID)
 	if err != nil {
